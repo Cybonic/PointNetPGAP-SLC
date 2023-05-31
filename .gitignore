@@ -1,0 +1,13 @@
+.vscode
+WorkLog.md
+checkpoints/
+__pycache__/
+results/
+saved/
+temp/
+predictions/
+*.gif
+data/*
+*.torch
+*.csv
+*.data

@@ -1,0 +1,13 @@
+# first apt install python3-tk
+numpy
+torchvision
+matplotlib
+scipy
+torch
+vispy
+Pillow
+PyYAML
+datetime
+argparse
+torchmetrics
+tensorboard

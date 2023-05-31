@@ -1,0 +1,86 @@
+
+
+experim_name: 'default'
+################################################################################
+# training parameters
+################################################################################
+pretrained_root: 'checkpoints'
+n_gpu: 1
+root: '/home/tiago/Dropbox/research/datasets'
+root_ws: 'C:\\Users\\Tiago\\TB\\datasets'
+
+retrieval:
+  top_cand: [1,5,25]
+  range_thres: 6
+
+train_loader:
+  data:
+    dataset: 'pointnetvlad'
+    sequence: 'training_queries_baseline.pickle'
+    aug: True
+    modality: 'pcl'
+    max_points: 1200
+    num_neg: 20
+    num_pos: 1
+  batch_size: 1       # batch size
+  shuffle: True
+  
+val_loader:
+  data:
+    dataset: 'pointnetvlad'
+    sequence: 'test_queries_baseline.pickle'
+    modality: 'pcl' # ['range',projection,bev]'intensity','density','height','bev']
+    max_points: 1200
+    num_pos: 50
+  batch_size: 1 #50         # batch size
+  workers:  0            # number of threads to get data
+  shuffle: False
+
+
+modelwrapper:
+  type: 'ORCHNet'
+  minibatch_size: 10
+
+
+loss:
+  type: 'TripletLoss'
+  args:
+    margin: 0.5
+    metric: 'L2' # [L2,Hinge,cosine,kl_divergence]
+    reduction: 'mean'
+
+
+trainer:
+  iter_per_epoch: 1
+  epochs: 50
+  report_val: 10      # every x epochs, report validation set
+  save_period: 1
+  log_dir: "saved/"
+  save_dir: "checkpoints/"
+  monitor: "max recall" # [off, max mIoU]
+  val_per_epochs: 1
+  eval_metric: 'L2'
+  results_dir: "/media/tiago/BIG/Orchards/temp/"
+
+optimizer:
+  type: "AdamW" #[RMSprop,Adam,SGD]
+  args:
+    lr: 0.01
+    weight_decay: 0.00000005
+  lr_scheduler: "ReduceLROnPlateau"
+
+StepLR:
+  step_size: 20 
+  gamma: 0.1
+
+CosineAnnealingWarmRestarts:
+  T_0: 5
+  T_mult: 2
+  eta_min: 0.00001 # Min learning rate
+
+ReduceLROnPlateau:
+  mode: 'min' #['min','max'] (str)
+  factor: 0.01
+  patience: 10 # Number of epochs with no improvement after which learning rate will be reduced. 
+  min_lr: 0.000001
+

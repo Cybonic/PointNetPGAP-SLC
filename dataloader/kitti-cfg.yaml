@@ -1,0 +1,120 @@
+
+'00':
+  means: []
+  std:   []
+  sensor: "HDL64E"
+  roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -3
+      zmax: 10
+  RP: # HDL-32E  
+    W: 512
+    H: 64
+    max_depth: 30 # max range  80.68
+    max_rem: 0.989 # max remenission   0.989 
+  BEV:
+    W: 254
+    H: 254
+    
+
+'02':
+  means: []
+  std:   []
+  sensor: "HDL64E"
+  roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -2.73
+      zmax: 10
+  RP: # HDL-32E  
+    W: 512
+    H: 64
+    max_depth: 30
+    max_rem: 1
+
+  BEV:
+    W: 254
+    H: 254
+
+'05':
+  means: []
+  std:   []
+  sensor: "HDL64E"
+  roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -2.73
+      zmax: 10
+
+  RP: # HDL-32E  
+    W: 512
+    H: 64
+    max_depth: 30 # max range  80.68
+    max_rem: 0.989 # max remenission   0.989 
+
+  BEV:
+    W: 254
+    H: 254
+
+'06':
+  means: []
+  std:   []
+  sensor: "HDL64E"
+  roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -2.73
+      zmax: 10
+  RP: # HDL-32E  
+    W: 512
+    H: 64
+    max_depth: 30
+    max_rem: 1 
+
+  BEV:
+    W: 254
+    H: 254
+
+'08':
+  means: []
+  std:   []
+  sensor: "HDL64E"
+  roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -2.73
+      zmax: 10
+  
+  RP: # HDL-32E  
+    W: 512
+    H: 64
+    max_depth: 30
+    max_rem: 1
+
+  BEV:
+    W: 254
+    H: 254
+
+
+HDL32: 
+  fov_up: 10.67
+  fov_down: -30.67
+
+ousterlaser: # +16.6° to -16.6
+  fov_up: 16.6
+  fov_down: -16.6
+
+HDL64E: 
+  fov_up: 2.0
+  fov_down: -24.9
