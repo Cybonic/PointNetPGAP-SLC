@@ -144,21 +144,19 @@ class featureExtracter(nn.Module):
         return "overlap_transformer"
 
 if __name__ == '__main__':
-    # load config ================================================================
-    #config_filename = '../config/config.yml'
-    from pipeline_utils import  range_projection
-    _backbone_model_dir = os.path.join(
-        os.path.dirname(__file__), '../backbones/spvnas')
-    sys.path.append(_backbone_model_dir)
-    lidar_pc = np.fromfile(_backbone_model_dir +
-                           '/tutorial_data/000000.bin', dtype=np.float32)
-    lidar_pc = lidar_pc.reshape(-1, 4)
+    from dataloader.projections import BEVProjection
+    from PIL import Image
+    file = 'tutorial_data/000000.bin'
+    data_handler = BEVProjection(512,512)
+    input = data_handler.load(file)
 
-    proj_range, proj_vertex, proj_intensity, proj_idx = range_projection(lidar_pc)
-    
-    input = torch.tensor(proj_range).type(torch.FloatTensor).cuda()
-    input = input.unsqueeze(dim=0)
-    #combined_tensor = read_one_need_from_seq(seqs_root, "000000.bin")
+    proj_height = input['height']
+    proj_height_np = proj_height.astype(np.uint8).squeeze()
+    im_proj_pil = Image.fromarray(proj_height_np)
+    im_proj_pil.save('proj_bev.png')
+
+    input = torch.tensor(proj_height).type(torch.FloatTensor).cuda()
+    input = input.permute(2,0,1)
     batch = torch.stack((input,input), dim=0)
 
     feature_extracter = featureExtracter(use_transformer=True, channels=1).type(torch.FloatTensor).cuda()
@@ -166,7 +164,6 @@ if __name__ == '__main__':
     feature_extracter.train()
     
     print("model architecture: \n")
-    # print(feature_extracter)
 
     gloabal_descriptor = feature_extracter(batch)
     print("size of gloabal descriptor: \n")
