@@ -3,34 +3,36 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 from pipelines.PointNetVLAD import *
 from pipelines.LOGG3D import *
+from pipelines.ORCHNet import *
+from pipelines.overlap_transformer import *
+from pipelines.PointNetVLAD import *
 
+MODELS = ['LOGG3D','PointNetVLAD','ORCHNet','overlap_transformer']
 
-def get_pipeline(pipeline_name):
+def get_pipeline(pipeline_name, num_points=4096,output_dim=256):
+
+    print("\n**************************************************")
+    print(f"Model: {pipeline_name}")
+    print(f"N.points: {num_points}")
+    print(f"Dpts: {output_dim}")
+    print("**************************************************\n")
+
+    assert pipeline_name in MODELS
     if pipeline_name == 'LOGG3D':
-        pipeline = LOGG3D(output_dim=256)
+        pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name == 'PointNetVLAD':
-        pipeline = PointNetVLAD(global_feat=True, feature_transform=True,
-                                max_pool=False, output_dim=256, num_points=4096)
+        pipeline = PointNetVLAD( use_tnet=True, output_dim=output_dim, num_points=num_points,feat_dim = 1024)
+    elif pipeline_name == 'ORCHNet':
+        pipeline = ORCHNet('pointnet',output_dim=output_dim, num_points=num_points,feat_dim = 1024)
+    elif pipeline_name == 'overlap_transformer':
+        pipeline = featureExtracter(channels=1,height=64, width=900, output_dim=output_dim, use_transformer = True,
+                                    feature_size=1024, max_samples=num_points)    
     return pipeline
 
 
 if __name__ == '__main__':
-    sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
-    from config.eval_config import get_config
-    cfg = get_config()
-    model = get_pipeline(cfg.train_pipeline).cuda()
-    # print(model)
 
-    from utils.data_loaders.make_dataloader import *
-    train_loader = make_data_loader(cfg,
-                                    cfg.train_phase,
-                                    cfg.batch_size,
-                                    num_workers=cfg.train_num_workers,
-                                    shuffle=True)
-    iterator = train_loader.__iter__()
-    l = len(train_loader.dataset)
-    for i in range(l):
-        input_batch = iterator.next()
-        input_st = input_batch[0].cuda()
-        output = model(input_st)
-        print('')
+    
+    for model_name in MODELS:
+        model = get_pipeline(model_name).cuda()
+

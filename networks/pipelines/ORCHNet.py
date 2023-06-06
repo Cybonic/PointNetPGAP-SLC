@@ -15,12 +15,12 @@ import os
 
 
 class ORCHNet(nn.Module):
-  def __init__(self,backbone_name:str,**argv):
+  def __init__(self,backbone_name:str,output_dim:int,feat_dim:int,**argv):
     super(ORCHNet,self).__init__()
     
     #model_cfg = os.path.join('networks',f'{modelname.lower()}','param.yaml')
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    model_cfg_file = os.path.join(dirname,'param.yaml')
+    model_cfg_file = os.path.join(dirname,'parameters','orchnet.yaml')
     model_cfg = yaml.safe_load(open(model_cfg_file, 'r'))
   
     assert backbone_name in model_cfg,'Backbone param do not exist'
@@ -36,11 +36,10 @@ class ORCHNet(nn.Module):
       backbone = resnet.__dict__[backbone_name](pretrained,**argv)
       self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
     else:
-      #max_points = model_param['max_points']
-      self.backbone = pointnet.PointNet_features(in_dim=model_param['in_channels'], dim_k=model_param['feat_dim'],**argv)
+      self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=True,scale=1)
 
     #self.backbone = self.backbone.to('cuda:0')
-    self.head = MultiHead(outdim=model_param['out_dim'])
+    self.head = MultiHead(outdim=output_dim)
    
   def forward(self,x):
 

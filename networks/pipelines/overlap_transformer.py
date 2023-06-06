@@ -30,7 +30,8 @@ import numpy as np
         use_transformer: Whether to use MHSA.
 """
 class featureExtracter(nn.Module):
-    def __init__(self, height=64, width=900, channels=5, norm_layer=None, use_transformer = True):
+    def __init__(self, height=64, width=900, channels=5, norm_layer=None, use_transformer = True,output_dim=256,
+                        feature_size=1024, max_samples=900):
         super(featureExtracter, self).__init__()
         
         if norm_layer is None:
@@ -82,8 +83,8 @@ class featureExtracter(nn.Module):
             NETVLAD
             add_batch_norm=False is needed in our work.
         """
-        self.net_vlad = NetVLADLoupe(feature_size=1024, max_samples=900, cluster_size=64,
-                                     output_dim=256, gating=True, add_batch_norm=False,
+        self.net_vlad = NetVLADLoupe(feature_size=feature_size, max_samples=max_samples, cluster_size=64,
+                                     output_dim=output_dim, gating=True, add_batch_norm=False,
                                      is_training=True)
 
         """TODO: How about adding some dense layers?"""
@@ -133,6 +134,14 @@ class featureExtracter(nn.Module):
 
         return out_l
 
+    def get_backbone_params(self):
+        return self.point_net.parameters()
+
+    def get_classifier_params(self):
+        return self.net_vlad.parameters()
+  
+    def __str__(self):
+        return "overlap_transformer"
 
 if __name__ == '__main__':
     # load config ================================================================
