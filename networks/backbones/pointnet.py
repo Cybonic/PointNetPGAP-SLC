@@ -117,8 +117,8 @@ class PointNet_features(torch.nn.Module):
             [B, N, 3] -> [B, K]
         """
         B = points.shape[0]
-        P = points.shape[2]
-        C = points.shape[3]
+        P = points.shape[1]
+        C = points.shape[2]
         points = points.view(B,P,C)
         #points = points.view()
         x = points.transpose(1, 2) # [B, 3, N]

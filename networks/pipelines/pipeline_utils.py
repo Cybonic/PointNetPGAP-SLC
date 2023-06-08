@@ -98,6 +98,7 @@ def make_sparse_tensor(lidar_pc, voxel_size=0.05, return_points=False):
     inputs = SparseTensor(feats, coords)
     inputs = sparse_collate([inputs])
     inputs.C = inputs.C.int()
+    
     if return_points:
         return inputs, feats
     else:

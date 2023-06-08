@@ -45,10 +45,11 @@ class ModelWrapper(nn.Module):
             #pred = F.softmax(pred,dim=1) # Normalize descriptors such that ||D||2 = 1
             return(pred)
 
-        anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'][0],pcl[0]['negative'][0]
+        anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'],pcl[0]['negative']
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
-        num_anchor,num_pos,num_neg = anchor.shape[0],positive.shape[0],negative.shape[0]
+        num_anchor,num_pos,num_neg = 1,len(positive),len(negative)
         
+        positive = torch.cat(positive)
         pose = {'a':pose_anchor,'p':pose_positive,'n':pose_negative}
         
         batch_loss = 0
@@ -62,13 +63,16 @@ class ModelWrapper(nn.Module):
                 k = j + (num_neg - j)
 
             neg = negative[j:k]
+
+            neg = torch.cat(neg)
+            
             pclt = torch.cat((anchor,positive,neg))
             
             if pclt.shape[0]==1: # drop last
                 continue
 
             pclt = pclt.type(torch.cuda.FloatTensor)
-            pred = self.model(pclt)
+            pred,feat = self.model(pclt)
             
             a_idx = num_anchor
             p_idx = num_pos+num_anchor

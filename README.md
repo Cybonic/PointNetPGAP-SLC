@@ -18,7 +18,7 @@ conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit
 ```
 ## Install Pytorch 2.0.1
 ```
-pip3 install torch torchvision torchaudio
+pip install torch torchvision torchaudio
 import torch
 torch.cuda.is_available()
 ```

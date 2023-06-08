@@ -13,13 +13,11 @@ retrieval:
   top_cand: [1,5,25]
   range_thres: 6
 
+max_points: 10000
+aug: True 
+
 train_loader:
-  data:
-    dataset: 'kitti'
-    sequence: ['02','05','06','08']
-    aug: True
-    modality: 'pcl'
-    max_points: 10000
+  sequence: ['02','05','06','08']
   
   ground_truth: 
     pos_range: 10 # Loop Threshold [m]
@@ -35,12 +33,9 @@ train_loader:
   #rotation: [180,-45,-45]
   
 val_loader:
-  data:
-    dataset: 'kitti'
-    sequence: ['00']
-    modality: 'pcl' # ['range',projection,bev]'intensity','density','height','bev']
-    max_points: 10000
 
+  dataset: 'kitti'
+  sequence: ['00']
   ground_truth: 
     pos_range: 25 # Loop Threshold [m]
     neg_range: 1

@@ -64,7 +64,7 @@ def retrieval_sequence(queries,database,descriptors,top_cand,window,metric,**arg
     scores,winner = [],[]
     for query in tqdm(queries,"Retrieval"):
         query_dptrs = database_dptrs[query]
-
+        query_dptrs = query_dptrs.reshape(1,-1)
         dist, ind = tree.query(query_dptrs, k=top_cand)
         # Remove query index
         idx_window = np.arange(query-window,len(database))
@@ -77,7 +77,7 @@ def retrieval_sequence(queries,database,descriptors,top_cand,window,metric,**arg
         winner.append(ind[0][remove_bool])
 
         #retrieved_loops,scores = retrieval_knn(query_dptrs, database_dptrs, top_cand =top, metric = eval_metric)
-    return(np.array(winner),np.array(scores))
+    return(winner,scores)
 
 
 
@@ -95,7 +95,7 @@ def retrieval(queries,database,descriptors,top_cand,metric,**argv):
     scores,winner = [],[]
     for query in tqdm(queries,"Retrieval"):
         query_dptrs = database_dptrs[query]
-
+        query_dptrs = query_dptrs.reshape(1,-1)
         dist, ind = tree.query(query_dptrs, k=top_cand)
         # Remove query index
         values = np.invert(query == ind[0])
@@ -140,24 +140,29 @@ class PlaceRecognition():
             table = loader.dataset.dataset.get_gt_map()
             #poses = loader.dataset.dataset.get_pose()
 
-        self.true_loop = np.array([np.where(line==1)[0] for line in table])
-    
+        #self.true_loop = np.array([np.where(line==1)[0] for line in table])
+        #self.true_loop = [np.where(line==1)[0] for line in table]
+        self.true_loop = np.array([line==1 for line in table])
+        #self.true_loop = np.ones_like(self.true_loop_bool)*-1
+        #for line in self.true_loop_bool:
+        #    self.true_loop[line==true] 
+
         # SAVE DESCRIPTORS
-        self.descriptors_dir = os.path.join('predictions','descriptors',f'{self.dataset_name}')
+        self.descriptors_dir = os.path.join('predictions',f'{self.dataset_name}','descriptors')
         self.descriptor_file = os.path.join(self.descriptors_dir,f'{str(self.model)}.torch') 
         if self.save_deptrs==True and not os.path.isdir(self.descriptors_dir):
             os.makedirs(self.descriptors_dir)
             logger.warning('\n ** Created a new directory: ' + self.descriptors_dir)
         
         # SAVE RESULTS
-        results_dir = os.path.join('predictions','place','results',f'{self.dataset_name}')
+        results_dir = os.path.join('predictions',f'{self.dataset_name}','place','results')
         self.results_file = os.path.join(results_dir,f'{str(self.model)}')
         if not os.path.isdir(results_dir):
             os.makedirs(results_dir)
             logger.warning('\n ** Created a new directory: ' + results_dir)
         
         # SAVE PREDICTIONS
-        predictions_dir = os.path.join('predictions','place','loops',f'{self.dataset_name}')
+        predictions_dir = os.path.join('predictions',f'{self.dataset_name}','place','loops')
         self.prediction_file = os.path.join(predictions_dir,f'{str(self.model)}')
         if not os.path.isdir(predictions_dir):
             os.makedirs(predictions_dir)
@@ -274,13 +279,13 @@ class PlaceRecognition():
         if self.model_name in ['scancontext']:
             from networks.scancontext.scancontext import similarity
             self.pred_loops,self.pred_scores = retrieval_costum_dist(self.anchors,self.database,self.descriptors,max_top,window=500,metric=similarity)
-        elif self.dataset_name in ['kitti']:
+        elif self.dataset_name.startswith('kitti'):
             self.pred_loops,self.pred_scores = retrieval_sequence(self.anchors,self.database,self.descriptors,max_top,window=500,metric=self.eval_metric)
         else:
             self.pred_loops,self.pred_scores = retrieval(self.anchors,self.database,self.descriptors,max_top,metric=self.eval_metric)
 
         # COMPUTE PERFORMANCE
-        self.target_loops = np.array(self.true_loop[self.anchors])
+        self.target_loops = np.array(self.true_loop[self.anchors.astype(int)])
 
         overall_scores = {}
         for top in tqdm(range(1,max_top),'Performance'):
@@ -306,8 +311,9 @@ class PlaceRecognition():
             idx_bag = []
             for batch_idx in tbar:
                 input,inx = next(dataloader)
+                input = input.to(self.device)
                 # Generate the Descriptor
-                prediction = model(input)
+                prediction,feat = model(input)
                 assert prediction.isnan().any() == False
                 # Keep descriptors
                 for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):

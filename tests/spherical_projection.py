@@ -14,14 +14,18 @@ def test_spherical(file,width,height):
     assert h == height,'Height is wrong'
     return True,input
 
-width = 900
-height = 64
+def run_spherical_test(file,width,height):
+    flag,proj_height = test_spherical(file,width,height)
+    print("[PASSED] Spherical")
 
-file = 'tutorial_data/000000.bin'
-flag,proj_height = test_spherical(file,width,height)
-print("Spherical is passing")
+if __name__ == "__main__":
+    width = 900
+    height = 64
 
-# Save Projection
-proj_height_np = proj_height.numpy().astype(np.uint8).squeeze()
-im_proj_pil = Image.fromarray(proj_height_np)
-im_proj_pil.save('proj_spherical.png')
+    file = 'tutorial_data/000000.bin'
+    run_spherical_test(file,width,height)
+
+    # Save Projection
+    proj_height_np = proj_height.numpy().astype(np.uint8).squeeze()
+    im_proj_pil = Image.fromarray(proj_height_np)
+    im_proj_pil.save('proj_spherical.png')

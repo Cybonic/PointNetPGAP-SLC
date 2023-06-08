@@ -11,3 +11,5 @@ data/*
 *.torch
 *.csv
 *.data
+*.png
+*.bin

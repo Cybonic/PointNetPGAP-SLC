@@ -20,12 +20,13 @@ import yaml
 import os
 import torch 
 
-from networks.orchnet import *
+#from networks.orchnet import *
 from trainer import Trainer
 from networks import contrastive
 from utils import loss as losses
-from dataloader import utils
+from pipeline_factory import pipeline
 import numpy as np
+
 
 
 def force_cudnn_initialization():
@@ -41,7 +42,7 @@ if __name__ == '__main__':
       '--network', '-m',
       type=str,
       required=False,
-      default='ORCHNet_pointnet',
+      default='ORCHNet',
       help='Directory to get the trained model.'
   )
 
@@ -58,6 +59,14 @@ if __name__ == '__main__':
       type=str,
       required=False,
       default='sensor-cfg',
+      help='Directory to get the trained model.'
+  )
+
+  parser.add_argument(
+      '--modality',
+      type=str,
+      required=False,
+      default='pcl',
       help='Directory to get the trained model.'
   )
 
@@ -115,13 +124,6 @@ if __name__ == '__main__':
       help='Directory to get the trained model.'
   )
   parser.add_argument(
-      '--debug',
-      type=bool,
-      required=False,
-      default=False,
-      help='Directory to get the trained model.'
-  )
-  parser.add_argument(
       '--loss',
       type=str,
       required=False,
@@ -133,7 +135,7 @@ if __name__ == '__main__':
       '--max_points',
       type=int,
       required=False,
-      default = 10000,
+      default = 3000,
       help='sampling points.'
   )
 
@@ -155,20 +157,18 @@ if __name__ == '__main__':
   SESSION['loss']['type'] = FLAGS.loss
 
 
-  SESSION['train_loader']['data']['max_points'] = FLAGS.max_points
-  SESSION['val_loader']['data']['max_points'] = FLAGS.max_points
+  SESSION['max_points']= FLAGS.max_points
 
   print("----------")
   print("Root: ", SESSION['root'])
   print("\n======= TRAIN LOADER =======")
-  print("Dataset  : ", SESSION['train_loader']['data']['dataset'])
-  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
-  print("Max Points: " + str(SESSION['train_loader']['data']['max_points']))
+  # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
+  print("Max Points: " + str(SESSION['max_points']))
   print("\n======= VAL LOADER =======")
-  print("Dataset  : ", SESSION['val_loader']['data']['dataset'])
-  print("Sequence : ", SESSION['val_loader']['data']['sequence'])
+  print("Dataset  : ", SESSION['val_loader']['dataset'])
+  print("Sequence : ", SESSION['val_loader']['sequence'])
   print("Batch Size : ", str(SESSION['val_loader']['batch_size']))
-  print("Max Points: " + str(SESSION['val_loader']['data']['max_points']))
+  print("Max Points: " + str(SESSION['max_points']))
   print("\n========== MODEL =========")
   print("Backbone : ", FLAGS.network)
   print("Resume: ",  FLAGS.resume )
@@ -199,18 +199,15 @@ if __name__ == '__main__':
 
 
   ###################################################################### 
-  from networks import modeling
-
-  model_ = modeling.__dict__[FLAGS.network]()
+  model_,loader = pipeline(FLAGS.network,FLAGS.dataset,SESSION)
   model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
   # Load Dataset
-  orchard_loader = utils.load_dataset(FLAGS.dataset,SESSION,FLAGS.memory,debug = FLAGS.debug)
   
   print("*"*30)
   print("Model: %s" %(str(model)))
   print("*"*30)
 
-  run_name = {  'dataset': str(SESSION['train_loader']['data']['sequence']),
+  run_name = {  'dataset': str(SESSION['train_loader']['sequence']),
                 'experiment':os.path.join(FLAGS.experiment,str(loss)), 
                 'model': str(model)
                 }
@@ -219,7 +216,7 @@ if __name__ == '__main__':
           model  = model,
           resume = FLAGS.resume,
           config = SESSION,
-          loader = orchard_loader,
+          loader = loader,
           device = FLAGS.device,
           run_name = run_name,
           train_epoch_zero = False

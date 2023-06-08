@@ -188,7 +188,7 @@ class KittiDataset():
             self.plc_names.extend(name)
             pose = kitti_struct._get_pose_()
             self.poses.extend(pose)
-            target_dir = kitti_struct._get_target_dir()
+            # target_dir = kitti_struct._get_target_dir()
             # Load indicies to split the dataset in queries, positive and map 
             anchors,positives,negatives = gen_ground_truth(pose,**ground_truth)
             
@@ -210,18 +210,18 @@ class KittiDataset():
         if not 'square_roi' in argv:
             argv['square_roi'] = [sensor_cfg[seq]['roi']]
 
-        if modality in ['range']:
-            self.param = sensor_cfg[seq]['RP']
-        elif modality in ['bev']:
-            self.param = sensor_cfg[seq]['BEV']
-        else:
-            self.param = {}
+        #if modality in ['range']:
+        #    self.param = sensor_cfg[seq]['RP']
+        #elif modality in ['bev']:
+        #    self.param = sensor_cfg[seq]['BEV']
+        #else:
+        #    self.param = {}
 
-        self.laser = LaserData(
-                parser = kitti_velo_parser(),
-                project=True,
-                **argv
-                )
+        #self.laser = LaserData(
+        #        parser = kitti_velo_parser(),
+        #        project=True,
+        #        **argv
+        #        )
 
         n_points = baseline_idx
         self.table = np.zeros((n_points,n_points))

@@ -53,13 +53,16 @@ def retrieve_eval(retrieved_map,true_relevant_map,top=1,**argv):
     recall  = tp/1
   '''
   assert top > 0
-  n_queries = retrieved_map.shape[0]
+  #assert true_relevant_map is bool 
+  #assert isinstance(true_relevant_map,
+  n_queries = len(retrieved_map)
   precision, recall = 0,0
-  for retrieved,relevant in zip(retrieved_map,true_relevant_map):
+  for retrieved,loops_bools in zip(retrieved_map,true_relevant_map):
     top_retrieved = retrieved[:top] # retrieved frames for a given query
-    
+    pred_retrieval = loops_bools[retrieved]
     tp = 0 # Reset 
-    if any(([True  if cand in relevant else False for cand in top_retrieved])):
+    #if any(([True  if cand in relevant else False for cand in top_retrieved])):
+    if any(pred_retrieval):    
         # It is only required to find one loop per anchor in a set of retrieved frames
         tp = 1 
     

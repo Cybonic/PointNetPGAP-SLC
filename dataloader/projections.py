@@ -36,6 +36,13 @@ class SphericalProjection(LaserScan):
                             fov_up=3.0, fov_down=-25.0, proj_H=64, 
                             proj_W=900, max_range=50)
 
+  def __call__(self,files):
+
+    image = self.load(files)
+    values = list(image.values())
+    image = np.concatenate(values,axis=-1)
+    return self.to_tensor(image)
+
 
 class BEVProjection(LaserScan):
   def __init__(self,width,height,parser = None, max_points = -1, aug_flag=False):
@@ -51,13 +58,20 @@ class BEVProjection(LaserScan):
     self.width = width
     self.height = height
 
-  def to_tensor(input):
+  def to_tensor(self,input):
     return PREPROCESSING(input)
   
   def load(self,file):
     self.open_scan(file)
     filtered_points,filtered_remissions = self.get_points()
     return get_bev_proj(filtered_points,filtered_remissions,self.width,self.height)
+  
+  def __call__(self,file):
+    image = self.load(file)
+    values = list(image.values())
+    image = np.concatenate(values,axis=-1)
+
+    return self.to_tensor(image)
 
 
   
@@ -344,6 +358,11 @@ def range_projection(current_vertex, intensity,fov_up=3.0, fov_down=-25.0, proj_
   proj_vertex[proj_y, proj_x] = np.array([scan_x, scan_y, scan_z, np.ones(len(scan_x))]).T
   proj_idx[proj_y, proj_x] = indices
   proj_intensity[proj_y, proj_x] = intensity
+
+  # Expand dim to create a matrix [H,W,C]
+  proj_range = np.expand_dims(proj_range,axis=-1)
+  proj_intensity = np.expand_dims(proj_intensity,axis=-1)
+  proj_idx = np.expand_dims(proj_idx,axis=-1)
   
   return {'range': proj_range, 'xyz': proj_vertex, 'remission': proj_intensity,'idx':proj_idx}
   # return proj_range, proj_vertex, proj_intensity, proj_idx

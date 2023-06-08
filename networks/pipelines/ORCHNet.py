@@ -46,7 +46,7 @@ class ORCHNet(nn.Module):
     y = self.backbone(x)
     z = self.head(y)
 
-    return z
+    return z,y
   
   def get_backbone_params(self):
     return self.backbone.parameters()
