@@ -11,12 +11,14 @@ import numpy as np
 from networks import contrastive
 from utils.retrieval import retrieval_knn
 from utils.metric import retrieve_eval
+from utils.eval import eval_place
 import logging
 import pandas as pd
 
 from dataloader import utils
 from utils.utils import get_available_devices
 from utils import loss as loss_lib
+from pipeline_factory import pipeline
 
 
 def retrieval_costum_dist(queries,database,descriptors,top_cand,window,metric,**argv):
@@ -132,7 +134,8 @@ class PlaceRecognition():
             self.database = loader.dataset.get_idx_universe()
             self.anchors = loader.dataset.get_anchor_idx()
             table = loader.dataset.get_gt_map()
-            #poses = loader.dataset.get_pose()
+            #
+            self.poses = loader.dataset.get_pose()
         except: 
             dataset_name = str(loader.dataset.dataset)
             self.database = loader.dataset.dataset.get_idx_universe()
@@ -275,29 +278,21 @@ class PlaceRecognition():
 
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
-        # the kitti dataset  
-        if self.model_name in ['scancontext']:
-            from networks.scancontext.scancontext import similarity
-            self.pred_loops,self.pred_scores = retrieval_costum_dist(self.anchors,self.database,self.descriptors,max_top,window=500,metric=similarity)
-        elif self.dataset_name.startswith('kitti'):
-            self.pred_loops,self.pred_scores = retrieval_sequence(self.anchors,self.database,self.descriptors,max_top,window=500,metric=self.eval_metric)
-        else:
-            self.pred_loops,self.pred_scores = retrieval(self.anchors,self.database,self.descriptors,max_top,metric=self.eval_metric)
+        # the kitti dataset 
+        metric,predictions = eval_place(self.anchors,self.descriptors,self.poses,max_top)
 
-        # COMPUTE PERFORMANCE
-        self.target_loops = np.array(self.true_loop[self.anchors.astype(int)])
-
-        overall_scores = {}
+        # SAVE PREDICTIONS
+        
+        # RE-MAP TO AN OLD FORMAT
+        remapped_old_format={}
         for top in tqdm(range(1,max_top),'Performance'):
-            scores = retrieve_eval(self.pred_loops,self.target_loops, top = top)
-            overall_scores[top]=scores
-            #self.logger.info(f'top {top} recall = %f\n',scores['recall'])
+            remapped_old_format[top]={'recall':metric['recall'][25][top]}
+            self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
 
-        self.score_value = str(overall_scores[1]['recall']) + f'@{1}'
-        # Post on tensorboard
-        self.results = overall_scores
+        self.score_value = str(round(metric['recall'][25][0],3)) + f'@{1}'
+        self.results = remapped_old_format
 
-        return overall_scores
+        return remapped_old_format
 
 
     def generate_descriptors(self,model,loader):
@@ -437,9 +432,9 @@ if __name__ == '__main__':
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
 
-    from networks import modeling
-    model_ = modeling.__dict__[FLAGS.network]()
-    model_wrapper = contrastive.ModelWrapper(model_,**SESSION['modelwrapper'])
+    #from networks import modeling
+    #model_ = modeling.__dict__[FLAGS.network]()
+    
 
     print("----------")
     print("INTERFACE:")
@@ -454,7 +449,9 @@ if __name__ == '__main__':
     ###################################################################### 
 
     # DATALOADER
-    dataloader = utils.load_dataset(FLAGS.dataset,SESSION,FLAGS.memory)                            
+    model_,dataloader = pipeline(FLAGS.network,FLAGS.dataset,SESSION)
+    model_wrapper = contrastive.ModelWrapper(model_,**SESSION['modelwrapper'])
+    #dataloader = utils.load_dataset(FLAGS.dataset,SESSION,FLAGS.memory)                            
     
     SESSION['train_loader']['data']['max_points'] = FLAGS.max_points
     SESSION['val_loader']['data']['max_points'] = FLAGS.max_points

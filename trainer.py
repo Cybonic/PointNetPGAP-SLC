@@ -158,8 +158,9 @@ class Trainer(BaseTrainer):
 
         overall_scores = self.eval_approach.run()
 
+       
         # Post on tensorboard
-        for i, score in overall_scores.items():
+        for i,score in overall_scores.items():
             self._write_scalars_tb(f'val@{i}',score,epoch)
         return overall_scores,[]
 

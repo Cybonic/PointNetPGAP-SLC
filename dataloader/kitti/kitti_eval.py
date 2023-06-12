@@ -62,8 +62,7 @@ class KITTIEval:
         return(len(self.idx_universe))
         
     def get_pose(self):
-        pose = self.poses()
-        return pose
+        return self.poses
 
     def get_anchor_idx(self):
         return np.array(self.anchors,np.uint32)
