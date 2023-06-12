@@ -279,15 +279,15 @@ class PlaceRecognition():
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
         # the kitti dataset 
-        metric,predictions = eval_place(self.anchors,self.descriptors,self.poses,max_top)
+        metric,predictions = eval_place(self.anchors,self.descriptors,self.poses,max_top,window=self.window)
 
         # SAVE PREDICTIONS
-        
+
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
         for top in tqdm(range(1,max_top),'Performance'):
             remapped_old_format[top]={'recall':metric['recall'][25][top]}
-            self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
+            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
 
         self.score_value = str(round(metric['recall'][25][0],3)) + f'@{1}'
         self.results = remapped_old_format
