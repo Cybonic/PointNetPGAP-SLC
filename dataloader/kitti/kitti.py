@@ -2,8 +2,8 @@
 
 from dataloader.kitti.kitti_eval import KITTIEval
 from dataloader.kitti.kitti_triplet import KittiTriplet
-from torch.utils.data import DataLoader
-
+from torch.utils.data import DataLoader,SubsetRandomSampler
+import numpy as np
 
 class KITTI():
     def __init__(self,**kwargs):
@@ -15,7 +15,7 @@ class KITTI():
         self.modality  = kwargs['modality']
         self.max_points = kwargs['max_points']
 
-    def get_train_loader(self):
+    def get_train_loader(self,debug=True):
         sequence  = self.train_cfg['sequence']
         #max_points = self.max_points
         
@@ -25,14 +25,28 @@ class KITTI():
                                     modality = self.modality,
                                     ground_truth = self.train_cfg['ground_truth']
                                                 )
+        
+        if debug == False:
+            trainloader   = DataLoader(train_loader,
+                                    batch_size = 1, #train_cfg['batch_size'],
+                                    shuffle    = self.train_cfg['shuffle'],
+                                    num_workers= 0,
+                                    pin_memory=False,
+                                    drop_last=True,
+                                    )
+        else:
+            indices = np.random.randint(0,len(train_loader),20)
+            np.random.shuffle(indices)
+            sampler = SubsetRandomSampler(indices)
 
-        trainloader   = DataLoader(train_loader,
-                                batch_size = 1, #train_cfg['batch_size'],
-                                shuffle    = self.train_cfg['shuffle'],
-                                num_workers= 0,
-                                pin_memory=False,
-                                drop_last=True,
-                                )
+            trainloader   = DataLoader(train_loader,
+                                    batch_size = 1, #train_cfg['batch_size'],
+                                    shuffle    = False,
+                                    num_workers= 0,
+                                    pin_memory=False,
+                                    drop_last=True,
+                                    sampler=sampler
+                                    )
         
         return trainloader
     
