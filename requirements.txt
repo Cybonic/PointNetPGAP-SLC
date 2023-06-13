@@ -8,4 +8,8 @@ PyYAML
 datetime
 argparse
 tensorboard
-
+GPUtil
+tqdm
+scikit-learn
+pandas
+torchpack
