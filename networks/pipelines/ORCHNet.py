@@ -36,7 +36,7 @@ class ORCHNet(nn.Module):
       backbone = resnet.__dict__[backbone_name](pretrained,**argv)
       self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
     else:
-      self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=True,scale=1)
+      self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=False,scale=1)
 
     #self.backbone = self.backbone.to('cuda:0')
     self.head = MultiHead(outdim=output_dim)

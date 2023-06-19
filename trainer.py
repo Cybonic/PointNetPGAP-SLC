@@ -19,14 +19,15 @@ class Trainer(BaseTrainer):
                         loader,
                         device = 'cpu',
                         run_name = 'default',
-                        train_epoch_zero = True
+                        train_epoch_zero = True,
+                        debug = False
                         ):
 
         super(Trainer, self).__init__(model, resume, config,run_name=run_name,device=device,train_epoch_zero=train_epoch_zero)
 
 
         self.trainer_cfg    = config
-        self.train_loader   = loader.get_train_loader()
+        self.train_loader   = loader.get_train_loader(debug)
         #self.train_loader.dataset.todevice(self.device)
         self.val_loader     = loader.get_val_loader()
         self.val_loader.dataset.todevice(self.device)

@@ -6,23 +6,24 @@ experim_name: 'default'
 ################################################################################
 pretrained_root: 'checkpoints'
 n_gpu: 1
-root: '/home/tiago/Dropbox/research/datasets'
+tiago-deep: '/home/tiago/Dropbox/research/datasets'
 root_ws: 'C:\\Users\\ISR\\phd\\datasets'
-
+deep-MS-7C37: '/home/deep/tiagobarros/datasets'
 retrieval:
   top_cand: [1,5,25]
   range_thres: 6
 
 max_points: 10000
 aug: True 
+memory: "DISK"
 
 train_loader:
-  sequence: ['02','05','06','08']
+  sequence: ['06'] #['02','05','06','08']
   
   ground_truth: 
     pos_range: 10 # Loop Threshold [m]
     neg_range: 50
-    num_neg: 30
+    num_neg: 20
     num_pos: 1
     warmupitrs: 600 # Number of frames to ignore at the beguinning
     roi: 500 
@@ -33,17 +34,15 @@ train_loader:
   #rotation: [180,-45,-45]
   
 val_loader:
-
   dataset: 'kitti'
-  sequence: ['00']
+  sequence: ['06']
   ground_truth: 
     pos_range: 25 # Loop Threshold [m]
     neg_range: 1
     num_neg: 1
-    num_pos: 50
+    num_pos: 1
     warmupitrs: 600 # Number of frames to ignore at the beguinning
     roi: 500 
-
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False
@@ -78,8 +77,8 @@ trainer:
 optimizer:
   type: "AdamW" #[RMSprop,Adam,SGD]
   args:
-    lr: 0.01
-    weight_decay: 0.0005
+    lr: 0.0001
+    weight_decay: 0.00005
   lr_scheduler: "ReduceLROnPlateau"
 
 StepLR:
