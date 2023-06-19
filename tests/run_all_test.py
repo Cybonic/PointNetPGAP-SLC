@@ -16,7 +16,12 @@ height = 64
 voxel_size=0.05
 file = 'tutorial_data/000000.bin'
 
-root = "/home/tiago/Dropbox/research/datasets"
+root_devices = {'deep-MS-7C37':'/media/deep/datasets/datasets',
+                'tiago-deep':'/home/tiago/Dropbox/research/datasets'}
+
+device_name = os.uname()[1]
+root = root_devices[device_name]
+
 run_kitt_eval_test(root)
 run_kitt_triplet_test(root)
 run_laserscan_test(file)
