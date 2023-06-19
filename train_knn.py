@@ -43,6 +43,7 @@ if __name__ == '__main__':
       type=str,
       required=False,
       default='ORCHNet',
+      choices=['PointNetVLAD','ORCHNet','LOGG3D'],
       help='Directory to get the trained model.'
   )
 
@@ -50,23 +51,7 @@ if __name__ == '__main__':
       '--experiment', '-e',
       type=str,
       required=False,
-      default='finetunning',
-      help='Directory to get the trained model.'
-  )
-
-  parser.add_argument(
-      '--cfg', '-f',
-      type=str,
-      required=False,
-      default='sensor-cfg',
-      help='Directory to get the trained model.'
-  )
-
-  parser.add_argument(
-      '--modality',
-      type=str,
-      required=False,
-      default='pcl',
+      default='finetunning/F1024/NO-TNET/L0.5',
       help='Directory to get the trained model.'
   )
 
@@ -82,8 +67,8 @@ if __name__ == '__main__':
       '--memory',
       type=str,
       required=False,
-      default='Disk',
-      choices=['Disk','RAM'],
+      default='RAM',
+      choices=['DISK','RAM'],
       help='Directory to get the trained model.'
   )
 
@@ -91,7 +76,7 @@ if __name__ == '__main__':
       '--epoch',
       type=int,
       required=False,
-      default=50,
+      default=200,
       help='Directory to get the trained model.'
   )
 
@@ -113,14 +98,14 @@ if __name__ == '__main__':
       '--batch_size',
       type=int,
       required=False,
-      default=18,
+      default=10,
       help='Directory to get the trained model.'
   )
   parser.add_argument(
       '--mini_batch_size',
       type=int,
       required=False,
-      default=7, #  Max size (based on the negatives)
+      default=50, #  Max size (based on the negatives)
       help='Directory to get the trained model.'
   )
   parser.add_argument(
@@ -135,7 +120,7 @@ if __name__ == '__main__':
       '--max_points',
       type=int,
       required=False,
-      default = 3000,
+      default = 10000,
       help='sampling points.'
   )
 
@@ -155,12 +140,12 @@ if __name__ == '__main__':
   SESSION['val_loader']['batch_size'] = FLAGS.batch_size
   SESSION['trainer']['epochs'] =  FLAGS.epoch
   SESSION['loss']['type'] = FLAGS.loss
-
-
   SESSION['max_points']= FLAGS.max_points
+  SESSION['memory']= FLAGS.memory
+
 
   print("----------")
-  print("Root: ", SESSION['root'])
+  # print("Root: ", SESSION['root'])
   print("\n======= TRAIN LOADER =======")
   # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
   print("Max Points: " + str(SESSION['max_points']))
@@ -196,19 +181,16 @@ if __name__ == '__main__':
   print("*"*30)
   print(f'Loss: {loss}')
   print("*"*30)
-
-
   ###################################################################### 
   model_,loader = pipeline(FLAGS.network,FLAGS.dataset,SESSION)
   model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
-  # Load Dataset
-  
+ 
   print("*"*30)
   print("Model: %s" %(str(model)))
   print("*"*30)
 
   run_name = {  'dataset': str(SESSION['train_loader']['sequence']),
-                'experiment':os.path.join(FLAGS.experiment,str(loss)), 
+                'experiment':os.path.join(FLAGS.experiment,str(FLAGS.max_points)), 
                 'model': str(model)
                 }
 
@@ -219,7 +201,8 @@ if __name__ == '__main__':
           loader = loader,
           device = FLAGS.device,
           run_name = run_name,
-          train_epoch_zero = False
+          train_epoch_zero = False,
+          debug = False
           )
   
   trainer.Train()
