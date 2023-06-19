@@ -130,7 +130,7 @@ def get_distance_function(name):
 #==================================================================================================
 
 class LazyTripletLoss():
-  def __init__(self, metric= 'L2', margin=0.2 , eps=1e-8,**argv):
+  def __init__(self, metric= 'L2', margin=0.5 , eps=1e-8,**argv):
 
     self.margin = margin
     self.metric = metric
@@ -177,7 +177,7 @@ class LazyTripletLoss():
 #==================================================================================================
 
 class LazyQuadrupletLoss():
-  def __init__(self, metric= 'L2', margin1 = 0.1 ,margin2 = 0.1 , eps=1e-8, **argv):
+  def __init__(self, metric= 'L2', margin1 = 0.5 ,margin2 = 0.5 , eps=1e-8, **argv):
     
     #assert isinstance(margin,list) 
     #assert len(margin) == 2,'margin has to have 2 elements'

@@ -84,9 +84,9 @@ def eval_place(queries,descriptrs,poses,k=25,radius=[25],reranking = None,window
     
     # Compute loop candidates
     delta_dscpts = query_destps - selected_desptrs
-    embed_dist = np.linalg.norm(delta_dscpts, axis=-1)[:k]
-    nn_ndx = np.argsort(embed_dist)
-    
+    embed_dist = np.linalg.norm(delta_dscpts, axis=-1)
+    nn_ndx = np.argsort(embed_dist)[:k]
+    embed_dist = embed_dist[nn_ndx]
     
     # compute ground truth distance
     delta = query_pos - selected_poses

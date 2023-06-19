@@ -9,7 +9,6 @@ import torch.nn as nn
 import numpy as np
 import math
 import PIL
-import cv2 
 from matplotlib import colors
 from matplotlib import pyplot as plt
 import matplotlib.cm as cmx
