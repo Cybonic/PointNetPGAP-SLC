@@ -52,8 +52,9 @@ def gen_ground_truth(   poses,
 
         pos_idx = np.where(dist_meter[:i-roi] < pos_range)[0]
 
-        if len(pos_idx)>0:
-            min_sort = np.argsort(dist_meter[pos_idx])
+        if len(pos_idx)>=num_pos:
+            pos_dist = dist_meter[pos_idx]
+            min_sort = np.argsort(pos_dist)
             if num_pos == -1:
                 pos_select = pos_idx[min_sort]
             else:
@@ -81,17 +82,18 @@ def load_dataset(dataset,session,modality,max_points=50000):
 
     dataset = dataset.lower()
     assert dataset in ['kitti','orchards-uk','pointnetvlad'],'Dataset Name does not exist!'
-    if os.sep == '\\':
-        root_dir = 'root_ws'
-    else:
-        root_dir = 'root'
+
+
+    device_name = os.uname()[1]
+    root_dir = session[device_name]
 
     if dataset == 'kitti':
         # Kitti 
         from dataloader.kitti.kitti import KITTI
         
-        loader = KITTI( root = session[root_dir],
+        loader = KITTI( root = root_dir,
                         modality = modality,
+                        memory = session['memory'],
                         train_loader  = session['train_loader'],
                         val_loader    = session['val_loader'],
                         max_points    = session['max_points']

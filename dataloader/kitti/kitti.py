@@ -14,6 +14,7 @@ class KITTI():
         self.train_cfg = kwargs['train_loader']
         self.modality  = kwargs['modality']
         self.max_points = kwargs['max_points']
+        self.memory = kwargs['memory']
 
     def get_train_loader(self,debug=True):
         sequence  = self.train_cfg['sequence']
@@ -23,7 +24,8 @@ class KITTI():
         train_loader = KittiTriplet( root = self.root,
                                     sequences = sequence,
                                     modality = self.modality,
-                                    ground_truth = self.train_cfg['ground_truth']
+                                    ground_truth = self.train_cfg['ground_truth'],
+                                    memory= self.memory
                                                 )
         
         if debug == False:
@@ -61,7 +63,7 @@ class KITTI():
         val_loader = KITTIEval( root = self.root,
                                sequence = sequence[0],
                                modality = self.modality,
-                             #**self.val_cfg,
+                                memory= self.memory,
                                 ground_truth = self.val_cfg['ground_truth']
                                 )
 

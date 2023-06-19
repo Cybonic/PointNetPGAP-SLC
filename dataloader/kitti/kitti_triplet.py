@@ -7,14 +7,16 @@ import os
 import numpy as np
 from dataloader.utils import gen_ground_truth
 from dataloader.kitti.kitti_dataset import kittidataset
-
-
+import torch
+from tqdm import tqdm
 
 class KittiTriplet():
     def __init__(self,
                  root,
                  sequences,
-                 modality=None,
+                 modality = None,
+                 memory = 'DISK',
+                 debug = False,
                  ground_truth = {   'pos_range':4, # Loop Threshold [m]
                                     'neg_range':10,
                                     'num_neg':20,
@@ -35,6 +37,8 @@ class KittiTriplet():
         self.negatives  = []
         self.device     = device
         baseline_idx  = 0 
+        self.memory = memory 
+        assert self.memory in ["RAM","DISK"]
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
 
@@ -42,15 +46,16 @@ class KittiTriplet():
             kitti_struct = kittidataset(root, 'kitti', seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
-            
+            pose = kitti_struct._get_pose_()
+                
+        
             self.plc_files.extend(files)
             self.plc_names.extend(name)
-            
-            pose = kitti_struct._get_pose_()
             self.poses.extend(pose)
             
             anchors,positives,negatives = gen_ground_truth(pose,**ground_truth)
             
+
             self.anchors.extend(baseline_idx + np.array(anchors))
             self.positives.extend(baseline_idx + np.array(positives))
             self.negatives.extend(baseline_idx + np.array(negatives))
@@ -61,7 +66,8 @@ class KittiTriplet():
         self.anchors = np.array(self.anchors)
         self.poses = np.array(self.poses)
 
-        self.num_samples = len(self.anchors)
+        self.num_anchors = len(self.anchors)
+        self.num_samples = len(self.plc_files)
 
         n_points = baseline_idx
         self.table = np.zeros((n_points,n_points))
@@ -69,9 +75,21 @@ class KittiTriplet():
             for p in pos:
                 self.table[a,p]=1
     
+        # Load Data to RAM
+        if self.memory == 'RAM':
+            self.load_to_RAM()
+
+    def load_to_RAM(self):
+        self.memory=="RAM"
+        indices = list(range(self.num_samples))
+        self.data_on_ram = []
+        for idx in tqdm(indices,"Load to RAM"):
+            plt = self.modality(self.plc_files[idx])
+            self.data_on_ram.append(plt)
+                
 
     def __len__(self):
-        return(self.num_samples)
+        return(self.num_anchors)
 
     def _get_gt_(self):
         return self.table
@@ -85,11 +103,17 @@ class KittiTriplet():
     def __getitem__(self,idx):
         an_idx,pos_idx,neg_idx  = self.anchors[idx],self.positives[idx], self.negatives[idx]
 
-        plt_anchor = self.modality(self.plc_files[an_idx])
-        plt_pos = [self.modality(self.plc_files[i]) for i in pos_idx]
-        plt_neg = [self.modality(self.plc_files[i]) for i in neg_idx]
+        if self.memory == "DISK":
+            plt_anchor = self.modality(self.plc_files[an_idx])
+            plt_pos = [self.modality(self.plc_files[i]) for i in pos_idx]
+            plt_neg = [self.modality(self.plc_files[i]) for i in neg_idx]
+        else:
+            plt_anchor = self.data_on_ram[an_idx]
+            plt_pos = [self.data_on_ram[i] for i in pos_idx]
+            plt_neg = [self.data_on_ram[i] for i in neg_idx]
 
+            
         pcl = {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
-        indx = {'anchor':an_idx,'positive':len(pos_idx),'negative':len(neg_idx)}
+        indx = {'anchor':an_idx,'positive':pos_idx,'negative':neg_idx}
 
         return(pcl,indx)
