@@ -15,11 +15,12 @@ class KITTI():
         self.modality  = kwargs['modality']
         self.max_points = kwargs['max_points']
         self.memory = kwargs['memory']
+        self.collation_fn= kwargs['collation_fn']
+        
 
     def get_train_loader(self,debug=True):
         sequence  = self.train_cfg['sequence']
         #max_points = self.max_points
-        
 
         train_loader = KittiTriplet( root = self.root,
                                     sequences = sequence,
@@ -35,6 +36,7 @@ class KITTI():
                                     num_workers= 0,
                                     pin_memory=False,
                                     drop_last=True,
+                                    collate_fn = self.collation_fn
                                     )
         else:
             indices = np.random.randint(0,len(train_loader),20)
@@ -47,7 +49,8 @@ class KITTI():
                                     num_workers= 0,
                                     pin_memory=False,
                                     drop_last=True,
-                                    sampler=sampler
+                                    sampler=sampler,
+                                    collate_fn = self.collation_fn
                                     )
         
         return trainloader
@@ -75,6 +78,6 @@ class KITTI():
         
         return valloader
     
-    def get_label_distro(self):
-        raise NotImplemented
+    def __str__(self):
+        return 'kitti'
 		#return  1-np.array(self.label_disto)
