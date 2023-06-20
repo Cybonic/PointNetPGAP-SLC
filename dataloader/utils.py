@@ -27,6 +27,8 @@ class CollationFunctionFactory:
             self.collation_fn = self.collate_sparse
         elif collation_type == 'sparse_tuple':
             self.collation_fn = self.collate_sparse_tuple
+        elif collation_type == 'torch_tuple':
+            self.collation_fn = self.collate_torch_tuple
         elif collation_type == 'reg_sparse_tuple':
             self.collation_fn = self.collate_reg_sparse_tuple
         elif collation_type == 'sparcify_list':
@@ -95,19 +97,31 @@ class CollationFunctionFactory:
         return outputs,id_list
         
     def collate_sparse_tuple(self, list_data):
-        outputs = []
-        for tuple_data in list_data:
-            contrastive_tuple = []
+        assert len(list_data)==1
+
+        #outputs = []
+        contrastive_tuple = []
+        for tuple_data in list_data[0]:
             for name in tuple_data.keys():
-                if isinstance(tuple_data[name], SparseTensor):
-                    contrastive_tuple.append(tuple_data[name])
-                elif isinstance(tuple_data[name], (list, np.ndarray)):
-                    contrastive_tuple.extend(tuple_data[name])
-            outputs.append(sparse_collate(contrastive_tuple))
-        if len(outputs) == 1:
-            return outputs[0]
-        else:
-            return outputs
+                if name in  ['positive','negative']:
+                    if isinstance(tuple_data[name][0], SparseTensor):
+                        tuple_data[name] = sparse_collate(tuple_data[name])
+            contrastive_tuple.append(tuple_data)
+        return contrastive_tuple
+    
+
+    def collate_torch_tuple(self, list_data):
+        assert len(list_data)==1
+
+        #outputs = []
+        contrastive_tuple = []
+        for tuple_data in list_data[0]:
+            for name in tuple_data.keys():
+                if name in  ['positive','negative']:
+                    if isinstance(tuple_data[name][0], torch.Tensor):
+                        tuple_data[name] = torch.stack(tuple_data[name])
+            contrastive_tuple.append(tuple_data)
+        return contrastive_tuple
 
     def collate_reg_sparse_tuple(self, list_data):
         outputs = []
