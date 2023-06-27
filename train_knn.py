@@ -51,7 +51,7 @@ if __name__ == '__main__':
       '--experiment', '-e',
       type=str,
       required=False,
-      default='finetunning/F1024/NO-TNET/L0.5',
+      default='test',
       help='Directory to get the trained model.'
   )
 

@@ -214,15 +214,16 @@ def gen_ground_truth(   poses,
     positive = []
 
     for i in ROI:
-        _map_   = poses[:i,:]
+        _map_   = poses[:i-roi,:]
         pose    = poses[i,:].reshape((1,-1))
         dist_meter  = np.sqrt(np.sum((pose -_map_)**2,axis=1))
 
-        pos_idx = np.where(dist_meter[:i-roi] < pos_range)[0]
+        pos_idx = np.where(dist_meter < pos_range)[0]
 
         if len(pos_idx)>=num_pos:
             pos_dist = dist_meter[pos_idx]
             min_sort = np.argsort(pos_dist)
+            
             if num_pos == -1:
                 pos_select = pos_idx[min_sort]
             else:
@@ -235,11 +236,12 @@ def gen_ground_truth(   poses,
     neg_idx = np.arange(num_neg)   
     for a, pos in zip(anchor,positive):
         pa = poses[a,:].reshape((1,-1))
-        dist_meter = np.sqrt(np.sum((pa-poses)**2,axis=1))
-        neg_idx = np.where(dist_meter > neg_range)[0]
-        neg_idx = np.setxor1d(neg_idx,pos)
+        dist_meter = np.linalg.norm((pa-poses),axis=-1)
+        neg_idx =np.array([i for i,data in enumerate(dist_meter) if data > neg_range and not i in pos])
         select_neg = np.random.randint(0,len(neg_idx),num_neg)
         neg_idx = neg_idx[select_neg]
+        neg_= np.linalg.norm(poses[a,:].reshape((1,-1))-poses[neg_idx,:], axis=-1)
+        assert all(neg_>neg_range)
         negatives.append(neg_idx)
 
     return(anchor,positive,negatives)
