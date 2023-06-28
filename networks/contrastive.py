@@ -49,7 +49,10 @@ class ModelWrapper(nn.Module):
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
         num_anchor,num_pos,num_neg = 1,len(positive),len(negative)
         
-        positive = torch.cat(positive)
+        if len(anchor.shape)<4:
+            anchor = anchor.unsqueeze(0)
+        if positive.shape[0]>1:
+            positive = torch.cat(positive)
         pose = {'a':pose_anchor,'p':pose_positive,'n':pose_negative}
         
         batch_loss = 0
@@ -64,7 +67,7 @@ class ModelWrapper(nn.Module):
 
             neg = negative[j:k]
 
-            neg = torch.cat(neg)
+            #neg = torch.cat(neg)
             
             pclt = torch.cat((anchor,positive,neg))
             

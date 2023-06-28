@@ -2,11 +2,16 @@
 from networks.network_pipeline import get_pipeline
 from dataloader import utils
 
-from dataloader.projections import BEVProjection
+from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
 
 def pipeline(network,dataset,session):
+
+    if session['modality'] == "bev":
+        modality = BEVProjection(2256,2256)
+    elif session['modality'] == "spherical":
+        modality = SphericalProjection(2256,2256)
 
     if network == 'LOGG3D':
         # get nework

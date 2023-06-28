@@ -42,7 +42,7 @@ if __name__ == '__main__':
       '--network', '-m',
       type=str,
       required=False,
-      default='ORCHNet',
+      default='PointNetVLAD',
       choices=['PointNetVLAD','ORCHNet','LOGG3D'],
       help='Directory to get the trained model.'
   )
@@ -112,7 +112,7 @@ if __name__ == '__main__':
       '--loss',
       type=str,
       required=False,
-      default = 'LazyQuadrupletLoss',
+      default = 'LazyTripletLoss',
       choices=['LazyTripletLoss','LazyQuadrupletLoss'],
       help='Directory to get the trained model.'
   )
@@ -121,6 +121,13 @@ if __name__ == '__main__':
       type=int,
       required=False,
       default = 10000,
+      help='sampling points.'
+  )
+  parser.add_argument(
+      '--modality',
+      type=str,
+      required=False,
+      default = "bev",
       help='sampling points.'
   )
 

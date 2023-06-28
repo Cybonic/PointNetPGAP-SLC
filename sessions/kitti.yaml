@@ -16,10 +16,9 @@ retrieval:
 max_points: 10000
 aug: True 
 memory: "DISK"
-
+modality: "bev"
 train_loader:
   sequence: ['06'] #['02','05','06','08']
-  
   ground_truth: 
     pos_range: 10 # Loop Threshold [m]
     neg_range: 50
@@ -27,7 +26,6 @@ train_loader:
     num_pos: 1
     warmupitrs: 600 # Number of frames to ignore at the beguinning
     roi: 500 
-
   fraction: 0.3 
   batch_size: 1       # batch size
   shuffle: True
