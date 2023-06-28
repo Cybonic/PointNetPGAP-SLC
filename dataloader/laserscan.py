@@ -282,3 +282,6 @@ class Scan(LaserScan):
     #buff.append(points)
 
     return self.to_tensor(points)
+  
+  def __str__(self):
+    return "pcl"

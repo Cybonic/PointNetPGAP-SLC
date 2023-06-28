@@ -58,7 +58,7 @@ class CollationFunctionFactory:
         #outputs = [torch.from_numpy(ct).float() for ct in contrastive_tuple]
         outputs = torch.stack(outputs_pts)
 
-        return outputs,output_idx
+        return outputs,torch.tensor(output_idx)
     
 
     def collate_tuple(self, list_data):

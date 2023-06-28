@@ -42,6 +42,9 @@ class SphericalProjection(LaserScan):
     values = list(image.values())
     image = np.concatenate(values,axis=-1)
     return self.to_tensor(image)
+  
+  def __str__(self):
+    return "spherical"
 
 
 class BEVProjection(LaserScan):
@@ -72,6 +75,9 @@ class BEVProjection(LaserScan):
     image = np.concatenate(values,axis=-1)
 
     return self.to_tensor(image)
+  
+  def __str__(self):
+    return "bev"
 
 
   

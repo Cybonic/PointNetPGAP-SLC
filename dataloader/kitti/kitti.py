@@ -3,6 +3,7 @@
 from dataloader.kitti.kitti_eval import KITTIEval
 from dataloader.kitti.kitti_triplet import KittiTriplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
+from dataloader.utils import CollationFunctionFactory
 import numpy as np
 
 class KITTI():
@@ -15,12 +16,17 @@ class KITTI():
         self.modality  = kwargs['modality']
         self.max_points = kwargs['max_points']
         self.memory = kwargs['memory']
-        self.collation_fn= kwargs['collation_fn']
+
         
 
-    def get_train_loader(self,debug=True):
+    def get_train_loader(self,debug=False):
         sequence  = self.train_cfg['sequence']
         #max_points = self.max_points
+        print(self.modality)
+        if str(self.modality) in ["bev","spherical","pcl"]:
+            self.collation_fn = CollationFunctionFactory("torch_tuple",voxel_size = 0.05, num_points=10000)
+        elif str(self.modality) in  "sparse":
+            self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
         train_loader = KittiTriplet( root = self.root,
                                     sequences = sequence,
@@ -61,7 +67,11 @@ class KITTI():
     
     def get_val_loader(self):
         sequence  = self.val_cfg['sequence']
-        
+        print(self.modality)
+        if str(self.modality) in ["bev","spherical","pcl"]:
+            self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
+        elif str(self.modality) in  "sparse":
+            self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         val_loader = KITTIEval( root = self.root,
                                sequence = sequence[0],
@@ -74,6 +84,7 @@ class KITTI():
                                 batch_size = self.val_cfg['batch_size'],
                                 num_workers= 0,
                                 pin_memory=False,
+                                collate_fn = self.collation_fn
                                 )
         
         return valloader
