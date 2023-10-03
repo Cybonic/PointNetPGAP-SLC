@@ -3,19 +3,14 @@ import os,sys
 sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 
 import os
-from tqdm import tqdm
-import torchvision.transforms as Tr
-import torch
+
 
 import numpy as np
-import yaml
-from torch.utils.data import DataLoader
 from dataloader.utils import get_files
 
 EXTENSIONS_SCAN = ['.bin']
 EXTENSIONS_LABEL = ['.label']
 
-PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 def is_scan(filename):
   return any(filename.endswith(ext) for ext in EXTENSIONS_SCAN)
@@ -24,19 +19,19 @@ def is_label(filename):
   return any(filename.endswith(ext) for ext in EXTENSIONS_LABEL)
 
 def load_pose_to_RAM(file):
-    assert os.path.isfile(file)
+    assert os.path.isfile(file),"pose file does not exist: " + file
     pose_array = []
     for line in open(file):
         values_str = line.split(' ')
         values = np.array([float(v) for v in values_str])
-        position = values[[3,7,11]]
+        coordinates = np.array(values).reshape(4,4)
+        #position = values[[3,7,11]]
         #position[:,1:] =position[:,[2,1]] 
-        pose_array.append(position.tolist())
+        pose_array.append(coordinates[:3,3])
 
     pose_array = np.array(pose_array)   
-    pose_array[:,1:] =pose_array[:,[2,1]] 
+    #pose_array[:,1:] =pose_array[:,[2,1]] 
     return(pose_array)
-
 
 class kittidataset():
     
@@ -56,7 +51,7 @@ class kittidataset():
         self.pose = load_pose_to_RAM(pose_file)
         #self.pose.extend(pose)
 
-        point_cloud_dir = os.path.join(self.target_dir,'velodyne')
+        point_cloud_dir = os.path.join(self.target_dir,'point_cloud')
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
         self.file_names, self.point_cloud_files = get_files(point_cloud_dir)
 

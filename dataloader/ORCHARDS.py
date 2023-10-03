@@ -1,6 +1,6 @@
 import os
 from .utils import *
-from .laserscan import LaserData
+from dataloader.laserscan import LaserScan
 from PIL import Image 
 from torch.utils.data import DataLoader
 import torch.utils.data as data
@@ -24,14 +24,16 @@ SUMMER = [ {'xmin':-39,'xmax':-1,'ymax':7,'ymin':4.5},
             {'xmin':-2,'xmax':2,'ymax':6.5,'ymin':-1},
             {'xmin':-45,'xmax':-38,'ymax':6.5,'ymin':-1}]
 
-def summer_align(xy):
+
+
+def summer_align(xy,angle=-4):
     import math
     xy = xy[:,0:2].copy().transpose() # Grid
     myx = np.mean(xy,axis=1).reshape(2,1)
 
     #print(xy)
     xyy= xy - myx
-    theta = math.radians(-4) # Align the map with the grid 
+    theta = math.radians(angle) # Align the map with the grid 
 
     rot_matrix = np.array([[math.cos(theta), -math.sin(theta)],
                           [ math.sin(theta),  math.cos(theta)]])
@@ -71,7 +73,7 @@ def gen_ground_truth(   poses,
     if sequence=='summer':
         poses = summer_align(poses)
         bbox = SUMMER
-    elif sequence=='autumn':
+    elif sequence in ['autumn','orchards/june23/extracted']:
         bbox = AUTUMN
 
     for i in ROI:
@@ -91,7 +93,7 @@ def gen_ground_truth(   poses,
             pa = poses[i].reshape(-1,n_coord)
             pp = poses[pos_idx].reshape(-1,n_coord)
             
-            an_labels, an_point_idx = get_roi_points(pa,bbox)
+            an_labels, an_point_idx   = get_roi_points(pa,bbox)
             pos_labels, pos_point_idx = get_roi_points(pp,bbox)
 
             boolean_sg = np.where(an_labels[0] == pos_labels)[0]
@@ -166,15 +168,15 @@ class OrchardDataset():
     def __init__(self,
                     root,
                     dataset,
-                    seq,
-                    sync = True , 
-                    modality = 'pcl' ,
+                    sequence,
+                    modality     = 'pcl' ,
                     ground_truth = { 'pos_range':4, # Loop Threshold [m]
                                      'neg_range': 10,
                                      'num_neg':20,
                                      'num_pos':1,
                                      'warmupitrs': 600, # Number of frames to ignore at the beguinning
                                      'roi':500},
+                    max_points = 10000,
                         **argv):
 
         self.modality = modality
@@ -184,23 +186,24 @@ class OrchardDataset():
         sensor_cfg = yaml.safe_load(open(cfg_file , 'r'))
 
         if not 'square_roi' in argv:
-            argv['square_roi'] = [sensor_cfg[seq]['roi']]
+            argv['square_roi'] = [sensor_cfg[sequence]['roi']]
 
         if modality in ['range']:
-            self.param = sensor_cfg[seq]['RP']
+            self.param = sensor_cfg[sequence]['RP']
         elif modality in ['bev']:
-            self.param = sensor_cfg[seq]['BEV']
+            self.param = sensor_cfg[sequence]['BEV']
         else:
             self.param = {}
 
-        self.laser = LaserData(
+        self.laser = LaserScan(
                 parser=parser(),
                 project=True,
+                max_points=max_points,
                 **argv
                 )
 
         # 
-        self.target_dir = os.path.join(root,dataset,seq)
+        self.target_dir = os.path.join(root,dataset,sequence)
         assert os.path.isdir(self.target_dir),'target dataset does nor exist: ' + self.target_dir
 
         pose_file = os.path.join(self.target_dir,'poses.txt')
@@ -210,22 +213,8 @@ class OrchardDataset():
         point_cloud_dir = os.path.join(self.target_dir,'point_cloud')
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
         names, self.point_cloud_files = get_files(point_cloud_dir)
-
-        if sync == True:
-            sync_plc_idx_file = os.path.join(self.target_dir,'sync_point_cloud_idx.txt')
-            assert os.path.isfile(pose_file),'sync plc file does not exist: ' + sync_plc_idx_file
-
-            sync_pose_idx_file = os.path.join(self.target_dir,'sync_poses_idx.txt')
-            assert os.path.isfile(pose_file),'sync pose file does not exist: ' + sync_pose_idx_file
-
-            sync_pose_idx = load_sync_indices(sync_pose_idx_file)
-            sync_plc_idx = load_sync_indices(sync_plc_idx_file)
-
-            self.point_cloud_files = self.point_cloud_files[sync_plc_idx]
-            self.pose =  self.pose[sync_pose_idx]
        
-        
-        self.anchors,self.positives,self.negatives = gen_ground_truth(self.pose,seq,**ground_truth)
+        self.anchors,self.positives,self.negatives = gen_ground_truth(self.pose,sequence,**ground_truth)
         n_points = self.pose.shape[0]
         self.table = np.zeros((n_points,n_points))
         for a,p in zip(self.anchors,self.positives):
@@ -256,8 +245,9 @@ class OrchardDataset():
     def _get_modality_(self,idx):
         file = self.point_cloud_files[idx]
         self.laser.open_scan(file)
-        pclt = self.laser.get_data(self.modality,self.param)
-        return pclt
+        #pclt = self.laser.get_pcl(self.modality,self.param)
+        pcl,rm = self.laser.get_points()
+        return pcl
 
 
 
@@ -277,6 +267,7 @@ class ORCHARDSEval(OrchardDataset):
         self.modality = modality
         self.mode     = mode
         self.preprocessing = PREPROCESSING
+        
         if sequence == 'autumn':
             self.line_rois = AUTUMN
         else:
@@ -354,24 +345,23 @@ class ORCHARDSTriplet(OrchardDataset):
     def __init__(self,
                         root,
                         dataset,
-                        sequence, 
-                        sync = True, 
+                        sequence,  
                         mode='Disk', 
                         modality = 'projection', 
                         aug=False,
+                        max_points = 10000,
                         **argv):
 
-        super(ORCHARDSTriplet,self).__init__(root,dataset,sequence, sync = sync, modality=modality,**argv)
+        super(ORCHARDSTriplet,self).__init__(root,dataset,sequence, modality=modality,max_points=max_points,**argv)
 
         self.modality = modality
         self.aug_flag = aug
-        self.mode = mode
+        self.mode     = mode
         self.eval_mode = False
 
         self.preprocessing = PREPROCESSING
         verbose = True
     
-
         # Triplet data
         self.num_samples = len(self._get_point_cloud_file_())
         self.idx_universe = np.arange(self.num_samples)
@@ -380,21 +370,20 @@ class ORCHARDSTriplet(OrchardDataset):
 
          # Load to RAM
         if self.mode == 'RAM':
-            self.inputs = self.load_RAM()
+            self.inputs = self.load_to_RAM()
 
     
     def load_subset(self,subsetidx):
-        
         self.anchors= np.array(self.anchors)[subsetidx]
         self.map_idx  = np.setxor1d(self.idx_universe,self.anchors)
                
-        
-    def load_RAM(self):
-        img   = {}       
-        for i in tqdm(self.idx_universe,"Loading to RAM"):
-            data  = self._get_modality_(i)
-            img[i]=data#.astype(np.uint8)
-        return img
+    def load_to_RAM(self):
+        self.memory=="RAM"
+        indices = list(range(self.num_samples))
+        self.data_on_ram = []
+        for idx in tqdm(indices,"Load to RAM"):
+            plt = self.modality(self.plc_files[idx])
+            self.data_on_ram.append(plt)
     
     def get_eval_data(self,index):
         global_index = self.idx_universe[index] # Only useful when subsampler is on
@@ -425,7 +414,7 @@ class ORCHARDSTriplet(OrchardDataset):
         else:
             raise NameError
 
-        pcl = {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
+        pcl =  {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
         indx = {'anchor':len(plt_anchor),'positive':len(plt_pos),'negative':len(plt_neg)}
         return(pcl,indx)
 
@@ -458,7 +447,7 @@ class ORCHARDSTriplet(OrchardDataset):
     def get_idx_universe(self):
         return(self.idx_universe)
     
-    def get_GT_Map(self):
+    def get_gt_map(self):
         return(self.table)
     
     def comp_line_loop_table(self,pose):
@@ -480,7 +469,7 @@ class ORCHARDSTriplet(OrchardDataset):
 
 
 class ORCHARDS():
-    def __init__(self,train_loader,test_loader, split_mode='cross-val', **kwargs):
+    def __init__(self,train_loader,test_loader, split_mode='cross-val', max_points = 10000,**kwargs):
 
         self.valloader = None
         self.trainloader = None
@@ -490,16 +479,21 @@ class ORCHARDS():
         test_set = None
         train_set = ORCHARDSTriplet(root = kwargs['root'],
                                     mode = kwargs['memory'],
-                                    **train_loader['data'],
-                                    ground_truth = train_loader['ground_truth']
+                                    dataset = 'uk',
+                                    sequence = train_loader['sequence'],
+                                    ground_truth = train_loader['ground_truth'],
+                                    max_points = max_points
+                                    
                                             )
 
         if split_mode == 'cross-val':
             # Cross-validation. Train and test sets are from different sequences
             test_set = ORCHARDSEval( root =  kwargs['root'],
-                                        mode = kwargs['memory'],
-                                        **test_loader['data'],
-                                        ground_truth = test_loader['ground_truth']
+                                    mode = kwargs['memory'],
+                                    dataset = 'uk',
+                                    sequence = test_loader['sequence'],
+                                    ground_truth = test_loader['ground_truth'],
+                                    max_points = max_points
                                         )
          
 

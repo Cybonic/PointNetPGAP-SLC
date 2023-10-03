@@ -45,12 +45,12 @@ def square_roi(PointCloud,roi_array):
       region_mask_list.append((PointCloud[:, 2]  <= roi["zmax"]))
     
     mask = np.stack(region_mask_list,axis=-1)
-    mask = np.product(mask,axis=-1).astype(np.bool)
+    mask = np.product(mask,axis=-1).astype(np.uint8)
     mask_list.append(mask)
 
     
   mask = np.stack(mask_list,axis=-1)
-  mask = np.sum(mask,axis=-1).astype(np.bool)
+  mask = np.sum(mask,axis=-1).astype(np.uint8)
   return(mask)
 
 
@@ -186,7 +186,7 @@ class LaserScan:
     Remissions = self.remissions
     n_points= PointCloud.shape[0]
 
-    mask = np.ones(n_points,dtype=np.bool) # By default use all the points
+    mask = np.ones(n_points,dtype=np.uint8) # By default use all the points
     # Each roi extraction approach considers the entire point cloud 
     if 'square_roi' in self.roi:
       roi = self.roi['square_roi']

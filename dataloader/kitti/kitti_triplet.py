@@ -13,6 +13,7 @@ from tqdm import tqdm
 class KittiTriplet():
     def __init__(self,
                  root,
+                 dataset,
                  sequences,
                  modality = None,
                  memory = 'DISK',
@@ -43,7 +44,7 @@ class KittiTriplet():
         assert isinstance(sequences,list)
 
         for seq in sequences:
-            kitti_struct = kittidataset(root, 'kitti', seq)
+            kitti_struct = kittidataset(root, dataset, seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
             pose = kitti_struct._get_pose_()
@@ -98,7 +99,7 @@ class KittiTriplet():
         return(self.poses)
     
     def __str__(self):
-        return "Kitti"
+        return "Kitti_" + str(self.modality)
     
     def __getitem__(self,idx):
         an_idx,pos_idx,neg_idx  = self.anchors[idx],self.positives[idx], self.negatives[idx]

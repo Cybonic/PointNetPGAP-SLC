@@ -3,16 +3,16 @@ import os
 from tqdm import tqdm
 import torchvision.transforms as Tr
 import numpy as np
-from torch.utils.data import DataLoader
 from dataloader.kitti.kitti_dataset import kittidataset
 from dataloader.utils import gen_ground_truth
-import torch 
+
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 
 class KITTIEval:
     def __init__(self,  root, 
+                        dataset,
                         sequence, 
                         modality = None ,
                         memory= "DISK", 
@@ -32,7 +32,7 @@ class KITTIEval:
         #self.num_samples = self.num_samples
         self.sequence = sequence
         self.device   = device
-        kitti_struct = kittidataset(root, 'kitti', sequence)
+        kitti_struct = kittidataset(root,dataset, sequence)
             
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
@@ -85,7 +85,7 @@ class KITTIEval:
         if self.memory=="RAM":
             pcl = self.data_on_ram[index]
         else:
-            pcl = self.modality(self.files[index])
+            pcl = self.modality(self.files[index]).long()
 
         return(pcl,index)
 

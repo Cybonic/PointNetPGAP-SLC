@@ -11,6 +11,7 @@ class KITTI():
 
         self.kwargs = kwargs
         self.root =  kwargs.pop('root')
+        self.dataset = kwargs.pop('dataset')
         self.val_cfg   = kwargs.pop('val_loader')
         self.train_cfg = kwargs['train_loader']
         self.modality  = kwargs['modality']
@@ -25,10 +26,11 @@ class KITTI():
         print(self.modality)
         if str(self.modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("torch_tuple",voxel_size = 0.05, num_points=10000)
-        elif str(self.modality) in  "sparse":
+        elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
         train_loader = KittiTriplet( root = self.root,
+                                    dataset = self.dataset,
                                     sequences = sequence,
                                     modality = self.modality,
                                     ground_truth = self.train_cfg['ground_truth'],
@@ -40,8 +42,8 @@ class KITTI():
                                     batch_size = 1, #train_cfg['batch_size'],
                                     shuffle    = self.train_cfg['shuffle'],
                                     num_workers= 0,
-                                    pin_memory=False,
-                                    drop_last=True,
+                                    pin_memory =False,
+                                    drop_last  =True,
                                     collate_fn = self.collation_fn
                                     )
         else:
@@ -50,11 +52,11 @@ class KITTI():
             sampler = SubsetRandomSampler(indices)
 
             trainloader   = DataLoader(train_loader,
-                                    batch_size = 1, #train_cfg['batch_size'],
-                                    shuffle    = False,
-                                    num_workers= 0,
-                                    pin_memory=False,
-                                    drop_last=True,
+                                    batch_size  = 1, #train_cfg['batch_size'],
+                                    shuffle     = False,
+                                    num_workers = 0,
+                                    pin_memory  =False,
+                                    drop_last   =True,
                                     sampler=sampler,
                                     collate_fn = self.collation_fn
                                     )
@@ -68,12 +70,14 @@ class KITTI():
     def get_val_loader(self):
         sequence  = self.val_cfg['sequence']
         print(self.modality)
+
         if str(self.modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
-        elif str(self.modality) in  "sparse":
+        elif "sparse" in str(self.modality).lower() :
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         val_loader = KITTIEval( root = self.root,
+                               dataset = self.dataset,
                                sequence = sequence[0],
                                modality = self.modality,
                                 memory= self.memory,

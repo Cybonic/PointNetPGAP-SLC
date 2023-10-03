@@ -6,54 +6,43 @@ experim_name: 'default'
 ################################################################################
 pretrained_root: 'checkpoints'
 n_gpu: 1
-root: '/home/tiago/Dropbox/research-projects/orchards-uk/dataset'
-root_ws: 'C:\\Users\\Tiago\\TB\\datasets'
 
 retrieval:
   top_cand: [1,5,25]
   range_thres: 6
 
-train_loader:
-  data:
-    dataset: ''
-    sequence: 'autumn' # [autumn, summer]
-    aug: True
-    modality: 'range'
-    max_points: 10000
-  
-  ground_truth: 
-    pos_range: 10 # Loop Threshold [m]
-    neg_range: 15
-    num_neg: 20
+max_points: 5000
+aug: True 
+
+base_dir: "uk"
+memory: "DISK"
+modality: "bev"
+
+# Ground-truth parameters
+ground_truth:
+  e3:
+    pos_range: 2.5 # Loop Threshold [m]
+    neg_range: 10
+    num_neg: 10
     num_pos: 1
-    warmupitrs: 600 # Number of frames to ignore at the beguinning
-    roi: 500 
-    #pos_range: 5
-    #neg_range: 20
+    warmupitrs: 250 # Number of frames to ignore at the beguinning
+    roi: 100
+
+# Dataset parameters
+train_loader:
+  sequence: ['e3/extracted'] #['02','05','06','08']
   fraction: 0.3 
   batch_size: 1       # batch size
   shuffle: True
   #rotation: [180,-45,-45]
   
 val_loader:
-  data:
-    dataset: ''
-    sequence: 'summer'
-    modality: 'range' # ['range',projection,bev]'intensity','density','height','bev']
-    max_points: 10000
-
-  ground_truth: 
-    pos_range: 10 # Loop Threshold [m]
-    neg_range: 17
-    num_neg: 1
-    num_pos: 50
-    warmupitrs: 600 # Number of frames to ignore at the beguinning
-    roi: 500 
-
+  dataset: ''
+  sequence: ['e3/extracted']
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False
-  #rotation: [180,-45,-45]
+
 
 modelwrapper:
   type: 'ORCHNet'
@@ -66,7 +55,6 @@ loss:
     margin: 0.5
     metric: 'L2' # [L2,Hinge,cosine,kl_divergence]
     reduction: 'mean'
-
 
 trainer:
   iter_per_epoch: 1

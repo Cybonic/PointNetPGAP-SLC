@@ -6,45 +6,51 @@ experim_name: 'default'
 ################################################################################
 pretrained_root: 'checkpoints'
 n_gpu: 1
-tiago-deep: '/home/tiago/Dropbox/research/datasets'
-root_ws: 'C:\\Users\\ISR\\phd\\datasets'
-deep-MS-7C37: '/home/deep/tiagobarros/datasets'
+
 retrieval:
   top_cand: [1,5,25]
   range_thres: 6
 
-max_points: 10000
+max_points: 5000
 aug: True 
+
+base_dir: "uk"
 memory: "DISK"
 modality: "bev"
-train_loader:
-  sequence: ['06'] #['02','05','06','08']
-  ground_truth: 
-    pos_range: 10 # Loop Threshold [m]
-    neg_range: 50
-    num_neg: 20
+
+# Ground-truth parameters
+ground_truth:
+  orchards/june23:
+    pos_range: 2 # Loop Threshold [m]
+    neg_range: 10
+    num_neg: 10
     num_pos: 1
-    warmupitrs: 600 # Number of frames to ignore at the beguinning
-    roi: 500 
+    warmupitrs: 200 # Number of frames to ignore at the beguinning
+    roi: 100
+
+  strawberry/june23:
+    pos_range: 2 # Loop Threshold [m]
+    neg_range: 15
+    num_neg: 10
+    num_pos: 1
+    warmupitrs: 200 # Number of frames to ignore at the beguinning
+    roi: 100
+
+# Dataset parameters
+train_loader:
+  sequence: ['orchards/june23'] #['02','05','06','08']
   fraction: 0.3 
   batch_size: 1       # batch size
   shuffle: True
   #rotation: [180,-45,-45]
   
 val_loader:
-  dataset: 'kitti'
-  sequence: ['06']
-  ground_truth: 
-    pos_range: 25 # Loop Threshold [m]
-    neg_range: 1
-    num_neg: 1
-    num_pos: 1
-    warmupitrs: 600 # Number of frames to ignore at the beguinning
-    roi: 500 
+  dataset: ''
+  sequence: ['orchards/june23']
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False
-  #rotation: [180,-45,-45]
+
 
 modelwrapper:
   type: 'ORCHNet'
@@ -75,8 +81,8 @@ trainer:
 optimizer:
   type: "AdamW" #[RMSprop,Adam,SGD]
   args:
-    lr: 0.0001
-    weight_decay: 0.00005
+    lr: 0.01
+    weight_decay: 0.00000005
   lr_scheduler: "ReduceLROnPlateau"
 
 StepLR:

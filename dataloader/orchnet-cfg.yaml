@@ -1,3 +1,24 @@
+orchards/june23/extracted:
+  roi:
+    xmin: -15
+    xmax:  15
+    ymin: -15
+    ymax:  15
+    zmin: -1 # Do not change
+    zmax: 2 # Do not change
+
+  RP: # HDL-32E  
+    W: 512
+    H: 32
+    max_depth: 30
+    max_rem: 1
+    fov_up: 10.67
+    fov_down: -30.67
+
+  BEV:
+    W: 254
+    H: 254
+
 
 summer:
   roi:
