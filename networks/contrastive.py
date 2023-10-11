@@ -53,6 +53,7 @@ class ModelWrapper(nn.Module):
             anchor = anchor.unsqueeze(0)
         if positive.shape[0]>1:
             positive = torch.cat(positive)
+        
         pose = {'a':pose_anchor,'p':pose_positive,'n':pose_negative}
         
         batch_loss = 0
@@ -67,8 +68,6 @@ class ModelWrapper(nn.Module):
 
             neg = negative[j:k]
 
-            #neg = torch.cat(neg)
-            
             pclt = torch.cat((anchor,positive,neg))
             
             if pclt.shape[0]==1: # drop last
@@ -107,3 +106,7 @@ class ModelWrapper(nn.Module):
 
     def __str__(self):
         return str(self.model) + '-' + str(self.loss)
+    
+
+
+    
