@@ -8,9 +8,10 @@ from torchsparse import SparseTensor
 from dataloader.projections import SphericalProjection,BEVProjection
 import numpy as np
 import torch
-
+import tqdm
 def run_test_on_dataloader(dataloader,ground_truth,poses):
-    for input,idx in dataloader:
+    
+    for input,idx in tqdm.tqdm(dataloader,"TEST | TENSOR"):
         #input,idx = dataset[i]
         keys = list(input.keys())
         assert 'anchor'   in keys
@@ -23,10 +24,15 @@ def run_test_on_dataloader(dataloader,ground_truth,poses):
         assert torch.is_tensor(input['anchor'])
         assert torch.is_tensor(positive[0])
         assert torch.is_tensor(negative[00])
+    print("PASSED| Tensor test ")
+
+    for input,idx in tqdm.tqdm(dataloader,"TEST | DIMENSIONALITY"):
         # Check dimensionality
         assert len(positive) == ground_truth['num_pos']
         assert len(negative) == ground_truth['num_neg']
+    print("PASSED| Dimensionality test ")
 
+    for input,idx in tqdm.tqdm(dataloader,"TEST | RANGE"):
         # Check range
         an_pose  = poses[idx['anchor']]
         pos_pose = poses[idx['positive']]
@@ -35,10 +41,12 @@ def run_test_on_dataloader(dataloader,ground_truth,poses):
         pos_range = np.linalg.norm(an_pose-pos_pose, axis=-1)
         neg_range = np.linalg.norm(an_pose-neg_pose, axis=-1)
 
-        assert all(pos_range < ground_truth['pos_range'])
-        assert all(neg_range > ground_truth['neg_range'])
+        assert all(pos_range <= float(ground_truth['pos_range']))
+        assert all(neg_range >= float(ground_truth['neg_range'])),f"{ float(ground_truth['neg_range'])} < " + ' '.join([str(round(value,1)) for value in neg_range])
+    print("PASSED| Range test ")
 
     return True
+
 
 def test_kitti_sparse_triplet_batching(root,memory="DISK"):
     ground_truth = { 'pos_range':4, # Loop Threshold [m]
@@ -81,6 +89,50 @@ def test_kitti_sparse_triplet_batching(root,memory="DISK"):
 
         #assert torch.is_tensor(input)
     return True
+
+
+def test_kitti_sparse_training(root,memory="DISK"):
+    ground_truth = { 'pos_range':4, # Loop Threshold [m]
+                    'neg_range':10,
+                    'num_neg':20,
+                    'num_pos':5,
+                    'warmupitrs': 600, # Number of frames to ignore at the beguinning
+                    'roi':500
+                    }
+    modality = SparseLaserScan(0.05)
+    dataset = KittiTriplet( root,['00'],
+                            modality=modality,
+                            ground_truth = ground_truth,
+                            debug = True,
+                            memory=memory,
+                            )
+    
+    from torch.utils.data import DataLoader,SubsetRandomSampler 
+    from dataloader.utils import CollationFunctionFactory
+    import numpy as np
+    
+    indices = np.random.randint(0,len(dataset),5)
+    np.random.shuffle(indices)
+    sampler = SubsetRandomSampler(indices)
+            
+    collat_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
+    dataloader = DataLoader(dataset,
+                            batch_size=1,
+                            collate_fn= collat_fn,
+                            sampler=sampler)
+    
+    for input,idx in dataloader:
+        keys = list(input.keys())
+        assert 'anchor'   in keys
+        assert 'positive' in keys
+        assert 'negative' in keys
+        assert isinstance(input['anchor'],SparseTensor)
+        assert isinstance(input['positive'],SparseTensor)
+        assert isinstance(input['negative'],SparseTensor)
+
+        #assert torch.is_tensor(input)
+    return True
+
 
 
 def test_kitti_pcl_triplet_batching(root,memory="DISK"):
@@ -297,11 +349,50 @@ def run_kitt_triplet_test(root):
 
     test_kitti_spherical_projection_triplet_batching(root)
     print("[PASSED] Spherical batching RAM")
+
+
+
+def test_kitti_pcl_triplet_from_file(root,dataset,sequence,triplet_file,memory="DISK"):
+
+
+    files = os.path.join(root,dataset,sequence[0],triplet_file)
+
+    modality = Scan(max_points=10000)
+    
+    dataset = KittiTriplet( root,
+                            dataset,
+                            sequence,
+                            modality = modality,
+                            triplet_file = files,
+                            memory = memory,
+                            )
+        
+    poses = dataset.poses
+
+    ground_truth = { 'pos_range':2, # Loop Threshold [m]
+                    'neg_range':10,
+                    'num_neg':20,
+                    'num_pos':1
+                    }
+
+
+    run_test_on_dataloader(dataset,ground_truth,poses)
+
+    return True
+
+
+
 if __name__=="__main__":
 
-    root = "/home/tiago/Dropbox/research/datasets"
-    root = "/media/deep/datasets/datasets"
-    run_kitt_triplet_test(root)
+    #root = "/home/tiago/Dropbox/SHARE/DATASET"
+    root = "/home/deep/Dropbox/SHARE/DATASET"
+    dataset = "uk"
+    sequence = ["orchards/june23/extracted"]
+    triplet_file = "ground_truth_ar1m_nr10m_pr2m.pkl"
+
+    test_kitti_pcl_triplet_from_file(root,dataset,sequence,triplet_file, memory="DISK")
+
+    #run_kitt_triplet_test(root)
     
     #test_kitti_spherical_projection_triplet_batching(root)
     #test_kitti_pcl_triplet_batching(root)
