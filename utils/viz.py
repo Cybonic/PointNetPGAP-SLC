@@ -5,10 +5,11 @@ from PIL import Image
 import matplotlib as mpl
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+import matplotlib
 import imageio
 
 import matplotlib.colors as mcolors
-
+import io  # Add this import
 
 class myplot():
     def __init__(self,delay = 0.01,offset=20):
@@ -20,8 +21,8 @@ class myplot():
 
     def record_gif(self, filename = 'path.gif'):
         self.gif_record_flag = True
-        self.canvas = FigureCanvasAgg(self.fig)
-        self.writer = imageio.get_writer(filename, mode='I')
+        #self.canvas = FigureCanvasAgg(self.fig)
+        self.writer = imageio.get_writer(filename, mode='I',duration=0.2)
 
     def init_plot(self,x,y,s,c):
         # https://matplotlib.org/stable/gallery/color/named_colors.html
@@ -34,9 +35,11 @@ class myplot():
 
         if scale != []:
             self.p.set_sizes(scale)
-        self.fig.canvas.draw()
+            
+        self.canvas.draw()
         self.ax.set_aspect('equal')
         plt.pause(self.delay)
+
 
 
     def add_to_plot(self,x,y,offset=20,color=[],zoom=10,scale = []):
@@ -46,12 +49,17 @@ class myplot():
         '''
         
         '''
+        if isinstance(color,list):
+            color = np.array(color)
+        if isinstance(scale,list):
+            scale = np.array(scale)
+        #self.ax.cla()  # Clear the previous plot
         self.p.set_offsets(np.c_[x,y])
 
-        if color != []:
+        if color.shape[0] > 0:
             self.p.set_color(color)
 
-        if scale != []:
+        if scale.shape[0] > 0:
             self.p.set_sizes(scale)
 
         if len(x)<zoom:
@@ -63,26 +71,22 @@ class myplot():
 
         self.ax.axis([xmin - offset, xmax + offset, ymin - offset, ymax + offset])
         self.ax.set_aspect('equal')
-        self.fig.canvas.draw()
+        #self.canvas.draw()
+        #self.fig.show()
         plt.pause(self.delay)
         
         if self.gif_record_flag == True:
-            buf = self.fig.canvas.buffer_rgba()
-            X = np.asarray(buf)
-            self.writer.append_data(X)
+            buffer = io.BytesIO()
+            plt.savefig(buffer, format='png')
+            buffer.seek(0)
+            self.writer.append_data(imageio.imread(buffer))
+
 
     def play(self,x,y,s=10,c='g',zoom=10,warmup=50):
         self.init_plot(x[:warmup],y[:warmup],s,c)
         for i,(xx,yy) in enumerate(zip(x[warmup:],y[warmup:])):
             if i%self.offset==0:
                 self.update_plot(x[:warmup+i],y[:warmup+i],zoom=zoom)
-
-    def static_plot(self,x,y,s=20,c='g',label = ''):
-        self.p = self.ax.scatter(x,y,s = s, c = c,label = label)
-        self.ax.set_aspect('equal')
-        self.fig.canvas.draw()
-        if label != '':
-            self.ax.legend()
     
     def show(self):
         plt.show()
