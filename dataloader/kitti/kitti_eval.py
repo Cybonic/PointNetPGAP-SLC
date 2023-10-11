@@ -5,7 +5,7 @@ import torchvision.transforms as Tr
 import numpy as np
 from dataloader.kitti.kitti_dataset import kittidataset
 from dataloader.utils import gen_ground_truth
-
+import pickle
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
@@ -14,16 +14,11 @@ class KITTIEval:
     def __init__(self,  root, 
                         dataset,
                         sequence, 
+                        ground_truth_file,
                         modality = None ,
                         memory= "DISK", 
                         debug = False,
-                        ground_truth = {   
-                                        'pos_range':25, # Loop Threshold [m]
-                                        'neg_range':1,
-                                        'num_neg':1,
-                                        'num_pos':1,
-                                        'warmupitrs': 600, # Number of frames to ignore at the beguinning
-                                        'roi':500}, 
+                        
                         device='cpu'):
         
         assert memory in ["RAM", "DISK"]
@@ -37,14 +32,22 @@ class KITTIEval:
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
         
+        ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
+        assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
         # Load dataset and laser settings
         self.poses = np.array(self.poses)
         self.num_samples = len(self.files)
         
         if debug == True:
             self.set_debug()
-            
-        self.anchors,self.positives, _ = gen_ground_truth(self.poses,**ground_truth)
+        
+        with open(ground_truth_path, 'rb') as f:
+            data = pickle.load(f)
+            self.anchors   = data['anchors']
+            self.positives = data['positives']
+
+
+        # self.anchors,self.positives, _ = gen_ground_truth(self.poses,**ground_truth)
 
         n_points = len(self.files)
         self.table = np.zeros((n_points,n_points))

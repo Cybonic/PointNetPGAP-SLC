@@ -33,9 +33,14 @@ class KittiTriplet():
         self.device     = device
         baseline_idx  = 0 
         self.memory = memory 
+
+        triplet_path = os.path.join(root,dataset,sequences[0],triplet_file)
+
+        assert os.path.isfile(triplet_path), "Triplet file does not exist " + triplet_path
         assert self.memory in ["RAM","DISK"]
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
+
 
         for seq in sequences:
             
@@ -49,10 +54,10 @@ class KittiTriplet():
             self.poses.extend(pose)
 
             #triplet_file = os.path.join(root,dataset,seq,triplet_file)
-            assert os.path.isfile(triplet_file), "Triplet file does not exist " + triplet_file
+            # assert os.path.isfile(triplet_file), "Triplet file does not exist " + triplet_file
             
              # load the numpy arrays from the file using pickle
-            with open(triplet_file, 'rb') as f:
+            with open(triplet_path, 'rb') as f:
                 data = pickle.load(f)
                 seq_anchors   = data['anchors']
                 seq_positives = data['positives']

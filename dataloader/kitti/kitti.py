@@ -3,7 +3,7 @@
 from dataloader.kitti.kitti_eval import KITTIEval
 from dataloader.kitti.kitti_triplet import KittiTriplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
-from dataloader.utils import CollationFunctionFactory
+from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np
 
 class KITTI():
@@ -36,7 +36,7 @@ class KITTI():
                                     sequences   = sequence,
                                     triplet_file = triplet_files,
                                     modality = self.modality,
-                                    ground_truth = self.train_cfg['ground_truth'],
+                                    #ground_truth = self.train_cfg['ground_truth'],
                                     memory= self.memory
                                                 )
         
@@ -72,6 +72,7 @@ class KITTI():
     
     def get_val_loader(self):
         sequence  = self.val_cfg['sequence']
+        ground_truth_files = self.val_cfg['ground_truth_file']
         print(self.modality)
 
         if str(self.modality) in ["bev","spherical","pcl"]:
@@ -80,11 +81,11 @@ class KITTI():
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         val_loader = KITTIEval( root = self.root,
-                               dataset = self.dataset,
-                               sequence = sequence[0],
-                               modality = self.modality,
+                                dataset = self.dataset,
+                                sequence = sequence[0],
+                                modality = self.modality,
                                 memory= self.memory,
-                                ground_truth = self.val_cfg['ground_truth']
+                                ground_truth_file = ground_truth_files
                                 )
 
         valloader  = DataLoader(val_loader,
@@ -93,7 +94,6 @@ class KITTI():
                                 pin_memory=False,
                                 collate_fn = self.collation_fn
                                 )
-        
         return valloader
     
     def __str__(self):

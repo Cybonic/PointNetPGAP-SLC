@@ -245,7 +245,7 @@ def make_data_loader(root_dir,dataset,session,modality,max_points=50000):
 
     dataset = dataset.lower()
     assert dataset in ['kitti','orchard-uk','uk','pointnetvlad'],'Dataset Name does not exist!'
-    
+
     
     #if dataset == 'kitti':
         # Kitti 
