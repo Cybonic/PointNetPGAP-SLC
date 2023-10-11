@@ -18,7 +18,7 @@ import pandas as pd
 from dataloader import utils
 from utils.utils import get_available_devices
 from utils import loss as loss_lib
-from pipeline_factory import pipeline
+from pipeline_factory import model_handler,dataloader_handler
 
 
 def retrieval_costum_dist(queries,database,descriptors,top_cand,window,metric,**argv):
@@ -119,7 +119,7 @@ class PlaceRecognition():
         self.device = device
         self.model = model.to(self.device)
         self.loader = loader
-        self.loader.dataset.todevice(self.device)
+        #self.loader.dataset.todevice(self.device)
         self.top_cand = top_cand
         self.window = window
         #self.pred_loops=[]
@@ -133,8 +133,7 @@ class PlaceRecognition():
             self.dataset_name = str(loader.dataset)
             self.database = loader.dataset.get_idx_universe()
             self.anchors = loader.dataset.get_anchor_idx()
-            table = loader.dataset.get_gt_map()
-            #
+            table = loader.dataset.table
             self.poses = loader.dataset.get_pose()
         except: 
             dataset_name = str(loader.dataset.dataset)
@@ -143,12 +142,7 @@ class PlaceRecognition():
             table = loader.dataset.dataset.get_gt_map()
             #poses = loader.dataset.dataset.get_pose()
 
-        #self.true_loop = np.array([np.where(line==1)[0] for line in table])
-        #self.true_loop = [np.where(line==1)[0] for line in table]
         self.true_loop = np.array([line==1 for line in table])
-        #self.true_loop = np.ones_like(self.true_loop_bool)*-1
-        #for line in self.true_loop_bool:
-        #    self.true_loop[line==true] 
 
         # SAVE PREDICTIONS
         self.predictions_dir = os.path.join('saved_model_data',f'{str(self.model)}',f'{self.dataset_name}')
@@ -156,25 +150,6 @@ class PlaceRecognition():
         if not os.path.isdir(self.predictions_dir):
             os.makedirs(self.predictions_dir)
             logger.warning('\n ** Created a new directory: ' + self.predictions_dir)
-
-        # SAVE DESCRIPTORS
-        #self.descriptors_dir = os.path.join('predictions',f'{self.dataset_name}','descriptors')
-        #self.descriptor_dir = os.path.join(self.predictions_dir,'descriptors') 
-        #if not os.path.isdir(self.descriptor_dir):
-        #    os.makedirs(self.descriptor_dir)
-        #    logger.warning('\n ** Created a new directory: ' + self.descriptor_dir)
-        
-        # SAVE RESULTS
-        #self.results_dir = os.path.join(self.predictions_dir,'place','results')
-        #if not os.path.isdir(self.results_dir):
-        #    os.makedirs(self.results_dir)
-        #    logger.warning('\n ** Created a new directory: ' + self.results_dir)
-        
-        # SAVE RESULTS
-        #self.pred_dir = os.path.join(self.predictions_dir,'place','predictions')
-        #if not os.path.isdir(self.pred_dir):
-        #    os.makedirs(self.pred_dir)
-        #    logger.warning('\n ** Created a new directory: ' + self.pred_dir)
         
         
         
@@ -463,19 +438,29 @@ if __name__ == '__main__':
         default = 500,
         help='sampling points.'
     )
+    parser.add_argument(
+        '--ground_truth_file',
+        type=str,
+        required=False,
+        default = "ground_truth_ar1m_nr10m_pr2m.pkl",
+        help=' ground truth file.'
+    )
 
     FLAGS, unparsed = parser.parse_known_args()
 
     ###################################################################### 
+    
+     # The development has been made on different PC, each has some custom settings
+    # e.g the root path to the dataset;
+    device_name = os.uname()[1]
+    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    root_dir = pc_config[device_name]
+
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
-
-    #from networks import modeling
-    #model_ = modeling.__dict__[FLAGS.network]()
-    
 
     print("----------")
     print("INTERFACE:")
@@ -492,8 +477,13 @@ if __name__ == '__main__':
     # DATALOADER
     SESSION['max_points']= FLAGS.max_points
     SESSION['retrieval']['top_cand'] = list(range(1,25,1))
+    SESSION['val_loader']['ground_truth_file'] = FLAGS.triplet_file
 
-    model_,dataloader = pipeline(FLAGS.network,FLAGS.dataset,SESSION)
+    # Build the model and the loader
+    model_ = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
+
+    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
+
     model_wrapper = contrastive.ModelWrapper(model_,**SESSION['modelwrapper'])
     #dataloader = utils.load_dataset(FLAGS.dataset,SESSION,FLAGS.memory)                            
     
@@ -502,7 +492,7 @@ if __name__ == '__main__':
     logger = logging.getLogger("Knn Eval")
 
     pl = PlaceRecognition(model_,
-                        dataloader.get_val_loader(), # Get the Test loader
+                        loader.get_val_loader(), # Get the Test loader
                         25, # Max retrieval Candidates
                         600, # Warmup
                         'L2', # Similarity Metric

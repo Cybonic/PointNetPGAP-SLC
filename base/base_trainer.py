@@ -109,6 +109,7 @@ class BaseTrainer:
 
         self.writer_dir = os.path.join(cfg_trainer['log_dir'], writer_run_name)
         self.writer = tensorboard.SummaryWriter(self.writer_dir)
+        print(f'Tensorboard dir: {self.writer_dir}')
 
 
     def _get_available_devices(self, n_gpu):

@@ -27,15 +27,17 @@ class Trainer(BaseTrainer):
 
 
         self.trainer_cfg    = config
-        self.train_loader   = loader.get_train_loader(debug)
+        self.train_loader   = loader.get_train_loader()
         #self.train_loader.dataset.todevice(self.device)
         self.val_loader     = loader.get_val_loader()
-        self.val_loader.dataset.todevice(self.device)
+        
+        #self.val_loader.dataset.todevice(self.device)
         self.test_loader    = None
         self.device         = device
         self.model          = model.to(self.device)
         self.hyper_log      = config
         self.loss_dist      = config['loss']['args']['metric']
+        
         logger = logging.getLogger("Training")
         
         self.eval_metric = config['trainer']['eval_metric']
