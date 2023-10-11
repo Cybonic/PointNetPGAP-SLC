@@ -18,6 +18,8 @@ def run_sparse_test(file,voxel_size):
     flag,sparsetensor = test_sparse_tensor(file,voxel_size)
     print("[PASSED] SparseTensor")
 
+
+
 if __name__ == "__main__":
     voxel_size=0.05
     file = 'tutorial_data/000000.bin'
