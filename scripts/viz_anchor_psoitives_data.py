@@ -17,7 +17,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-def viz_overlap(xy, loops,show_negatives=False, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
+def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
 
     
 
@@ -42,10 +42,8 @@ def viz_overlap(xy, loops,show_negatives=False, record_gif= False, file_name = '
         idx = loops[i]        
         
         positives_idx = np.where(idx>0)[0]
-        negatives_idx = np.where(idx<0)[0]
-
+  
         if len(positives_idx)>0:
-            negatives.extend(negatives_idx)
             positives.extend(positives_idx)
             anchors.append (i)
             pos_distro.append(positives_idx)
@@ -60,10 +58,6 @@ def viz_overlap(xy, loops,show_negatives=False, record_gif= False, file_name = '
         color[positives] = 'g'
 
         scale[positives] = 100
-
-        if show_negatives:
-            color[negatives] = 'r'
-            scale[negatives] = 100
 
         x = xy[:i,1]
         y = xy[:i,0]
@@ -87,7 +81,6 @@ if __name__ == "__main__":
     parser.add_argument('--plot_path',default  = False ,type = bool)
     parser.add_argument('--loop_thresh',default  = 1 ,type = float)
     parser.add_argument('--record_gif',default  = True ,type = bool)
-    parser.add_argument('--show_negatives',default  = False ,type = bool)
     parser.add_argument('--pose_file',default  = 'poses' ,type = str)
     
     args = parser.parse_args()
@@ -106,8 +99,6 @@ if __name__ == "__main__":
     print("[INF] Reading poses from : " + args.pose_file)
 
     ground_truth = {'pos_range':2.5, # Loop Threshold [m]
-                    'neg_range': 20,
-                    'num_neg':10,
                     'num_pos':1,
                     'warmupitrs': 200, # Number of frames to ignore at the beguinning
                     'roi':100}
@@ -139,23 +130,18 @@ if __name__ == "__main__":
 
     if record_gif_flag:
 
-        anchors,positives,negatives = gen_ground_truth(poses,**ground_truth,gen_negatives = args.show_negatives)
+        anchors,positives = gen_ground_truth(poses,**ground_truth)
         n_points = poses.shape[0]
        
-        
         # Generate Ground-truth Table 
         # Rows: Anchors
         table = np.zeros((n_points,n_points))
         for anchor,positive in zip(anchors,positives):
             table[anchor,positive] = 1
-        
-        for anchor,negative in zip(anchors,negatives):
-            table[anchor,negative] = -1
 
         print("[INF] Number of points: " + str(n_points))
 
         viz_overlap(poses,table,
-                    show_negatives=args.show_negatives,
                     record_gif=True,
                     file_name='anchor_positive_pair.gif',
                     frame_jumps=100)
