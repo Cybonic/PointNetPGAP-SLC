@@ -1,11 +1,22 @@
 
 """
-    [  
-    [xmin,xmax,ymin,ymax],
-    [xmin,xmax,ymin,ymax],
-    ...
-    [xmin,xmax,ymin,ymax]
-    ]
+This file contains the row segments and rotation angles for the different datasets.
+The rows are segmented in the following way:
+        First, the path is rotated to align the rows with the axis. 
+        Then, each row is segmented using a retangle-like bounding box. 
+
+The row segments are defined as a dictionary with the following structure:
+
+<dataset_name> = 
+        {'angle': <angle>, # Angle to aline the rows with the axis
+         'rows':
+                [  
+                [xmin,xmax,ymin,ymax], # row 1
+                [xmin,xmax,ymin,ymax], # row 2
+                ...
+                [xmin,xmax,ymin,ymax]  # row n
+                ]
+        }
 
 """
 
@@ -40,13 +51,14 @@ e3 = {  'angle':-2, # Angle to aline the rows with the image frame
          [35, 40,-6,1]]
          }
 
+
 orchards_june23 = {'angle':25.5, # Angle to aline the rows with the image frame
-        'rows':
-        [[-15,-12,-41,4],
-         [-9,-6.7,-41,4],
-         [-4.3,2,-41,4],
-         [-15, 4, -44,-41],
-         [-15, 4,4,10]]
+        'rows': # From left to right
+        [[-15,-12,-41,5], # first vertial row
+         [-9,-6.7,-41,5], # second vertical row
+         [-4.3,2,-41,5],  # third vertical row
+         [-15, 4, -44,-41], # bottom horizontal row
+         [-15, 4, 5,10]]   # top horizontal row
          }
 
 strawberry_june23 = {'angle':24, # Angle to aline the rows with the image frame

@@ -7,23 +7,17 @@ import os
 import numpy as np
 from dataloader.utils import gen_ground_truth
 from dataloader.kitti.kitti_dataset import kittidataset
-import torch
 from tqdm import tqdm
+import pickle
 
 class KittiTriplet():
     def __init__(self,
                  root,
                  dataset,
                  sequences,
+                 triplet_file,
                  modality = None,
                  memory = 'DISK',
-                 debug = False,
-                 ground_truth = {   'pos_range':4, # Loop Threshold [m]
-                                    'neg_range':10,
-                                    'num_neg':20,
-                                    'num_pos':1,
-                                    'warmupitrs': 600, # Number of frames to ignore at the beguinning
-                                    'roi':500},
                 device = 'cpu'
                     ):
         
@@ -44,22 +38,31 @@ class KittiTriplet():
         assert isinstance(sequences,list)
 
         for seq in sequences:
+            
             kitti_struct = kittidataset(root, dataset, seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
             pose = kitti_struct._get_pose_()
                 
-        
             self.plc_files.extend(files)
             self.plc_names.extend(name)
             self.poses.extend(pose)
+
+            #triplet_file = os.path.join(root,dataset,seq,triplet_file)
+            assert os.path.isfile(triplet_file), "Triplet file does not exist " + triplet_file
             
-            anchors,positives,negatives = gen_ground_truth(pose,**ground_truth)
+             # load the numpy arrays from the file using pickle
+            with open(triplet_file, 'rb') as f:
+                data = pickle.load(f)
+                seq_anchors   = data['anchors']
+                seq_positives = data['positives']
+                seq_negatives = data['negatives']
             
 
-            self.anchors.extend(baseline_idx + np.array(anchors))
-            self.positives.extend(baseline_idx + np.array(positives))
-            self.negatives.extend(baseline_idx + np.array(negatives))
+            for a,p,n in zip(seq_anchors,seq_positives,seq_negatives):
+                self.anchors.extend([baseline_idx + a.item()])
+                self.positives.extend([baseline_idx + p])
+                self.negatives.extend([baseline_idx + n])
 
             baseline_idx += len(files)
 

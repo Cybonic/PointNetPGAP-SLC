@@ -22,6 +22,8 @@ class KITTI():
 
     def get_train_loader(self,debug=False):
         sequence  = self.train_cfg['sequence']
+        triplet_files = self.train_cfg['triplet_file']
+
         #max_points = self.max_points
         print(self.modality)
         if str(self.modality) in ["bev","spherical","pcl"]:
@@ -29,9 +31,10 @@ class KITTI():
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
-        train_loader = KittiTriplet( root = self.root,
-                                    dataset = self.dataset,
-                                    sequences = sequence,
+        train_loader = KittiTriplet( root       = self.root,
+                                    dataset     = self.dataset,
+                                    sequences   = sequence,
+                                    triplet_file = triplet_files,
                                     modality = self.modality,
                                     ground_truth = self.train_cfg['ground_truth'],
                                     memory= self.memory
