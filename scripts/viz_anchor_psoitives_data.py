@@ -78,10 +78,11 @@ if __name__ == "__main__":
                                     help='dataset root directory.'
                                     )
     parser.add_argument('--seq',default  = "orchards/sum22/extracted",type = str)
-    parser.add_argument('--plot_path',default  = False ,type = bool)
+    parser.add_argument('--plot_path',default  = True ,type = bool)
     parser.add_argument('--loop_thresh',default  = 1 ,type = float)
-    parser.add_argument('--record_gif',default  = True ,type = bool)
+    parser.add_argument('--record_gif',default  = False ,type = bool)
     parser.add_argument('--pose_file',default  = 'poses' ,type = str)
+    parser.add_argument('--rot_angle',default  = -3 ,type = int)
     
     args = parser.parse_args()
 
@@ -91,12 +92,14 @@ if __name__ == "__main__":
     plotting_flag = args.plot_path
     record_gif_flag = args.record_gif
     loop_thresh = args.loop_thresh
+    rotation_angle = args.rot_angle
 
     print("[INF] Dataset Name:  " + dataset)
     print("[INF] Sequence Name: " + str(seq) )
     print("[INF] Plotting Flag: " + str(plotting_flag))
     print("[INF] record gif Flag: " + str(record_gif_flag))
     print("[INF] Reading poses from : " + args.pose_file)
+    print("[INF] Rotation Angle: " + str(rotation_angle))
 
     ground_truth = {'pos_range':2, # Loop Threshold [m]
                     'num_pos':1,
@@ -121,7 +124,7 @@ if __name__ == "__main__":
     poses = load_pose_to_RAM(pose_file)
 
     if plotting_flag == True:
-        xy = rotate_poses(poses.copy(),24)
+        xy = rotate_poses(poses.copy(),rotation_angle)
 
         fig, ax = plt.subplots()
         ax.scatter(xy[:,0],xy[:,1],s=10,c='black')

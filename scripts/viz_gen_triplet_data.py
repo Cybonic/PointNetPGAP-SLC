@@ -84,7 +84,7 @@ if __name__ == "__main__":
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "orchards/june23",type = str)
+    parser.add_argument('--seq',default  = "orchards/sum22",type = str)
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--show_negatives',default  = True ,type = bool)
@@ -99,13 +99,13 @@ if __name__ == "__main__":
     record_gif_flag = args.record_gif
     save_triplet_data = args.save_triplet_data
 
-    ground_truth = {'pos_range':2, # Loop Threshold [m]
+    ground_truth = {'pos_range':1, # Loop Threshold [m]
                     'neg_range':10,
                     'num_neg':20,
                     'num_pos':1,
-                    'warmupitrs': 200, # Number of frames to ignore at the beguinning
-                    'roi':100, # Region of interest [m]
-                    'anchor_range': 5 # Range to search for the anchor
+                    'warmupitrs': 300, # Number of frames to ignore at the beguinning
+                    'roi':300, # Region of interest [m]
+                    'anchor_range': 1 # Range to search for the anchor
                     }
     
     # LOAD DEFAULT SESSION PARAM
@@ -152,6 +152,7 @@ if __name__ == "__main__":
     poses = load_pose_to_RAM(pose_file)
     # Load row ids
     seq = sequence.replace('/','_')
+    print("[INF] Loading row segments from: %s"% seq)
     dataset_raws = row_segments.__dict__[seq]
     # Load aline rotation
     rotation_angle = dataset_raws['angle']
