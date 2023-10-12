@@ -77,7 +77,7 @@ if __name__ == "__main__":
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "orchards/june23",type = str)
+    parser.add_argument('--seq',default  = "orchards/sum22/extracted",type = str)
     parser.add_argument('--plot_path',default  = False ,type = bool)
     parser.add_argument('--loop_thresh',default  = 1 ,type = float)
     parser.add_argument('--record_gif',default  = True ,type = bool)
@@ -98,10 +98,10 @@ if __name__ == "__main__":
     print("[INF] record gif Flag: " + str(record_gif_flag))
     print("[INF] Reading poses from : " + args.pose_file)
 
-    ground_truth = {'pos_range':2.5, # Loop Threshold [m]
+    ground_truth = {'pos_range':2, # Loop Threshold [m]
                     'num_pos':1,
-                    'warmupitrs': 200, # Number of frames to ignore at the beguinning
-                    'roi':100}
+                    'warmupitrs': 500, # Number of frames to ignore at the beguinning
+                    'roi':400}
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
     root_dir = pc_config[device_name]
 
-    pose_file = os.path.join(root_dir,dataset,seq,"extracted",'poses.txt')
+    pose_file = os.path.join(root_dir,dataset,seq,'poses.txt')
     print("[INF] Reading poses from : " + pose_file)
 
 
@@ -140,10 +140,10 @@ if __name__ == "__main__":
             table[anchor,positive] = 1
 
         print("[INF] Number of points: " + str(n_points))
-
+        gif_file = os.path.join(root_dir,dataset,seq,'anchor_positive_pair.gif')
         viz_overlap(poses,table,
                     record_gif=True,
-                    file_name='anchor_positive_pair.gif',
+                    file_name=gif_file,
                     frame_jumps=100)
 
  
