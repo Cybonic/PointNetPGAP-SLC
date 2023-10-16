@@ -88,7 +88,7 @@ if __name__ == "__main__":
                         help='path to the data of the sequence')
     parser.add_argument('--pose_data_source',default  = "gps" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
-    parser.add_argument('--record_gif',default  = True ,type = bool)
+    parser.add_argument('--record_gif',default  = False ,type = bool)
     parser.add_argument('--show_negatives',default  = True ,type = bool)
     parser.add_argument('--save_triplet_data',default  = True ,type = bool)
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
                     'num_pos':1,
                     'warmupitrs': 300, # Number of frames to ignore at the beguinning
                     'roi':300, # Region of interest [m]
-                    'anchor_range': 0.1 # Range to search for the anchor
+                    'anchor_range':0.1 # Range to search for the anchor
                     }
     
     # LOAD DEFAULT SESSION PARAM
@@ -145,7 +145,6 @@ if __name__ == "__main__":
     print("[INF] warmup:    " + str(ground_truth['warmupitrs']))
     print("[INF] roi:       " + str(ground_truth['roi']))
     print("****************************************************\n")
-
     print("[INF] Root directory: %s\n"% root_dir)
 
     dir_path = os.path.join(root_dir,dataset,sequence,"extracted")
@@ -212,12 +211,13 @@ if __name__ == "__main__":
     # Plot the ground truth
     gif_file = os.path.join(save_root_dir,ground_truth_name + '.gif')
 
-    viz_triplet(xy,table,
-                show_negatives=args.show_negatives,
-                record_gif=True,
-                file_name=gif_file,
-                frame_jumps=1)
-    
-    print("[INF] saved gif at:" + gif_file)
+    if record_gif_flag:
+        viz_triplet(xy,table,
+                    show_negatives=args.show_negatives,
+                    record_gif=True,
+                    file_name=gif_file,
+                    frame_jumps=1)
+        
+        print("[INF] saved gif at:" + gif_file)
 
 
