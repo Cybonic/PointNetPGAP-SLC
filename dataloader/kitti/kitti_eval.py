@@ -1,10 +1,20 @@
 
-import os
+import os,sys
 from tqdm import tqdm
 import torchvision.transforms as Tr
+from dataloader.utils import extract_points_in_rectangle_roi
+from dataloader.utils import rotate_poses
+from dataloader import row_segments
+
 import numpy as np
+
+# Get the current script's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory and add it to the Python path
+sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
+
 from dataloader.kitti.kitti_dataset import kittidataset
-from dataloader.utils import gen_ground_truth
+
 import pickle
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
@@ -32,6 +42,17 @@ class KITTIEval:
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
         
+        dirs = sequence.split('/')
+        seq  = '_'.join(dirs[:2]) #sequence.replace('/','_')
+        assert seq in row_segments.__dict__.keys(), "Sequence not found in row_segments.py"
+        dataset_raws = row_segments.__dict__[seq]
+        # Load aline rotation
+        # Rotate poses to match the image frame
+        xy = rotate_poses(self.poses.copy(),dataset_raws['angle'])
+        rectangle_rois = np.array(dataset_raws['rows'])
+
+        self.row_labels  = extract_points_in_rectangle_roi(xy,rectangle_rois)
+
         ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
         assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
         # Load dataset and laser settings
@@ -46,7 +67,6 @@ class KITTIEval:
             self.anchors   = data['anchors']
             self.positives = data['positives']
 
-
         # self.anchors,self.positives, _ = gen_ground_truth(self.poses,**ground_truth)
 
         n_points = len(self.files)
@@ -55,7 +75,6 @@ class KITTIEval:
             for p in pos:
                 self.table[a,p]=1
 
-    
         if self.memory == "RAM":
             self.load_to_RAM()
 
@@ -98,6 +117,9 @@ class KITTIEval:
     def get_pose(self):
         return self.poses
 
+    def get_row_labels(self):
+        return self.row_labels
+    
     def get_anchor_idx(self):
         return np.array(self.anchors,np.uint32)
 

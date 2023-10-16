@@ -31,18 +31,31 @@ AUTUMN = {'angle': 0,  # Angle to aline the rows with the image frame
             [ -15, 2, -1,  5]]
         }
 
-
-SUMMER = {'angle':0,  # Angle to aline the rows with the image frame
-          'rows':
-            [[-39,-1, 7,4.5], # row 1
-            [ -39,-1, 4.5,1],  # row 2
-            [ -39,-1,1,-2], # row 3
-            [-2,2,6.5,-1], # row 4
-            [-45,-38,6.5,-1]]# row 5
+orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
+        'rows':
+            [[ -15, 2,-55,-49],
+             [ -15, 2, -1,  5],
+             [-15,-10,-50, -1],
+            [  -10,-5,-50, -1],
+            [  -5,-2,-50, -1],
+            [  -2, 5,-50, -1]
+            ]
  } 
 
 
-e3 = {  'angle':-2, # Angle to aline the rows with the image frame
+orchards_sum22 = {'angle':-3, # Angle to aline the rows with the image frame
+        'rows':
+            [
+            [-39,-1, 4.7,8], # row 1
+            [ -39,-1, 1.8,4],  # row 2
+            [ -39,-1,-2,0.7],#, # row 3
+            [-0.45,3,-2,8], # row 4
+            [-45,-39,-2,8]
+            ]# row 5
+ } 
+
+
+e3 = {'angle':-2, # Angle to aline the rows with the image frame
         'rows':
         [[-1,40,-0.4,2],
          [-1,40,-3.5,0.5],
@@ -69,4 +82,5 @@ strawberry_june23 = {'angle':24, # Angle to aline the rows with the image frame
          [-30, -2, -113,-108],
          [-30, -2,-2,5]]
          }
+
 

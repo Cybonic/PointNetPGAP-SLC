@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 from utils.viz import myplot
 
 from dataloader.utils import rotate_poses,gen_gt_constrained_by_rows
-from dataloader.kitti.kitti_dataset import load_pose_to_RAM
+from dataloader.kitti.kitti_dataset import load_positions
 from dataloader import row_segments
 
 def viz_triplet(xy, loops,show_negatives=False, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
@@ -84,11 +84,15 @@ if __name__ == "__main__":
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "orchards/sum22",type = str)
+    parser.add_argument('--seq',default  = "orchards/aut22",type = str, 
+                        help='path to the data of the sequence')
+    parser.add_argument('--pose_data_source',default  = "gps" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--show_negatives',default  = True ,type = bool)
     parser.add_argument('--save_triplet_data',default  = True ,type = bool)
+    parser.add_argument('--debug_mode',default  = False ,type = bool, 
+                        help='debug mode, when turned on the files saved in a temp directory')
     
     args = parser.parse_args()
 
@@ -99,13 +103,13 @@ if __name__ == "__main__":
     record_gif_flag = args.record_gif
     save_triplet_data = args.save_triplet_data
 
-    ground_truth = {'pos_range':1, # Loop Threshold [m]
+    ground_truth = {'pos_range':2, # Loop Threshold [m]
                     'neg_range':10,
                     'num_neg':20,
                     'num_pos':1,
                     'warmupitrs': 300, # Number of frames to ignore at the beguinning
                     'roi':300, # Region of interest [m]
-                    'anchor_range': 1 # Range to search for the anchor
+                    'anchor_range': 0.1 # Range to search for the anchor
                     }
     
     # LOAD DEFAULT SESSION PARAM
@@ -130,6 +134,8 @@ if __name__ == "__main__":
     print("[INF] record gif:   " + str(record_gif_flag))
     print("[INF] plot static:  " + str(plotting_flag))
     print("[INF] save triplet: " + str(save_triplet_data))
+    print("[INF] debug mode:   " + str(args.debug_mode))
+    print("[INF] pose source:  " + str(args.pose_data_source))
     print("****************************************************\n")
     print("[INF] Ground Truth Parameters: ")
     print("[INF] pos_range: " + str(ground_truth['pos_range']))
@@ -141,15 +147,26 @@ if __name__ == "__main__":
     print("****************************************************\n")
 
     print("[INF] Root directory: %s\n"% root_dir)
-    dir_path = os.path.join(root_dir,dataset,sequence,'extracted')
-    print("[INF] Data directory: %s\n" % dir_path)
-    assert os.path.exists(dir_path), "Data directory does not exist"
-    pose_file = os.path.join(dir_path,'poses.txt')
-    print("[INF] Reading poses from: %s"% pose_file)
 
+    dir_path = os.path.join(root_dir,dataset,sequence,"extracted")
+    assert os.path.exists(dir_path), "Data directory does not exist:" + dir_path
     
-    # Load raw poses
-    poses = load_pose_to_RAM(pose_file)
+    print("[INF] Loading data from directory: %s\n" % dir_path)
+
+    save_root_dir  = dir_path
+    if args.debug_mode:
+        save_root_dir = os.path.join('temp',dataset,sequence)
+        os.makedirs(save_root_dir,exist_ok=True)
+
+    print("[INF] Saving data to directory: %s\n" % dir_path)
+
+    assert args.pose_data_source in ['gps','poses'], "Invalid pose data source"
+    pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
+    poses = load_positions(pose_file)
+
+    print("[INF] Reading poses from: %s"% pose_file)
+    print("[INF] Number of poses: %d"% poses.shape[0])
+
     # Load row ids
     seq = sequence.replace('/','_')
     print("[INF] Loading row segments from: %s"% seq)
@@ -157,18 +174,19 @@ if __name__ == "__main__":
     # Load aline rotation
     rotation_angle = dataset_raws['angle']
     # Rotate poses to match the image frame
-    xy = rotate_poses(poses.copy(),rotation_angle)
+    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
+    xy = rotated_poses[:,:2]
     rectangle_rois = np.array(dataset_raws['rows'])
     
     anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
 
     n_points = xy.shape[0]
-    anchor_range_str = str(ground_truth['anchor_range'])
+    anchor_range_str   = str(ground_truth['anchor_range'])
     negative_range_str = str(ground_truth['neg_range'])
     positive_range_str = str(ground_truth['pos_range'])
     # save the ground truth
     ground_truth_name = f'ground_truth_ar{anchor_range_str}m_nr{negative_range_str}m_pr{positive_range_str}m'
-    file = os.path.join(dir_path,ground_truth_name +'.pkl')
+    file = os.path.join(save_root_dir,ground_truth_name +'.pkl')
     
     if save_triplet_data:
          # save the numpy arrays to a file using pickle
@@ -188,10 +206,12 @@ if __name__ == "__main__":
     for anchor,positive,negative in zip(anchors,positives,negatives):
         table[anchor,positive] = 1
         table[anchor,negative] = -1
+    
     print("[INF] Number of points: " + str(len(anchors)))
 
     # Plot the ground truth
-    gif_file = os.path.join(dir_path,ground_truth_name + '.gif')
+    gif_file = os.path.join(save_root_dir,ground_truth_name + '.gif')
+
     viz_triplet(xy,table,
                 show_negatives=args.show_negatives,
                 record_gif=True,
