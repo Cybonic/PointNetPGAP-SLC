@@ -97,20 +97,27 @@ class kittidataset():
         self.point_cloud_files = []
         self.target_dir = []
 
-        #for seq in sequences:
         self.target_dir = os.path.join(root,dataset,sequence)
-        #self.target_dir.append(target_dir)
         assert os.path.isdir(self.target_dir),'target dataset does nor exist: ' + self.target_dir
 
+        # Get pose file
         pose_file = os.path.join(self.target_dir,'poses.txt')
-        assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
-        self.pose = load_pose_to_RAM(pose_file)
-        #self.pose.extend(pose)
+        #assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
+        if not os.path.isfile(pose_file):
+            pose_file = os.path.join(self.target_dir,'gps.txt')
+            print("[INF] Pose file does not exit, so loading from GPS: %s"% pose_file)
+        print("[INF] Loading poses from: %s"% pose_file)
+        
+        self.pose = load_positions(pose_file)
+        print("[INF] Found %d poses in %s" %(len(self.pose),pose_file))
 
+        # Get point cloud files
         point_cloud_dir = os.path.join(self.target_dir,'point_cloud')
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
+        
         self.file_names, self.point_cloud_files = get_files(point_cloud_dir)
 
+        print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
     
     def _get_point_cloud_file_(self,idx=None):
         if idx == None:

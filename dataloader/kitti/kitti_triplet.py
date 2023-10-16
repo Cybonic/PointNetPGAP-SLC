@@ -34,9 +34,7 @@ class KittiTriplet():
         baseline_idx  = 0 
         self.memory = memory 
 
-        triplet_path = os.path.join(root,dataset,sequences[0],triplet_file)
-
-        assert os.path.isfile(triplet_path), "Triplet file does not exist " + triplet_path
+        
         assert self.memory in ["RAM","DISK"]
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
@@ -53,8 +51,8 @@ class KittiTriplet():
             self.plc_names.extend(name)
             self.poses.extend(pose)
 
-            #triplet_file = os.path.join(root,dataset,seq,triplet_file)
-            # assert os.path.isfile(triplet_file), "Triplet file does not exist " + triplet_file
+            triplet_path = os.path.join(root,dataset,seq,triplet_file)
+            assert os.path.isfile(triplet_path), "Triplet file does not exist " + triplet_path
             
              # load the numpy arrays from the file using pickle
             with open(triplet_path, 'rb') as f:
@@ -63,7 +61,6 @@ class KittiTriplet():
                 seq_positives = data['positives']
                 seq_negatives = data['negatives']
             
-
             for a,p,n in zip(seq_anchors,seq_positives,seq_negatives):
                 self.anchors.extend([baseline_idx + a.item()])
                 self.positives.extend([baseline_idx + p])
@@ -78,7 +75,7 @@ class KittiTriplet():
         self.num_anchors = len(self.anchors)
         self.num_samples = len(self.plc_files)
 
-        n_points = baseline_idx
+        n_points = self.poses.shape[0]
         self.table = np.zeros((n_points,n_points))
         for a,pos in zip(self.anchors,self.positives):
             for p in pos:
