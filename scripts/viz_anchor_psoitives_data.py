@@ -16,6 +16,7 @@ from matplotlib.animation import FuncAnimation
 from PIL import Image
 
 from tqdm import tqdm
+import pickle
 
 def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
 
@@ -73,20 +74,22 @@ if __name__ == "__main__":
     parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/research/datasets')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'GreenHouse',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "e3",type = str)
-    parser.add_argument('--plot_path',default  = True ,type = bool)
+    parser.add_argument('--seq',default  = "strawberry/june23",type = str)
+    parser.add_argument('--plot_path',default  = False ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--rot_angle',default  = 0 ,type = int,
                         help='rotation angle in degrees to rotate the path. the path is rotated at the goemtrical center, ' + 
                         "positive values rotate anti-clockwise, negative values rotate clockwise")
-    parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
+    parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
+    parser.add_argument('--save_eval_data',default  = True ,type = bool,
+                        help='save evaluation data to a pickle file')
     
     
     args = parser.parse_args()
@@ -105,10 +108,10 @@ if __name__ == "__main__":
     print("[INF] record gif Flag: " + str(record_gif_flag))
     print("[INF] Rotation Angle:  " + str(rotation_angle))
 
-    ground_truth = {'pos_range': 2, # Loop Threshold [m]
-                    'num_pos': 1,
-                    'warmupitrs': 300, # Number of frames to ignore at the beguinning
-                    'roi': 200}
+    ground_truth = {'pos_range': 10, # Loop Threshold [m]
+                    'num_pos': -1,
+                    'warmupitrs': 800, # Number of frames to ignore at the beguinning
+                    'roi': 700}
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
@@ -133,28 +136,74 @@ if __name__ == "__main__":
 
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
 
+
+
+    # Create Save Directory
+    save_root_dir  = os.path.join(root_dir,dataset,seq,"eval")
+    if args.debug_mode:
+        save_root_dir = os.path.join('temp',dataset,seq,"eval")
+    
+    os.makedirs(save_root_dir,exist_ok=True)
+
+    # Loading DATA
     from dataloader.kitti.kitti_dataset import load_positions
-    from dataloader.utils import gen_ground_truth,rotate_poses
+    from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
+    from dataloader import row_segments
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
-    
     poses = load_positions(pose_file)
 
     print("[INF] Reading poses from: %s"% pose_file)
     print("[INF] Number of poses: %d"% poses.shape[0])
 
+    # Rotate poses to align with the ROI frame
     xy = rotate_poses(poses.copy(),rotation_angle)
-    if plotting_flag == True:
-        
+    # Load row ids
+    seq = seq.replace('/','_')
+    print("[INF] Loading row segments from: %s"% seq)
+    dataset_raws = row_segments.__dict__[seq]
+    # Load aline rotation
+    rotation_angle = dataset_raws['angle']
+    # Rotate poses to match the image frame
+    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
+    xy = rotated_poses[:,:2]
 
+    # Load row segments
+    rectangle_rois = np.array(dataset_raws['rows'])
+
+    anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
+
+    n_points = xy.shape[0]
+
+    positive_range_str = str(ground_truth['pos_range'])
+
+    # Generate Ground-truth Table
+    if args.save_eval_data:
+        
+        ground_truth_name = f'ground_truth_loop_range_{positive_range_str}m'
+        file = os.path.join(save_root_dir,ground_truth_name +'.pkl')
+
+         # save the numpy arrays to a file using pickle
+        with open(file, 'wb') as f:
+            pickle.dump({
+                'anchors': anchors,
+                'positives': positives,
+            }, f)
+    
+        print("[INF] saved ground truth at:" + file)
+
+
+
+    if plotting_flag == True:
         fig, ax = plt.subplots()
         ax.scatter(xy[:,0],xy[:,1],s=10,c='black')
         ax.set_aspect('equal')
         plt.show()
 
+
+
     if record_gif_flag:
-        anchors,positives = gen_ground_truth(xy,**ground_truth)
         n_points = poses.shape[0]
         # Generate Ground-truth Table 
         # Rows: Anchors
@@ -163,11 +212,11 @@ if __name__ == "__main__":
             table[anchor,positive] = 1
 
         print("[INF] Number of points: " + str(n_points))
-        gif_file = os.path.join(save_root_dir,'anchor_positive_pair.gif')
+        gif_file = os.path.join(save_root_dir,f'anchor_positive_pair_{positive_range_str}.gif')
         viz_overlap(xy,table,
                     record_gif = True,
                     file_name  = gif_file,
-                    frame_jumps= 10)
+                    frame_jumps= 100)
 
         print("[INF] Saving gif to: %s"% gif_file)
 
