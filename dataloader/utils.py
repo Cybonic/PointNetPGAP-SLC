@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 def get_files(target_dir):
     assert os.path.isdir(target_dir)
-    files = np.array([f.split('.')[0] for f in os.listdir(target_dir)])
+    files = np.array([f.split('.')[0] for f in os.listdir(target_dir) if f.endswith('.bin')])
     idx = np.argsort(files)
     fullfiles = np.array([os.path.join(target_dir,f) for f in os.listdir(target_dir)])
     return(files[idx],fullfiles[idx])
@@ -49,6 +49,7 @@ def gen_gt_constrained_by_rows(   poses,
 
     n_coord=  poses[0].shape[0]
     last_anchor_pose =poses[0,:].reshape((1,-1))
+    all_idnices = np.array(range(poses.shape[0]-1))
     for i in indices:
     
         pose    = poses[i,:].reshape((1,-1))
@@ -58,28 +59,42 @@ def gen_gt_constrained_by_rows(   poses,
         if dist_meter < anchor_range:
             continue
         
-        all_indices = np.arange(1,i)
-        window = np.arange(i-roi,i)
+        _map_   = poses
+
+        # Compute the Euclidean distance between the anchor point and the map
+        dist_meter  = np.sqrt(np.sum((pose - _map_)**2,axis=1))
+        
+        exlude_window = np.arange(i-roi,i)
         # Remove window indices from the list of all indices
-        indices_of_interest = np.setxor1d(all_indices, window)
-   
+        pos_indices_of_interest = all_idnices[:i-roi].copy()
+        neg_indices_of_interest = all_idnices
 
         last_anchor_pose = pose
-        _map_   = poses[indices_of_interest,:]
-        # Compute the Euclidean distance between the anchor point and the map
-        dist_meter  = np.sqrt(np.sum((pose -_map_)**2,axis=1))
+        pos_dis_   = dist_meter[pos_indices_of_interest]
+        neg_dis    = dist_meter[neg_indices_of_interest]
+        
         # Select the points within the positive range
-        pos_idx_in_range = np.where(dist_meter <= float(pos_range))[0]
+        pos_idx_in_range = np.where(pos_dis_ <= float(pos_range))[0]
+        pos_idx_in_range = pos_indices_of_interest[pos_idx_in_range]
+
         # Select the points outside the negative range
-        neg_idx_out_range = np.where(dist_meter >= float(neg_range))[0]
+        neg_idx_out_range = np.where(neg_dis >= float(neg_range))[0]
+        neg_idx_out_range = neg_indices_of_interest[neg_idx_out_range]
 
         if len(pos_idx_in_range)>0:
-            all_neg_poses = _map_[neg_idx_out_range,:]
-            all_pos_poses = _map_[pos_idx_in_range,:]
+            all_neg_poses = poses[neg_idx_out_range,:]
+            all_pos_poses = poses[pos_idx_in_range,:]
             # Identify the row ID for each anchor, positive and negative point
-            an_labels  = extract_points_in_retangle_roi(pose,retangle_rois)
-            pos_labels = extract_points_in_retangle_roi(all_pos_poses,retangle_rois)
-            neg_labels = extract_points_in_retangle_roi(all_neg_poses,retangle_rois)
+            an_labels  = extract_points_in_rectangle_roi(pose,retangle_rois)
+            pos_labels = extract_points_in_rectangle_roi(all_pos_poses,retangle_rois)
+            neg_labels = extract_points_in_rectangle_roi(all_neg_poses,retangle_rois)
+
+            pos_idx_in_same_row = []
+            neg_idx_out_same_row = []
+
+            if an_labels[0]== -1:
+                continue
+            
             # Anchor and positives must be in the same row
             pos_idx_in_same_row  = np.where(an_labels[0] == pos_labels)[0]
             # Negatives must be in a different row
@@ -90,7 +105,7 @@ def gen_gt_constrained_by_rows(   poses,
                 pos_map_idx = np.array(pos_idx_in_range[pos_idx_in_same_row]) # Select the points in the same row
                 seleced_pos_dist = dist_meter[pos_map_idx]
                 min_sort = np.argsort(seleced_pos_dist)  # Sort by distance to the anchor point, nearest first
-                positives.append(indices_of_interest[pos_map_idx[min_sort][:num_pos]]) # Select the nearest point
+                positives.append(pos_map_idx[min_sort][:num_pos]) # Select the nearest point
 
                 neg_map_idx = np.array(neg_idx_out_range[neg_idx_out_same_row]) # Select the points in the same row
                 seleced_neg_dist = dist_meter[neg_map_idx]
@@ -98,7 +113,7 @@ def gen_gt_constrained_by_rows(   poses,
 
                 intervals = int(round((len(neg_map_idx))/(num_neg),0)) # compute the interval step size
                 select_neg = np.arange(0,len(neg_map_idx),intervals)[:num_neg] # split the negatives in regular intervals groups
-                negatives.append(indices_of_interest[neg_map_idx[min_sort][select_neg]]) # Select the nearest point
+                negatives.append(neg_map_idx[min_sort][select_neg]) # Select the nearest point
                 
                 anchors.append(i)
 
@@ -181,20 +196,22 @@ def rotate_poses(xy,angle=-4 ):
 
 
     import math
-    xy = xy[:,0:2].copy().transpose() # Grid
-    myx = np.mean(xy,axis=1).reshape(2,1)
+    xy = xy.copy().transpose() # Grid
+    myx = np.mean(xy,axis=1).reshape(-1,1)
 
     #print(xy)
     xyy= xy - myx
     theta = math.radians(angle) # Align the map with the grid 
-    rot_matrix = np.array([[math.cos(theta), -math.sin(theta)],
-                          [ math.sin(theta),  math.cos(theta)]])
+    rot_matrix = np.array([[math.cos(theta), -math.sin(theta),0],
+                          [ math.sin(theta),  math.cos(theta),0],
+                          [0,0,1]])
+    
     new_xx = rot_matrix.dot(xyy) + myx
 
     return(new_xx.transpose())
 
 
-def extract_points_in_retangle_roi(points:np.ndarray,rois:np.ndarray) -> np.ndarray:
+def extract_points_in_rectangle_roi(points:np.ndarray,rois:np.ndarray) -> np.ndarray:
     """
     Return the points inside the rectangle
 
@@ -211,7 +228,6 @@ def extract_points_in_retangle_roi(points:np.ndarray,rois:np.ndarray) -> np.ndar
 
     assert isinstance(points,np.ndarray),'Points should be a numpy array'
     assert isinstance(rois,np.ndarray),'ROI should be a numpy array'
-    assert points.shape[1]==2,'Points should be a 2D array'
     assert rois.shape[1]==4,'ROI should be a 2D array'
     assert rois.shape[0]>0,'ROI should be a 2D array'
     assert points.shape[0]>0,'Points should be a 2D array'
@@ -296,3 +312,7 @@ def make_data_loader(root_dir,dataset,session,modality,max_points=50000):
     #                        )
     
     return(loader)
+
+
+
+    

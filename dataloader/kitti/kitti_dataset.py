@@ -21,7 +21,7 @@ def is_label(filename):
 
 
 
-def load_gps_to_RAM(file:str)->np.ndarray:
+def load_gps_to_RAM(file:str,local_frame=False)->np.ndarray:
     """ Loading the gps file to RAM.
     The gps file as the default structure of KITTI gps.txt file:
     Each line contains the following values separated by spaces:
@@ -35,15 +35,18 @@ def load_gps_to_RAM(file:str)->np.ndarray:
         Note: N is the number of data points, No orientation is provided
     """
     assert os.path.isfile(file),"GPS file does not exist: " + file
+    import utm
     pose_array = []
     for line in open(file):
         values_str = line.split(' ')
         values = np.array([float(v) for v in values_str])
         if len(values) < 3:
             values = np.append(values,np.zeros(3-len(values)))
+        elif len(values) > 3:
+            values = values[:3]
         pose_array.append(values)
 
-    pose_array = np.array(pose_array)   
+    pose_array = np.array(pose_array)
     return(pose_array)
 
 
@@ -81,11 +84,10 @@ def load_pose_to_RAM(file:str)->np.ndarray:
 def load_positions(file):
     if  "poses" in file:
         poses = load_pose_to_RAM(file)
-    elif "gps" in file:
+    elif "gps" in file or "positions" in file:
         poses = load_gps_to_RAM(file)
     else:
         raise Exception("Invalid pose data source")
-
     return poses
 
 

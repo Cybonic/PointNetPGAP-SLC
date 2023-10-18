@@ -21,16 +21,6 @@ The row segments are defined as a dictionary with the following structure:
 """
 
 
-AUTUMN = {'angle': 0,  # Angle to aline the rows with the image frame
-          'rows':
-            [[-15,-9,-50, -1],
-            [  -9,-5,-50, -1],
-            [  -5,-2,-50, -1],
-            [  -2, 2,-50, -1],
-            [ -15, 2,-55,-49],
-            [ -15, 2, -1,  5]]
-        }
-
 orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
         'rows':
             [[ -15, 2,-55,-49],
@@ -57,21 +47,21 @@ orchards_sum22 = {'angle':-3, # Angle to aline the rows with the image frame
 
 e3 = {'angle':-2, # Angle to aline the rows with the image frame
         'rows':
-        [[-1,40,-0.4,2],
-         [-1,40,-3.5,0.5],
-         [-1,40,-6,-3.5],
-         [-1, 2.5, -6,1],
-         [35, 40,-6,1]]
+        [[0.9,37,-6,-4],
+         [0.9,37,-4,-0.7],
+         [0.9,37,-0.7,2],
+         [-1 ,0.9,-6,2],
+         [37, 40,-6,2]]
          }
 
 
-orchards_june23 = {'angle':25.5, # Angle to aline the rows with the image frame
+orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
         'rows': # From left to right
-        [[-15,-12,-41,5], # first vertial row
-         [-9,-6.7,-41,5], # second vertical row
-         [-4.3,2,-41,5],  # third vertical row
-         [-15, 4, -44,-41], # bottom horizontal row
-         [-15, 4, 5,10]]   # top horizontal row
+        [[-15,-11.5,-43,5], # first vertial row
+         [-11.5,-7,-43,5], # second vertical row
+         [-7,2,-43,5],  # third vertical row
+         [-15, 4,-48,-43], # bottom horizontal row
+         [-15, 4, 2,10]]   # top horizontal row
          }
 
 strawberry_june23 = {'angle':24, # Angle to aline the rows with the image frame
