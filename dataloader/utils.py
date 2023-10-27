@@ -20,7 +20,7 @@ def gen_gt_constrained_by_rows(   poses,
                                 num_pos = 10,
                                 warmupitrs= 10, # Number of frames to ignore at the beguinning
                                 roi       = 5, # Window):
-                                anchor_range = 5
+                                anchor_range = 0
                     ):
     """
     Generate ground truth for loop closure detection    
@@ -105,7 +105,11 @@ def gen_gt_constrained_by_rows(   poses,
                 pos_map_idx = np.array(pos_idx_in_range[pos_idx_in_same_row]) # Select the points in the same row
                 seleced_pos_dist = dist_meter[pos_map_idx]
                 min_sort = np.argsort(seleced_pos_dist)  # Sort by distance to the anchor point, nearest first
-                positives.append(pos_map_idx[min_sort][:num_pos]) # Select the nearest point
+                
+                if num_pos < 0: # Select all the points in the positive range
+                    positives.append(pos_map_idx[min_sort]) # Select the nearest point
+                else:
+                    positives.append(pos_map_idx[min_sort][:num_pos]) # Select the nearest point
 
                 neg_map_idx = np.array(neg_idx_out_range[neg_idx_out_same_row]) # Select the points in the same row
                 seleced_neg_dist = dist_meter[neg_map_idx]

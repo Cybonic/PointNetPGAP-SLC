@@ -28,7 +28,6 @@ class KITTIEval:
                         modality = None ,
                         memory= "DISK", 
                         debug = False,
-                        
                         device='cpu'):
         
         assert memory in ["RAM", "DISK"]
@@ -42,32 +41,36 @@ class KITTIEval:
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
         
-        dirs = sequence.split('/')
-        seq  = '_'.join(dirs[:2]) #sequence.replace('/','_')
-        assert seq in row_segments.__dict__.keys(), "Sequence not found in row_segments.py"
-        dataset_raws = row_segments.__dict__[seq]
+
+        row_label_file = os.path.join(root,dataset,sequence,'point_row_labels.pkl')
+        assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
+        with open(row_label_file, 'rb') as f:
+            self.row_labels = pickle.load(f)
+        
         # Load aline rotation
-        # Rotate poses to match the image frame
-        xy = rotate_poses(self.poses.copy(),dataset_raws['angle'])
-        rectangle_rois = np.array(dataset_raws['rows'])
-
-        self.row_labels  = extract_points_in_rectangle_roi(xy,rectangle_rois)
-
         ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
         assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
+
+
+         # load the numpy arrays from the file using pickle
+        with open(ground_truth_path, 'rb') as f:
+            data = pickle.load(f)
+            self.anchors   = data['anchors']
+            self.positives = data['positives']
+
+        # Load dataset and laser settings
+        print("\n" + "*"*30)
+        print("Loading eval dataset...")
+        print(f'Number of files: {len(self.files)}')
+        print(f'Number of anchors: {len(self.anchors)}')
+        print(f'Number of positives: {len(self.positives)}')
+        print("\n" + "*"*30)
         # Load dataset and laser settings
         self.poses = np.array(self.poses)
         self.num_samples = len(self.files)
         
         if debug == True:
             self.set_debug()
-        
-        with open(ground_truth_path, 'rb') as f:
-            data = pickle.load(f)
-            self.anchors   = data['anchors']
-            self.positives = data['positives']
-
-        # self.anchors,self.positives, _ = gen_ground_truth(self.poses,**ground_truth)
 
         n_points = len(self.files)
         self.table = np.zeros((n_points,n_points))
@@ -80,7 +83,6 @@ class KITTIEval:
 
         self.idx_universe = np.arange(self.num_samples)
         self.map_idx  = np.setxor1d(self.idx_universe,self.anchors)
-
    
     def load_to_RAM(self):
         self.memory=="RAM"

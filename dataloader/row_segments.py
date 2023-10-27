@@ -66,10 +66,10 @@ orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
 
 strawberry_june23 = {'angle':24, # Angle to aline the rows with the image frame
         'rows':
-        [[-30,-20,-108,-2],
+        [[-30,-16,-108,-2],
          [-16,-10,-108,-2],
-         [-7,-2,-108,-2],
-         [-30, -2, -113,-108],
+         [-10,-2,-108,-2],
+         [-30, -2, -113,-103],
          [-30, -2,-2,5]]
          }
 

@@ -42,9 +42,9 @@ class BaseTrainer:
         
         # OPTIMIZER
         lr = float(config['optimizer']['args']['lr'])
-        trainable_params = [#{'params': filter(lambda p:p.requires_grad, self.model.get_backbone_params()),'lr': 0.1*lr},
-                                {'params': filter(lambda p:p.requires_grad, self.model.get_backbone_params()),'lr': lr},
-                                 {'params':filter(lambda p:p.requires_grad, self.model.get_classifier_params()),'lr': lr}
+        trainable_params = [    {'params': filter(lambda p:p.requires_grad, self.model.parameters()),'lr': lr},
+                                #{'params': filter(lambda p:p.requires_grad, self.model.get_backbone_params()),'lr': lr},
+                                # {'params':filter(lambda p:p.requires_grad, self.model.get_classifier_params()),'lr': lr}
                                 ]
 
         self.optimizer = get_instance(torch.optim, 'optimizer', config, trainable_params)
@@ -138,14 +138,14 @@ class BaseTrainer:
     #
     # =========================================================================================
 
-    def Train(self,train_entire_dataset=False):
+    def Train(self,train_batch=10,train_entire_dataset=False,loop_range=10):
         
         for epoch in range(self.start_epoch, self.epochs):
             
             ## TRAIN EPOCh
             if self.train_epoch_zero or epoch > 0 : # do not train at epoch 0,
                 # to evaluate the model in random state
-                train_results = self._train_epoch(epoch)
+                train_results = self._train_epoch(epoch,train_batch)
                 self.lr_scheduler.step(train_results['loss'])
 
                 if self.train_logger is not None:
@@ -155,7 +155,7 @@ class BaseTrainer:
 
             ## VAL EPOCH
             if (epoch % self.do_validation)  == 0:
-                val_results,_ = self._valid_epoch(epoch)
+                val_results,_ = self._valid_epoch(epoch,loop_range)
                 #val_results = {'recall':0, 'precision':0,'F1':0}
                 self.logger.info('\n\n')
                 
@@ -193,8 +193,6 @@ class BaseTrainer:
                 self._save_checkpoint(epoch, save_best = self.improved)
                 self.improved = False
             
-            
-
 
         # Register best scores and hyper
         if self.best_log == None:
@@ -202,11 +200,6 @@ class BaseTrainer:
         else:
             self._write_hyper_tb(self.best_log)
             
-        # WHEN MONITORING IS OFF USE LAST RESULT
-        #if self.mnt_mode != 'off' :
-        #    score = self.mnt_best
-        #else:
-        #    score = val_results[self.mnt_metric]
         
         return(self.best_log)
 

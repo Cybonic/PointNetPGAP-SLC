@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
 
 from utils.viz import myplot
+from dataloader.utils import extract_points_in_rectangle_roi
 import yaml
 
 import matplotlib.pyplot as plt
@@ -74,21 +75,17 @@ if __name__ == "__main__":
     parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/research/datasets')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'uk',
+                                    default = 'GreenHouse',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "strawberry/june23",type = str)
-    parser.add_argument('--plot_path',default  = True ,type = bool)
-    parser.add_argument('--record_gif',default  = False ,type = bool)
-    parser.add_argument('--rot_angle',default  = 0 ,type = int,
-                        help='rotation angle in degrees to rotate the path. the path is rotated at the goemtrical center, ' + 
-                        "positive values rotate anti-clockwise, negative values rotate clockwise")
+    parser.add_argument('--seq',default  = "e3",type = str)
+    parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
-    parser.add_argument('--debug_mode',default  = True ,type = bool, 
+    parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
-    parser.add_argument('--save_eval_data',default  = False ,type = bool,
+    parser.add_argument('--save_data',default  = True ,type = bool,
                         help='save evaluation data to a pickle file')
     
     
@@ -98,21 +95,11 @@ if __name__ == "__main__":
     root    = args.root
     dataset = args.dataset 
     seq     = args.seq
-    plotting_flag = args.plot_path
-    record_gif_flag = args.record_gif
-    rotation_angle = args.rot_angle
+    show = args.show
 
     print("[INF] Dataset Name:    " + dataset)
     print("[INF] Sequence Name:   " + str(seq) )
-    print("[INF] Plotting Flag:   " + str(plotting_flag))
-    print("[INF] record gif Flag: " + str(record_gif_flag))
-    print("[INF] Rotation Angle:  " + str(rotation_angle))
-
-    ground_truth = {'pos_range': 1, # Loop Threshold [m]
-                    'num_pos': -1,
-                    'warmupitrs': 800, # Number of frames to ignore at the beguinning
-                    'roi': 700,
-                    'anchor_range': 0.1}
+    print("[INF] Plotting Flag:   " + str(show))
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
@@ -129,24 +116,17 @@ if __name__ == "__main__":
     
     print("[INF] Loading data from directory: %s\n" % dir_path)
 
-    save_root_dir  = os.path.join(root_dir,dataset,seq,data_dir)
-    if args.debug_mode:
-        save_root_dir = os.path.join("temp",dataset,seq,data_dir)
-    
-    os.makedirs(save_root_dir,exist_ok=True)
-
-    print("[INF] Saving data to directory: %s\n" % save_root_dir)
-
     # Create Save Directory
-    save_root_dir  = os.path.join(root_dir,dataset,seq,"eval")
+    save_root_dir  = os.path.join(root_dir,dataset,seq,"extracted")
     if args.debug_mode:
-        save_root_dir = os.path.join('temp',dataset,seq,"eval")
+        save_root_dir = os.path.join('temp',dataset,seq)
     
     os.makedirs(save_root_dir,exist_ok=True)
+    print("[INF] Saving data to directory: %s\n" % save_root_dir)
 
     # Loading DATA
     from dataloader.kitti.kitti_dataset import load_positions
-    from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
+    from dataloader.utils import rotate_poses
     from dataloader import row_segments
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
@@ -156,8 +136,6 @@ if __name__ == "__main__":
     print("[INF] Reading poses from: %s"% pose_file)
     print("[INF] Number of poses: %d"% poses.shape[0])
 
-    # Rotate poses to align with the ROI frame
-    xy = rotate_poses(poses.copy(),rotation_angle)
     # Load row ids
     seq = seq.replace('/','_')
     print("[INF] Loading row segments from: %s"% seq)
@@ -170,71 +148,40 @@ if __name__ == "__main__":
 
     # Load row segments
     rectangle_rois = np.array(dataset_raws['rows'])
+    labels  = extract_points_in_rectangle_roi(xy,rectangle_rois)
 
-    anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
+    unique_labels = np.unique(labels)
 
     n_points = xy.shape[0]
 
-    positive_range_str = str(ground_truth['pos_range'])
-
-    print("="*30)
-    print("[INF] Number of points: " + str(n_points))
-    print("[INF] Number of anchors: " + str(len(anchors)))
-    print("[INF] Number of positives: " + str(len(positives)))
-    print("[INF] Number of negatives: " + str(len(negatives)))
-    print("="*30)
-
     # Generate Ground-truth Table
-    if args.save_eval_data:
-        
-        ground_truth_name = f'ground_truth_loop_range_{positive_range_str}m'
-        file = os.path.join(save_root_dir,ground_truth_name +'.pkl')
+    if args.save_data:
+    
+        file = os.path.join(save_root_dir,'point_row_labels.pkl')
 
          # save the numpy arrays to a file using pickle
         with open(file, 'wb') as f:
-            pickle.dump({
-                'anchors': anchors,
-                'positives': positives,
-            }, f)
+            pickle.dump(labels, f)
     
         print("[INF] saved ground truth at:" + file)
 
 
+   
+    
+    if show:
+        print("[INF] Plotting data...")
+         # color pallet based on the number of unique labels
+        color_pallet = np.array(['y','b','g','r','c','m','k','w'])
+        color = color_pallet[labels]
 
-    if plotting_flag == True:
-        flatten_pos = []
-        for pos in positives:
-             flatten_pos.extend(pos.flatten())
-        
-        flatten_pos = np.unique(np.array(flatten_pos))
+        point_color = np.array([color_pallet[labels[ii]] for ii in range(0,n_points)])
+        # Plot the data
+        fig = plt.figure()
         fig, ax = plt.subplots()
-        ax.scatter(xy[:,0],xy[:,1],s=20,c='black',label='path')
-        ax.scatter(xy[flatten_pos,0],xy[flatten_pos,1],s=20,c='green',label='positive')
-        ax.scatter(xy[anchors,0],xy[anchors,1],s=10,c='blue',label='anchor')
+        ax.scatter(xy[:,0],xy[:,1],s=10,c=point_color)
         ax.set_aspect('equal')
-        plt.xlabel('m')
-        plt.ylabel('m')
-        #ax.legend()
+        plt.savefig(os.path.join(save_root_dir,'point_row_labels.png'))
         plt.show()
-
-
-
-    if record_gif_flag:
-        n_points = poses.shape[0]
-        # Generate Ground-truth Table 
-        # Rows: Anchors
-        table = np.zeros((n_points,n_points))
-        for anchor,positive in zip(anchors,positives):
-            table[anchor,positive] = 1
-
-        print("[INF] Number of points: " + str(n_points))
-        gif_file = os.path.join(save_root_dir,f'anchor_positive_pair_{positive_range_str}.gif')
-        viz_overlap(xy,table,
-                    record_gif = True,
-                    file_name  = gif_file,
-                    frame_jumps= 100)
-
-        print("[INF] Saving gif to: %s"% gif_file)
 
  
 

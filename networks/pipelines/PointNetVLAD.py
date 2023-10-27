@@ -20,7 +20,7 @@ class PointNetVLAD(nn.Module):
     def forward(self, x):
         y = self.point_net(x)
         x = self.net_vlad(y)
-        return x,y
+        return x
 
     def get_backbone_params(self):
         return self.point_net.parameters()

@@ -26,17 +26,6 @@ def kl_divergence(p, q):
     out = torch.nansum(kl,dim=[2,1])
     return out
 
-def kl_divergence_loss(anchor,positive,negative, eps=1e-6,**arg):
-    # Compute Anchor->negative KLD
-    a_torch,p_torch = totensorformat(anchor,positive)
-    ap = logit_kl_divergence(a_torch,p_torch).mean()
-    # Compute Anchor->negative KLD
-    a_torch,n_torch = totensorformat(anchor,negative)
-    an = logit_kl_divergence(a_torch,n_torch).mean()
-    #similar_percentage =(torch.abs(xy - xz) / ((xy + xz)/2))
-    
-    return(ap,an)
-
 # ==========================================================================
 #  cosine
 # ==========================================================================
@@ -134,10 +123,10 @@ class LazyTripletLoss():
     if len(n.shape) < len(a.shape):
         n = n.unsqueeze(dim=0)
     
+    # Anchor - positive
     a_torch,p_torch = totensorformat(a,p)
     ap = self.loss(a_torch, p_torch,dim=2).squeeze()
-    # ap = normal_kernal(ap)
-    #ap = torch.__dict__[self.reduction](pos_loss_array)
+    # Anchor - negative
     a_torch,n_torch  = totensorformat(a,n)
     neg_loss_array = self.loss(a_torch,n_torch,dim=2)
     #neg_loss_array =  normal_kernal(neg_loss_array)
@@ -147,6 +136,48 @@ class LazyTripletLoss():
     loss = value.clamp(min=0.0)
 
     return(loss,{'p':ap,'n':an})
+
+
+class PositiveLoss():
+  def __init__(self, metric= 'L2', margin=0.5 , eps=1e-8,**argv):
+
+    self.margin = margin
+    self.metric = metric
+    self.eps = torch.tensor(eps)
+    
+    # Loss types
+    # self.loss = L2_loss
+    self.loss = get_distance_function(metric)
+  def __str__(self):
+    return type(self).__name__ + '_' + self.metric
+ 
+  def __call__(self,descriptor = {},**args):
+    
+    #a_pose,p_pose,n_pose = pose[0],pose[1],pose[2]
+    a,p,n = descriptor['a'],descriptor['p'],descriptor['n']
+
+    assert a.shape[0] == 1
+    assert p.shape[0] == 1, 'positives samples must be 1'
+
+    if len(a.shape) < len(n.shape): 
+        a = a.unsqueeze(dim=0)
+    if len(p.shape) < len(n.shape): 
+        p = p.unsqueeze(dim=0)
+    if len(n.shape) < len(a.shape):
+        n = n.unsqueeze(dim=0)
+    
+    # Anchor - positive
+    a_torch,p_torch = totensorformat(a,p)
+    ap = self.loss(a_torch, p_torch,dim=2).squeeze()
+
+
+    s = ap #- an + self.margin
+    value = torch.max(self.eps,s)
+    loss = value.clamp(min=0.0)
+
+    n = torch.ones_like(ap,dtype=torch.float32)*-1
+    return(loss,{'p':ap,'n':n})
+
 
 #==================================================================================================
 #

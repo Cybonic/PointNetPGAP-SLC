@@ -35,7 +35,6 @@ def load_gps_to_RAM(file:str,local_frame=False)->np.ndarray:
         Note: N is the number of data points, No orientation is provided
     """
     assert os.path.isfile(file),"GPS file does not exist: " + file
-    import utm
     pose_array = []
     for line in open(file):
         values_str = line.split(' ')
@@ -93,7 +92,7 @@ def load_positions(file):
 
 class kittidataset():
     
-    def __init__(self,root,dataset,sequence):
+    def __init__(self,root,dataset,sequence,position_file="positions.txt"):
         # assert isinstance(sequences,list)
         self.pose = []
         self.point_cloud_files = []
@@ -103,11 +102,9 @@ class kittidataset():
         assert os.path.isdir(self.target_dir),'target dataset does nor exist: ' + self.target_dir
 
         # Get pose file
-        pose_file = os.path.join(self.target_dir,'poses.txt')
-        #assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
-        if not os.path.isfile(pose_file):
-            pose_file = os.path.join(self.target_dir,'gps.txt')
-            print("[INF] Pose file does not exit, so loading from GPS: %s"% pose_file)
+        pose_file = os.path.join(self.target_dir,position_file)
+
+        assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
         print("[INF] Loading poses from: %s"% pose_file)
         
         self.pose = load_positions(pose_file)

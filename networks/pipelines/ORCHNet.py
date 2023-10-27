@@ -35,6 +35,7 @@ class ORCHNet(nn.Module):
       #max_points = model_param['max_points']
       backbone = resnet.__dict__[backbone_name](pretrained,**argv)
       self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
+    
     else:
       self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=False,scale=1)
 
@@ -44,9 +45,11 @@ class ORCHNet(nn.Module):
   def forward(self,x):
 
     y = self.backbone(x)
+    if self.backbone_name == 'resnet50':
+      y = y['out']
     z = self.head(y)
 
-    return z,y
+    return z
   
   def get_backbone_params(self):
     return self.backbone.parameters()

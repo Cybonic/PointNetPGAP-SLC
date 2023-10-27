@@ -4,6 +4,7 @@ checkpoints/
 __pycache__/
 results/
 saved/
+saved_model_data
 temp/
 predictions/
 *.gif

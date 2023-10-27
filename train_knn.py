@@ -27,8 +27,6 @@ from utils import loss as losses
 from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
 
-
-
 def force_cudnn_initialization():
     s = 32
     dev = torch.device('cuda')
@@ -42,8 +40,14 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetVLAD',
-        choices=['PointNetVLAD','ORCHNet','LOGG3D'],
+        default='ResNet50GeM',
+        choices=['PointNetVLAD',
+                 'LOGG3D',
+                 'PointNet_ORCHNet',
+                 'ResNet50_ORCHNet',
+                 'ResNet50GeM',
+                 'PointNetGeM',
+                 'overlap_transformer'],
         help='Directory to get the trained model.'
     )
 
@@ -51,7 +55,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='test',
+        default='test/loop_range_10m',
         help='Directory to get the trained model.'
     )
 
@@ -67,7 +71,7 @@ if __name__ == '__main__':
         '--memory',
         type=str,
         required=False,
-        default='RAM',
+        default='DISK',
         choices=['DISK','RAM'],
         help='Directory to get the trained model.'
     )
@@ -105,7 +109,7 @@ if __name__ == '__main__':
         '--mini_batch_size',
         type=int,
         required=False,
-        default=50, #  Max size (based on the negatives)
+        default=1000, #  Max size (based on the negatives)
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -113,7 +117,7 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default = 'LazyTripletLoss',
-        choices=['LazyTripletLoss','LazyQuadrupletLoss'],
+        choices=['LazyTripletLoss','LazyQuadrupletLoss','PositiveLoss'],
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -134,7 +138,24 @@ if __name__ == '__main__':
         '--triplet_file',
         type=str,
         required=False,
-        default = "ground_truth_ar1m_nr10m_pr2m.pkl",
+        default = "triplet/ground_truth_ar1m_nr10m_pr2m.pkl",
+        help='sampling points.'
+    
+    )
+
+    parser.add_argument(
+        '--eval_file',
+        type=str,
+        required=False,
+        default = "eval/ground_truth_loop_range_10m.pkl",
+        help='sampling points.'
+    )
+
+    parser.add_argument(
+        '--loop_range',
+        type=float,
+        required=False,
+        default = 10,
         help='sampling points.'
     )
 
@@ -157,9 +178,10 @@ if __name__ == '__main__':
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
+    
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
-    SESSION['val_loader']['ground_truth_file'] = FLAGS.triplet_file
-
+    SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
+    SESSION['loop_range'] = FLAGS.loop_range
     print("----------")
     # print("Root: ", SESSION['root'])
     print("\n======= TRAIN LOADER =======")
@@ -210,9 +232,7 @@ if __name__ == '__main__':
     
     # Build the model and the loader
     model_ = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
-
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
-
     model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
 
     print("*"*30)
@@ -220,22 +240,23 @@ if __name__ == '__main__':
     print("*"*30)
 
     run_name = {'dataset': str(SESSION['val_loader']['sequence'][0]),
-                'experiment':os.path.join(FLAGS.experiment,str(FLAGS.max_points)), 
+                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
                 'model': str(model)
             }
 
     trainer = Trainer(
-            model  = model,
+            model        = model,
+            train_loader = loader.get_train_loader(),
+            val_loader   = loader.get_val_loader(),
             resume = FLAGS.resume,
             config = SESSION,
-            loader = loader,
             device = FLAGS.device,
             run_name = run_name,
             train_epoch_zero = False,
             debug = False
             )
 
-    trainer.Train()
+    trainer.Train(train_batch=FLAGS.batch_size)
 
   
   

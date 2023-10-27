@@ -14,24 +14,24 @@ import torch
 
 class Trainer(BaseTrainer):
     def __init__(self,  model,
+                        train_loader,
+                        val_loader,
                         resume,
                         config,
-                        loader,
                         device = 'cpu',
                         run_name = 'default',
                         train_epoch_zero = True,
-                        debug = False
+                        debug = False,
+                        
                         ):
 
         super(Trainer, self).__init__(model, resume, config,run_name=run_name,device=device,train_epoch_zero=train_epoch_zero)
 
 
         self.trainer_cfg    = config
-        self.train_loader   = loader.get_train_loader()
-        #self.train_loader.dataset.todevice(self.device)
-        self.val_loader     = loader.get_val_loader()
+        self.train_loader   = train_loader
+        self.val_loader     = val_loader
         
-        #self.val_loader.dataset.todevice(self.device)
         self.test_loader    = None
         self.device         = device
         self.model          = model.to(self.device)
@@ -46,7 +46,7 @@ class Trainer(BaseTrainer):
 
         self.train_metrics = None #StreamSegMetrics(len(labels))
         self.val_metrics = None #StreamSegMetrics(len(labels))
-        self.batch_size = 5 # 
+        
         
         window = 600 # Avoid the nearby frames
 
@@ -95,14 +95,14 @@ class Trainer(BaseTrainer):
 # ===================================================================================================================
 # 
 # ===================================================================================================================
-    def mean_grad(self):
+    def mean_grad(self,batch_size):
 
         for name, param in self.model.named_parameters():
-            if param.requires_grad:
+            if param.requires_grad and  param.grad is not None:
                 
-                param.grad /= self.batch_size
+                param.grad /= batch_size
     
-    def _train_epoch(self, epoch):
+    def _train_epoch(self, epoch, batch_size = 10 ):
         
         self.logger.info('\n')
         self.model.train()
@@ -122,7 +122,6 @@ class Trainer(BaseTrainer):
                     
             batch_data ,info= self.model(input)
             
-
             for key,value in info.items():
                 if key in epoch_loss_list:
                     epoch_loss_list[key].append(value.detach().cpu().item())
@@ -135,9 +134,9 @@ class Trainer(BaseTrainer):
             tbar.set_description('T ({}) | Loss {:.10f}'.format(epoch,epoch_loss/(batch_idx+1)))
             tbar.update()
 
-            if batch_idx % self.batch_size == 0 and batch_idx > 0:
+            if batch_idx % batch_size == 0 and batch_idx > 0:
                 # Update model every batch_size iteration
-                self.mean_grad()
+                self.mean_grad(batch_size)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 
@@ -157,11 +156,10 @@ class Trainer(BaseTrainer):
 #    
 # ===================================================================================================================
 
-    def _valid_epoch(self,epoch):
+    def _valid_epoch(self,epoch,loop_range = None):
 
         overall_scores = self.eval_approach.run()
 
-       
         # Post on tensorboard
         for i,score in overall_scores.items():
             self._write_scalars_tb(f'val@{i}',score,epoch)

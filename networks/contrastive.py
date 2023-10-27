@@ -17,7 +17,7 @@ class ModelWrapper(nn.Module):
         assert minibatch_size>= 3, 'Minibatch size too small'
         
         self.loss = loss
-        self.minibatch_size=minibatch_size
+        self.minibatch_size = minibatch_size
         self.device = device
         self.batch_counter = 0 
         self.model = model
@@ -74,7 +74,8 @@ class ModelWrapper(nn.Module):
                 continue
 
             pclt = pclt.type(torch.cuda.FloatTensor)
-            pred,feat = self.model(pclt)
+            pred = self.model(pclt)
+            #pred,feat = self.model(pclt)
             
             a_idx = num_anchor
             p_idx = num_pos+num_anchor

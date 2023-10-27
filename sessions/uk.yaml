@@ -11,13 +11,14 @@ retrieval:
   top_cand: [1,5,25]
   range_thres: 6
 
-max_points: 5000
+max_points: 10000 # Maximum number of points to be used in the network
 aug: True 
 
 base_dir: "uk"
 memory: "DISK"
 modality: "bev"
 
+row_label_file: "point_row_labels.pkl"
 # Ground-truth parameters
 ground_truth:
   orchards/june23:
@@ -33,24 +34,37 @@ ground_truth:
     roi: 100
     triplet_files: 'ground_truth_ar2m_nr20m_pr2m.npz'
 
+  orcahrds/sum22:
+    pos_range: 2 # Loop Threshold [m]
+    neg_range: 10
+    warmupitrs: 500 # Number of frames to ignore at the beguinning
+    roi: 400
 
 # Dataset parameters
 train_loader:
-  sequence: ['orchards/june23/extracted'] #['02','05','06','08']
+  sequence: [
+            #'orchards/sum22/extracted',
+            #'orchards/june23/extracted',
+            #'orchards/aut22/extracted',
+            'strawberry/june23/extracted'
+            ]
+
   fraction: 0.3 
   batch_size: 1       # batch size
   shuffle: True
-  num_pos: 1 
+  num_pos: 1
   num_neg: 20
 
   #rotation: [180,-45,-45]
   
 val_loader:
   dataset: ''
-  sequence: ['orchards/june23/extracted']
+  sequence: ['strawberry/june23/extracted']
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False
+
+  loop_range: 10 # Loop Threshold [m]
 
 
 modelwrapper:
@@ -82,7 +96,7 @@ trainer:
 optimizer:
   type: "AdamW" #[RMSprop,Adam,SGD]
   args:
-    lr: 0.01
+    lr: 0.0001
     weight_decay: 0.00000005
   lr_scheduler: "ReduceLROnPlateau"
 

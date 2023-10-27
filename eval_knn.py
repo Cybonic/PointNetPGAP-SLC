@@ -9,108 +9,27 @@ import torch
 from tqdm import tqdm
 import numpy as np
 from networks import contrastive
-from utils.retrieval import retrieval_knn
-from utils.metric import retrieve_eval
-from utils.eval import eval_place
+from utils.eval import eval_row_place
 import logging
 import pandas as pd
 
-from dataloader import utils
 from utils.utils import get_available_devices
-from utils import loss as loss_lib
 from pipeline_factory import model_handler,dataloader_handler
 
 
-def retrieval_costum_dist(queries,database,descriptors,top_cand,window,metric,**argv):
-    '''
-    Retrieval function 
-    
-    '''
-
-    database_dptrs   = np.array([descriptors[i] for i in database])
-  
-
-    scores,winner = [],[]
-    for query in tqdm(queries,"Retrieval"):
-        query_dptrs = database_dptrs[query]
-
-        dist = np.array([metric(query_dptrs,database_dptrs[i]) for i in range(database_dptrs.shape[0])])
-        ind = np.argsort(dist)
-        # Remove query index
-        idx_window = np.arange(query-window,len(database))
-        remove = [ind[0] == i for i in idx_window]
-        remove_bool = np.invert(np.sum(remove,axis=0,dtype=np.bool8))
-
-        # remove_idx = -(np.sum(remove,axis=0)-1)
-  
-        scores.append(dist[0][remove_bool])
-        winner.append(ind[0][remove_bool])
-
-        #retrieved_loops,scores = retrieval_knn(query_dptrs, database_dptrs, top_cand =top, metric = eval_metric)
-    return(np.array(winner),np.array(scores))
-
-
-
-def retrieval_sequence(queries,database,descriptors,top_cand,window,metric,**argv):
-    '''
-    Retrieval function 
-    
-    '''
-
-    from sklearn.neighbors import KDTree
-    
-    
-    database_dptrs   = np.array([descriptors[i] for i in database])
-    tree = KDTree(database_dptrs.squeeze(), leaf_size=2)
-
-    scores,winner = [],[]
-    for query in tqdm(queries,"Retrieval"):
-        query_dptrs = database_dptrs[query]
-        query_dptrs = query_dptrs.reshape(1,-1)
-        dist, ind = tree.query(query_dptrs, k=top_cand)
-        # Remove query index
-        idx_window = np.arange(query-window,len(database))
-        remove = [ind[0] == i for i in idx_window]
-        remove_bool = np.invert(np.sum(remove,axis=0,dtype=np.bool8))
-
-        # remove_idx = -(np.sum(remove,axis=0)-1)
-  
-        scores.append(dist[0][remove_bool])
-        winner.append(ind[0][remove_bool])
-
-        #retrieved_loops,scores = retrieval_knn(query_dptrs, database_dptrs, top_cand =top, metric = eval_metric)
-    return(winner,scores)
-
-
-
-def retrieval(queries,database,descriptors,top_cand,metric,**argv):
-    '''
-    Retrieval function 
-    
-    '''
-    #metric = 'euclidean' if metric == 'L2'
-    from sklearn.neighbors import KDTree
-    
-    database_dptrs   = np.array([descriptors[i] for i in database])
-    tree = KDTree(database_dptrs.squeeze(), leaf_size=2)
-
-    scores,winner = [],[]
-    for query in tqdm(queries,"Retrieval"):
-        query_dptrs = database_dptrs[query]
-        query_dptrs = query_dptrs.reshape(1,-1)
-        dist, ind = tree.query(query_dptrs, k=top_cand)
-        # Remove query index
-        values = np.invert(query == ind[0])
-
-        scores.append(dist[0][values])
-        winner.append(ind[0][values])
-
-        #retrieved_loops,scores = retrieval_knn(query_dptrs, database_dptrs, top_cand =top, metric = eval_metric)
-    return(np.array(winner),np.array(scores))
-
 class PlaceRecognition():
-    def __init__(self,model,loader,top_cand,window,eval_metric,logger,save_deptrs=True,device='cpu'):
+    def __init__(self,model,
+                    loader,
+                    top_cand,
+                    window,
+                    eval_metric,
+                    logger,
+                    loop_range_distance = 10,
+                    save_deptrs=True,
+                    device='cpu'):
 
+
+        self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
         self.logger = logger
         if device in ['gpu','cuda']:
@@ -119,28 +38,23 @@ class PlaceRecognition():
         self.device = device
         self.model = model.to(self.device)
         self.loader = loader
-        #self.loader.dataset.todevice(self.device)
+     
+
         self.top_cand = top_cand
-        self.window = window
-        #self.pred_loops=[]
-        #self.pred_scores=[]
+        self.window   = window
+  
         self.model_name = str(self.model).lower()
         self.save_deptrs= save_deptrs # Save descriptors after being generated 
         self.use_load_deptrs= False # Load descriptors when they are already generated 
 
         # Eval data
-        try:
-            self.dataset_name = str(loader.dataset)
-            self.database = loader.dataset.get_idx_universe()
-            self.anchors = loader.dataset.get_anchor_idx()
-            table = loader.dataset.table
-            self.poses = loader.dataset.get_pose()
-        except: 
-            dataset_name = str(loader.dataset.dataset)
-            self.database = loader.dataset.dataset.get_idx_universe()
-            self.anchors = loader.dataset.dataset.get_anchor_idx()
-            table = loader.dataset.dataset.get_gt_map()
-            #poses = loader.dataset.dataset.get_pose()
+      
+        self.dataset_name = str(loader.dataset)
+        self.database = loader.dataset.get_idx_universe()
+        self.anchors  = loader.dataset.get_anchor_idx()
+        table = loader.dataset.table
+        self.poses = loader.dataset.get_pose()
+        self.raw_labels = loader.dataset.get_row_labels()
 
         self.true_loop = np.array([line==1 for line in table])
 
@@ -154,7 +68,12 @@ class PlaceRecognition():
         
         
     def load_descriptors(self,file):
-
+        """
+        Load descriptors from a file
+        params:
+            file (string): file name to load the descriptors
+        return: None
+        """
         
         target_dir = os.path.join(self.predictions_dir,file)
         if not os.path.isdir(target_dir):
@@ -180,12 +99,12 @@ class PlaceRecognition():
 
     def save_descriptors(self,file=None):
         '''
-        Load previously generated descriptors.
-
-        Input: path to the descriptor file
-         When file == None, use internal build file name,
-           which is based on the model and dataset name  
+        Save the generated descriptors
+        params:
+            file (string): file name to save the descriptors, default is None
+        return: None
         '''
+
         if file == None:
             target_dir = os.path.join(self.predictions_dir,self.score_value)
         else:
@@ -200,8 +119,7 @@ class PlaceRecognition():
         if self.save_deptrs == True:
             torch.save(self.descriptors,file)
             self.logger.warning('\n ** Saving descriptors at File: ' + file)
- 
-
+    
 
     def get_descriptors(self):
         '''
@@ -211,8 +129,13 @@ class PlaceRecognition():
         
 
     def save_predictions_cv(self,file=None):
-        # SAVE PREDICTIONS
-        # Check if the predictions were generated
+        '''
+        Save the predictions in a csv file
+        params:
+            file (string): file name to save the predictions, default is None
+        return: None
+        '''
+        # Check if the results were generated
         assert  hasattr(self, 'predictions')
         
         loop_cand   = self.predictions['loop_cand']
@@ -245,7 +168,13 @@ class PlaceRecognition():
         
 
     def save_results_cv(self,file=None):
-        
+        """
+        Save the results in a csv file
+        params:
+            file (string): file name to save the results, default is None
+        return: None
+        """
+
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
         if file == None:
@@ -284,52 +213,69 @@ class PlaceRecognition():
         if self.use_load_deptrs == False:
             self.descriptors = self.generate_descriptors(self.model,self.loader)
         
-
         # COMPUTE TOP 1%
         # Compute number of samples to retrieve correspondin to 1% 
         one_percent = int(round(len(self.database)/100,0))
         self.top_cand.append(one_percent)
-        max_top = max(self.top_cand)
+        k_top_cand = max(self.top_cand)
 
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
         # the kitti dataset 
-        metric,self.predictions = eval_place(self.anchors,self.descriptors,self.poses,max_top,window=self.window)
+        # radius = 2
 
- 
+        raw_labels = self.raw_labels
+        metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
+                                                  self.descriptors, # Descriptors
+                                                  self.poses,   # Poses
+                                                  raw_labels, # Raw labels
+                                                  k_top_cand, # Max top candidates
+                                                  radius=[self.loop_range_distance], # Radius
+                                                  window=self.window)
+
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
-        for top in tqdm(range(1,max_top),'Performance'):
-            remapped_old_format[top]={'recall':metric['recall'][25][top]}
+        for top in tqdm(range(1,k_top_cand),'Performance'):
+            remapped_old_format[top]={'recall':metric['recall'][self.loop_range_distance][top]}
             #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
 
-        self.score_value = str(round(metric['recall'][25][0],3)) + f'@{1}'
+        self.score_value = str(round(metric['recall'][self.loop_range_distance][0],3)) + f'@{1}'
         self.results = remapped_old_format
 
         return remapped_old_format
 
 
     def generate_descriptors(self,model,loader):
-            model.eval()
-            dataloader = iter(loader)
-            num_sample = len(loader)
-            tbar = tqdm(range(num_sample), ncols=100)
+        '''
+        Generate descriptors for the whole dataset
+        params:
+            model: network model
+            loader: data loader
+        return:
+            descriptors: descriptors for the whole dataset
+        '''
+        
+        model.eval()
+        dataloader = iter(loader)
+        num_sample = len(loader)
+        tbar = tqdm(range(num_sample), ncols=100)
 
-            #self._reset_metrics()
-            prediction_bag = {}
-            idx_bag = []
-            for batch_idx in tbar:
-                input,inx = next(dataloader)
-                input = input.to(self.device)
-                # Generate the Descriptor
-                prediction,feat = model(input)
-                assert prediction.isnan().any() == False
-                if len(prediction.shape)<2:
-                    prediction = prediction.unsqueeze(0)
-                # Keep descriptors
-                for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):
-                    prediction_bag[int(i)] = d
-            return(prediction_bag)
+        #self._reset_metrics()
+        prediction_bag = {}
+        for batch_idx in tbar:
+            input,inx = next(dataloader)
+            input = input.to(self.device)
+            input = input.type(torch.cuda.FloatTensor)
+            # Generate the Descriptor
+            prediction = model(input)
+            #prediction,feat = model(input)
+            assert prediction.isnan().any() == False
+            if len(prediction.shape)<2:
+                prediction = prediction.unsqueeze(0)
+            # Keep descriptors
+            for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):
+                prediction_bag[int(i)] = d
+        return(prediction_bag)
 
 
 
@@ -341,7 +287,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='ORCHNet',
+        default='PointNetVLAD',
         help='Directory to get the trained model.'
     )
     
@@ -406,7 +352,7 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='kitti',
+        default='uk',
         help='Directory to get the trained model.'
     )
 
@@ -414,7 +360,7 @@ if __name__ == '__main__':
         '--sequence',
         type=str,
         required=False,
-        default='[00]',
+        default='[orchards/june23/extracted]',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -461,10 +407,14 @@ if __name__ == '__main__':
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
+    device_name = os.uname()[1]
+    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    root_dir = pc_config[device_name]
+
 
     print("----------")
     print("INTERFACE:")
-    print("Root: ", SESSION['root'])
+    print("Root: ", root_dir)
     print("Memory: ", FLAGS.memory)
     print("Model:  ", FLAGS.network)
     print("Debug:  ", FLAGS.debug)
@@ -477,22 +427,16 @@ if __name__ == '__main__':
     # DATALOADER
     SESSION['max_points']= FLAGS.max_points
     SESSION['retrieval']['top_cand'] = list(range(1,25,1))
-    SESSION['val_loader']['ground_truth_file'] = FLAGS.triplet_file
+    SESSION['val_loader']['ground_truth_file'] = FLAGS.ground_truth_file
 
     # Build the model and the loader
-    model_ = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
-
+    model  = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
-
-    model_wrapper = contrastive.ModelWrapper(model_,**SESSION['modelwrapper'])
-    #dataloader = utils.load_dataset(FLAGS.dataset,SESSION,FLAGS.memory)                            
-    
-    
 
     logger = logging.getLogger("Knn Eval")
 
-    pl = PlaceRecognition(model_,
-                        loader.get_val_loader(), # Get the Test loader
+    pl = PlaceRecognition(model, # Model
+                         loader.get_val_loader(), # Get the Test loader
                         25, # Max retrieval Candidates
                         600, # Warmup
                         'L2', # Similarity Metric
@@ -504,6 +448,8 @@ if __name__ == '__main__':
     pl.load_descriptors('temp')
     # Run place recognition evaluation
     pl.run()
+    
+    # Save the results
     pl.save_descriptors('temp')
     pl.save_predictions_cv('temp')
     pl.save_results_cv('temp')
