@@ -73,22 +73,30 @@ def unique2D(input):
     return(output)
 
 
-def get_available_devices(n_gpu, logger):
-    sys_gpu = torch.cuda.device_count()
-    device = 'cpu'
-    if sys_gpu == 0:
-        logger.warning('No GPUs detected, using the CPU')
-        n_gpu = 0
-    
-    elif n_gpu <= sys_gpu:
-        logger.warning(f'Nbr of GPU requested is {n_gpu} but only {sys_gpu} are available')
-        n_gpu = sys_gpu            
-        gpu = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.5, maxMemory = 0.5, includeNan=False, excludeID=[], excludeUUID=[])
-        logger.info(torch.cuda.get_device_name())
-        GPUtil.showUtilization()
-        device = torch.device(f'cuda:{gpu[0]}' if n_gpu > 0 and len(gpu) >0 else 'cpu')
-        logger.info(f'GPU to be used: {gpu[0]}\n')
-    
-    logger.info(f'Detected GPUs: {sys_gpu} Requested: {n_gpu}')
-    available_gpus = list(range(n_gpu))
-    return device, available_gpus
+def get_available_devices(n_gpu,logger = None):
+        if logger is None:
+            import logging
+            logger = logging.getLogger('utils')
+        sys_gpu = torch.cuda.device_count()
+        device = 'cpu'
+        if sys_gpu == 0:
+            logger.warning('No GPUs detected, using the CPU')
+            n_gpu = 0
+        elif n_gpu <= sys_gpu:
+            logger.warning(f'Nbr of GPU requested is {n_gpu} but only {sys_gpu} are available')
+            n_gpu = sys_gpu            
+            gpu = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.5, maxMemory = 0.5, includeNan=False, excludeID=[], excludeUUID=[])
+            if len(gpu) > 0:
+                device_name = torch.cuda.get_device_name()
+                
+                GPUtil.showUtilization()
+                device = torch.device(f'cuda:{gpu[0]}' if n_gpu > 0 and len(gpu) >0 else 'cpu')
+            else:
+                print('No GPU available')
+                device_name = "cpu"
+                
+            print(f'GPU to be used: {device_name}\n')
+        
+        logger.info(f'Detected GPUs: {sys_gpu} Requested: {n_gpu}')
+        available_gpus = list(range(n_gpu))
+        return device, available_gpus

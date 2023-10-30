@@ -4,7 +4,7 @@ import os
 full_cap = '--epoch 50'
 args = [#'--network PointNetVLAD',
         '--network PointNet_ORCHNet',
-        '--network ResNet50_ORCHNet',
+        #'--network ResNet50_ORCHNet',
         #'--network ResNet50GeM',
         #'--network PointNetGeM',
         #'--network overlap_transformer'
@@ -20,7 +20,7 @@ args = [#'--network PointNetVLAD',
 #losses = ['LazyTripletLoss','LazyQuadrupletLoss']
 losses = ['LazyTripletLoss']
 
-density = ['500','1000','5000','10000','20000','30000']
+density = ['1000','5000','10000','20000','30000']
 #density = ['10000']
 experiment = f'-e test/same_dataset/density'
 

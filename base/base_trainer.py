@@ -29,7 +29,8 @@ class BaseTrainer:
 
         # SETTING THE DEVICE
         if device in ['gpu','cuda']:
-            self.device, availble_gpus = self._get_available_devices(self.config['n_gpu'])
+            from utils.utils import get_available_devices
+            self.device, availble_gpus = get_available_devices(self.config['n_gpu'])
             #self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
             self.model.model.to(self.device)
 
@@ -124,10 +125,13 @@ class BaseTrainer:
             self.logger.warning(f'Nbr of GPU requested is {n_gpu} but only {sys_gpu} are available')
             n_gpu = sys_gpu            
             gpu = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.5, maxMemory = 0.5, includeNan=False, excludeID=[], excludeUUID=[])
-            print(torch.cuda.get_device_name())
-            GPUtil.showUtilization()
-            device = torch.device(f'cuda:{gpu[0]}' if n_gpu > 0 and len(gpu) >0 else 'cpu')
-        
+            if len(gpu) > 0:
+                print(torch.cuda.get_device_name())
+                GPUtil.showUtilization()
+                device = torch.device(f'cuda:{gpu[0]}' if n_gpu > 0 and len(gpu) >0 else 'cpu')
+            else:
+                print('No GPU available')
+
             print(f'GPU to be used: {gpu[0]}\n')
         
         self.logger.info(f'Detected GPUs: {sys_gpu} Requested: {n_gpu}')
