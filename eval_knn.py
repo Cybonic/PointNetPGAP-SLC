@@ -28,7 +28,6 @@ class PlaceRecognition():
                     save_deptrs=True,
                     device='cpu'):
 
-
         self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
         self.logger = logger
@@ -65,8 +64,58 @@ class PlaceRecognition():
             os.makedirs(self.predictions_dir)
             logger.warning('\n ** Created a new directory: ' + self.predictions_dir)
         
+        self.param = {}
+        self.param['top_cand'] = top_cand
+        self.param['window'] = window
+        self.param['eval_metric'] = eval_metric
+        self.param['loop_range_distance'] = loop_range_distance
+        self.param['save_deptrs'] = save_deptrs
+        self.param['device'] = device
+        self.param['dataset_name'] = self.dataset_name
+        self.param['model_name'] = self.model_name
+        self.param['predictions_dir'] = self.predictions_dir
+
+
+
+
+    def load_pretrained_model(self,checkpoint_path):
+        '''
+        Load the pretrained model
+        params:
+            checkpoint_path (string): path to the pretrained model
+        return: None
+        '''
+        checkpoint = torch.load(checkpoint_path)
+        self.model.load_state_dict(checkpoint['state_dict'])
         
+        self.param['checkpoint_arch'] = checkpoint['arch']
+        self.param['checkpoint_best_score'] = checkpoint['monitor_best']['recall']
+        self.param['checkpoint_path'] = checkpoint_path
+
         
+        self.logger.warning('\n ** Loaded pretrained model from: ' + checkpoint_path)
+        self.logger.warning('\n ** Architecture: ' + checkpoint['arch'])
+        self.logger.warning('\n ** Best Score: %0.2f'%checkpoint['monitor_best']['recall'])
+
+    def save_params(self):
+        """
+        Save the parameters of the model
+        params:
+
+        return: None
+        """
+
+        target_dir = os.path.join(self.predictions_dir,self.score_value)
+        if not os.path.isdir(target_dir):
+            os.makedirs(target_dir)
+        
+        file_name = os.path.join(target_dir,'params.yaml')
+        with open(file_name, 'w') as file:
+            documents = yaml.dump(self.param, file)
+        self.logger.warning('\n ** Saving parameters at File: ' + file_name)
+
+
+
     def load_descriptors(self,file):
         """
         Load descriptors from a file
@@ -139,8 +188,8 @@ class PlaceRecognition():
         assert  hasattr(self, 'predictions')
         
         loop_cand   = self.predictions['loop_cand']
-        loop_scores = self.predictions['loop_cand']
-        gt_loops    = self.predictions['loop_cand']
+        loop_scores = self.predictions['loop_scores']
+        gt_loops    = self.predictions['gt_loops']
 
         assert hasattr(self, 'score_value'), 'Results were not generated!'
         
@@ -185,7 +234,7 @@ class PlaceRecognition():
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
         
-        logger.warning('\n ** Saving results from internal File: ' + target_dir)
+        self.logger.warning('\n ** Saving results from internal File: ' + target_dir)
 
         top_cand = np.array(list(self.results.keys())).reshape(-1,1)
         colum = ['top']
@@ -223,7 +272,6 @@ class PlaceRecognition():
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
         # the kitti dataset 
         # radius = 2
-
         raw_labels = self.raw_labels
         metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
                                                   self.descriptors, # Descriptors

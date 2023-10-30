@@ -40,7 +40,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='ResNet50GeM',
+        default='PointNet_ORCHNet',
         choices=['PointNetVLAD',
                  'LOGG3D',
                  'PointNet_ORCHNet',
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         '--epoch',
         type=int,
         required=False,
-        default=200,
+        default=50,
         help='Directory to get the trained model.'
     )
 
@@ -102,14 +102,14 @@ if __name__ == '__main__':
         '--batch_size',
         type=int,
         required=False,
-        default=10,
+        default=20,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
         '--mini_batch_size',
         type=int,
         required=False,
-        default=1000, #  Max size (based on the negatives)
+        default=20000, #  Max size (based on the negatives)
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         '--max_points',
         type=int,
         required=False,
-        default = 10000,
+        default = 20000,
         help='sampling points.'
     )
     parser.add_argument(
@@ -138,7 +138,7 @@ if __name__ == '__main__':
         '--triplet_file',
         type=str,
         required=False,
-        default = "triplet/ground_truth_ar1m_nr10m_pr2m.pkl",
+        default = "triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl",
         help='sampling points.'
     
     )
@@ -159,9 +159,16 @@ if __name__ == '__main__':
         help='sampling points.'
     )
 
+    parser.add_argument(
+        '--save_predictions',
+        type=bool,
+        required=False,
+        default = False,
+        help='sampling points.'
+    )
+
 
     FLAGS, unparsed = parser.parse_known_args()
-
 
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
@@ -183,6 +190,7 @@ if __name__ == '__main__':
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
     SESSION['loop_range'] = FLAGS.loop_range
     print("----------")
+    print("Saving Predictions: %d"%FLAGS.save_predictions)
     # print("Root: ", SESSION['root'])
     print("\n======= TRAIN LOADER =======")
     # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
@@ -256,7 +264,15 @@ if __name__ == '__main__':
             debug = False
             )
 
-    trainer.Train(train_batch=FLAGS.batch_size)
+    best_model_filename = trainer.Train(train_batch=FLAGS.batch_size)
 
-  
-  
+    if FLAGS.save_predictions:
+    
+        # Generate descriptors, predictions and performance for the best weights
+        trainer.eval_approach.load_pretrained_model(best_model_filename)
+        trainer.eval_approach.run()
+
+        trainer.eval_approach.save_params()
+        trainer.eval_approach.save_descriptors()
+        trainer.eval_approach.save_predictions_cv()
+        trainer.eval_approach.save_results_cv()

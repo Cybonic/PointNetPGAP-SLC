@@ -1,13 +1,13 @@
 
 import os
 
-full_cap = '--epoch 100'
-args = ['--network PointNetVLAD',
+full_cap = '--epoch 50'
+args = [#'--network PointNetVLAD',
         '--network PointNet_ORCHNet',
         '--network ResNet50_ORCHNet',
-        '--network ResNet50GeM',
-        '--network PointNetGeM',
-        '--network overlap_transformer'
+        #'--network ResNet50GeM',
+        #'--network PointNetGeM',
+        #'--network overlap_transformer'
 
         #' --network overlap_transformer',
         #f'--memory RAM  --modality bev  --session kitti --model VLAD_resnet50 ',
@@ -20,13 +20,15 @@ args = ['--network PointNetVLAD',
 #losses = ['LazyTripletLoss','LazyQuadrupletLoss']
 losses = ['LazyTripletLoss']
 
-#density = ['500','1000','5000','10000','20000','30000']
-density = ['10000']
-experiment = f'-e cross_val/loop_range_10m'
+density = ['500','1000','5000','10000','20000','30000']
+#density = ['10000']
+experiment = f'-e test/same_dataset/density'
 
-for loss_func in losses:
-        loss =  f'--loss {loss_func}'
-        for arg in args:
-                func_arg = arg + ' ' + loss +  ' ' +  experiment +  ' ' + full_cap
+
+        #loss =  f'--loss {loss_func}'
+for arg in args:
+        for n_points in density:
+                density_arg = f'--max_points {n_points}'
+                func_arg = arg + ' ' +  experiment +  ' ' + full_cap + ' ' + density_arg
                 #print(func_arg)
                 os.system('python3 train_knn.py ' + func_arg)

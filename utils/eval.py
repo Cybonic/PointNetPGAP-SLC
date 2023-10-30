@@ -163,12 +163,6 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
   global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
   global_metrics['RR'] = {r: [] for r in radius}
   
-  # Initiate evaluation dictionary for re-ranking
-  if isinstance(reranking,(np.ndarray, np.generic,list)):
-    global_metrics['RR_rr'] = {r: [] for r in radius}
-    global_metrics['t_RR'] = []
-    global_metrics['tp_rr'] = {r: [0] * n_top_cand for r in radius}
-  
   loop_cands = []
   loop_scores= []
   gt_loops   = []
@@ -220,7 +214,6 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     global_metrics['RR'] = {r: global_metrics['RR'][r]+[next((1.0/(i+1) for i, x in enumerate(dist_all_points_in_row <= r) if x), 0)]
                                                                   for r in radius}
     
-
     # save loop candidates indices 
     #assert len(nn_ndx) == n_top_cand, "Number of candidates is not equal to the number of top candidates"
     loop_cands.append(loop_cand_in_row_idx)
@@ -236,8 +229,6 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
                  'gt_loops':gt_loops}
   
   return global_metrics,prediction
-
-
 
 
 def comp_pair_permutations(n_samples):
@@ -276,6 +267,20 @@ def calculateMahalanobis(y=None, data=None, inv_covmat=None):
     #return np.sqrt(mahal)
     return  np.sqrt(mahal.diagonal())
 
+def eval_row_retrieval(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[25],window=1):
+   
+  if not isinstance(queries,np.ndarray):
+     queries = np.array(queries)
+     
+  n_frames = queries.shape[0]
+  if isinstance(descriptrs,dict):
+    descriptrs = np.array(list(descriptrs.values()))
+  #else:
+  all_map_indices = np.arange(descriptrs.shape[0])
+  
+  # Initiate evaluation dictionary  
+  global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
+  global_metrics['RR'] = {r: [] for r in radius}
 
 def retrieval_knn(query_dptrs,map_dptrs, top_cand,metric):
     

@@ -71,7 +71,9 @@ class BaseTrainer:
         self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], checkpoint_dst_dir)
         if not os.path.isdir(self.checkpoint_dir):
             os.makedirs(self.checkpoint_dir)
-       
+
+        self.save_best_model_filename = os.path.join(self.checkpoint_dir, f'checkpoint.pth')
+
         helpers.dir_exists(self.checkpoint_dir)
         config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
         with open(config_save_path, 'w') as handle:
@@ -201,7 +203,7 @@ class BaseTrainer:
             self._write_hyper_tb(self.best_log)
             
         
-        return(self.best_log)
+        return(self.save_best_model_filename)
 
     # =========================================================================================
     #

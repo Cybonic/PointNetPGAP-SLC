@@ -165,9 +165,6 @@ class Trainer(BaseTrainer):
             self._write_scalars_tb(f'val@{i}',score,epoch)
         return overall_scores,[]
 
-
-
-
 # ===================================================================================================================
 #    
 # ===================================================================================================================
@@ -184,9 +181,8 @@ class Trainer(BaseTrainer):
         # https://towardsdatascience.com/a-complete-guide-to-using-tensorboard-with-pytorch-53cb2301e8c3        
         hparam_dict = { "batch_size": self.hyper_log['train_loader']['batch_size'],
                         "experim_name": str(self.hyper_log['experim_name']),
-                        "dataset": str(self.hyper_log['val_loader']['data']['dataset']),
-                        "sequence": str(self.hyper_log['val_loader']['data']['sequence']),
-                        "modality":self.hyper_log['val_loader']['data']['modality'],
+                        "dataset": str(self.hyper_log['val_loader']['dataset']),
+                        "sequence": str(self.hyper_log['val_loader']['sequence']),
                         "model": self.hyper_log['modelwrapper']['type'],
                         "minibatch_size": self.hyper_log['modelwrapper']['minibatch_size'],
                         #"output_dim": self.hyper_log['model']['output_dim'],

@@ -97,5 +97,5 @@ class KITTI():
         return valloader
     
     def __str__(self):
-        return 'kitti'
+        return ""
 		#return  1-np.array(self.label_disto)
