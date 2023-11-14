@@ -40,7 +40,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNet_ORCHNet',
+        default='ResNet50_ORCHNet',
         choices=['PointNetVLAD',
                  'LOGG3D',
                  'PointNet_ORCHNet',
@@ -80,10 +80,9 @@ if __name__ == '__main__':
         '--epoch',
         type=int,
         required=False,
-        default=50,
+        default=2,
         help='Directory to get the trained model.'
     )
-
     parser.add_argument(
         '--dataset',
         type=str,
@@ -124,7 +123,14 @@ if __name__ == '__main__':
         '--max_points',
         type=int,
         required=False,
-        default = 20000,
+        default = 10000,
+        help='sampling points.'
+    )
+    parser.add_argument(
+        '--feat_dim',
+        type=int,
+        required=False,
+        default = 512,
         help='sampling points.'
     )
     parser.add_argument(
@@ -134,13 +140,13 @@ if __name__ == '__main__':
         default = "pcl",
         help='sampling points.'
     )
+
     parser.add_argument(
         '--triplet_file',
         type=str,
         required=False,
         default = "triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl",
         help='sampling points.'
-    
     )
 
     parser.add_argument(
@@ -163,8 +169,14 @@ if __name__ == '__main__':
         '--save_predictions',
         type=bool,
         required=False,
-        default = False,
+        default = True,
         help='sampling points.'
+    )
+    parser.add_argument(
+        '--test_set',
+        type=str,
+        required=False,
+        default = 'orchards/aut22/extracted',
     )
 
 
@@ -179,8 +191,14 @@ if __name__ == '__main__':
 
 
     # Update config file with new settings
+
     SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
+    SESSION['modelwrapper']['feat_dim']  = FLAGS.feat_dim
+
     SESSION['val_loader']['batch_size'] = FLAGS.batch_size
+    SESSION['val_loader']['sequence'] = [FLAGS.test_set]
+    SESSION['train_loader']['sequence'] = SESSION['train_sequence'][FLAGS.test_set]
+
     SESSION['trainer']['epochs'] =  FLAGS.epoch
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
@@ -189,6 +207,8 @@ if __name__ == '__main__':
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
     SESSION['loop_range'] = FLAGS.loop_range
+
+
     print("----------")
     print("Saving Predictions: %d"%FLAGS.save_predictions)
     # print("Root: ", SESSION['root'])
@@ -196,7 +216,6 @@ if __name__ == '__main__':
     # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
     print("Max Points: " + str(SESSION['max_points']))
     print("Triplet Data File: " + str(FLAGS.triplet_file))
-
     print("\n======= VAL LOADER =======")
     print("Dataset  : ", SESSION['val_loader']['dataset'])
     print("Sequence : ", SESSION['val_loader']['sequence'])
@@ -239,7 +258,12 @@ if __name__ == '__main__':
     root_dir = pc_config[device_name]
     
     # Build the model and the loader
-    model_ = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
+    model_ = model_handler(FLAGS.network,
+                            num_points=SESSION['max_points'],
+                            output_dim=256,
+                            feat_dim=FLAGS.feat_dim
+                            )
+    
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
     model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
 
@@ -270,7 +294,8 @@ if __name__ == '__main__':
     
         # Generate descriptors, predictions and performance for the best weights
         trainer.eval_approach.load_pretrained_model(best_model_filename)
-        trainer.eval_approach.run()
+        loop_range = [1,5,10,20,100]
+        trainer.eval_approach.run(loop_range=loop_range)
 
         trainer.eval_approach.save_params()
         trainer.eval_approach.save_descriptors()
