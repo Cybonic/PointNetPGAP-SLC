@@ -2,12 +2,12 @@
 import os
 
 full_cap = '--epoch 100'
-args = ['--network PointNetVLAD',
+args = [#'--network PointNetVLAD',
         '--network PointNet_ORCHNet',
-        '--network ResNet50_ORCHNet',
-        '--network ResNet50GeM',
-        '--network PointNetGeM',
-        '--network overlap_transformer'
+        '--network ResNet50_ORCHNet --modality bev',
+        #'--network ResNet50GeM --modality bev',
+        #'--network PointNetGeM',
+        #'--network overlap_transformer'
 
         #' --network overlap_transformer',
         #f'--memory RAM  --modality bev  --session kitti --model VLAD_resnet50 ',
@@ -22,7 +22,7 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_val/loop_range_10m'
+experiment = f'-e cross_validation/final_tuning'
 
 for loss_func in losses:
         loss =  f'--loss {loss_func}'

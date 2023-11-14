@@ -3,9 +3,8 @@
 from tqdm import tqdm
 import argparse
 import numpy as np
-from dataloader.ORCHARDS import OrchardDataset
+
 from dataloader.KITTI import KittiDataset
-from dataloader.POINTNETVLAD import PointNetEval
 import numpy as np
 from torchvision import transforms as T
 import matplotlib.pyplot as plt

@@ -26,7 +26,8 @@ class PlaceRecognition():
                     logger,
                     loop_range_distance = 10,
                     save_deptrs=True,
-                    device='cpu'):
+                    device='cpu',
+                    **arg):
 
         self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
@@ -58,7 +59,7 @@ class PlaceRecognition():
         self.true_loop = np.array([line==1 for line in table])
 
         # SAVE PREDICTIONS
-        self.predictions_dir = os.path.join('saved_model_data',f'{str(self.model)}',f'{self.dataset_name}')
+        self.predictions_dir = os.path.join('saved_model_data',arg['logdir'],f'{str(self.model)}',f'{self.dataset_name}')
         #self.prediction_file = os.path.join(predictions_dir,f'{str(self.model)}')
         if not os.path.isdir(self.predictions_dir):
             os.makedirs(self.predictions_dir)
@@ -105,7 +106,7 @@ class PlaceRecognition():
         return: None
         """
 
-        target_dir = os.path.join(self.predictions_dir,self.score_value)
+        target_dir = os.path.join(self.predictions_dir,self.score_value[10])
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
         
@@ -155,7 +156,7 @@ class PlaceRecognition():
         '''
 
         if file == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value)
+            target_dir = os.path.join(self.predictions_dir,self.score_value[10])
         else:
             target_dir = os.path.join(self.predictions_dir,file)
         
@@ -194,7 +195,7 @@ class PlaceRecognition():
         assert hasattr(self, 'score_value'), 'Results were not generated!'
         
         if file == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value,'place') # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.score_value[10],'place') # Internal File name 
         else:
             target_dir = os.path.join(self.predictions_dir,file,'place') # Internal File name 
         
@@ -227,7 +228,7 @@ class PlaceRecognition():
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
         if file == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value,'place') # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.score_value[10],'place') # Internal File name 
         else:
             target_dir = os.path.join(self.predictions_dir,file,'place') # Internal File name 
         
@@ -237,24 +238,30 @@ class PlaceRecognition():
         self.logger.warning('\n ** Saving results from internal File: ' + target_dir)
 
         top_cand = np.array(list(self.results.keys())).reshape(-1,1)
-        colum = ['top']
+        colum = []
         rows  = []
-        for value in self.results.items():
-            keys = np.array(list(value[1].keys()))
-            new = keys[np.isin(keys,colum,invert=True)]
-            colum.extend(new)
-            rows.append(list(value[1].values()))
+        
+        for value in self.results['recall'].items():
+            keys = value[0]
+            #new = keys[np.isin(keys,colum,invert=True)]
+            colum.append(keys)
+            rows.append(np.round(value[1],3))
 
         rows = np.array(rows)
-        rows = np.concatenate((top_cand,rows),axis=1)
-        df = pd.DataFrame(rows,columns = colum)
-        file_results = os.path.join(target_dir,'results.csv')
+        #rows = np.concatenate((top_cand,rows),axis=1)
+        df = pd.DataFrame(rows.T,columns = colum)
+        file_results = os.path.join(target_dir,'results_recall.csv')
         df.to_csv(file_results)
         self.logger.warning("Saved results at: " + file_results)
 
 
-    def run(self):
+    def run(self,loop_range= None):
         
+        if isinstance(loop_range,list):
+            self.loop_range_distance = loop_range
+        if not isinstance(self.loop_range_distance,list):
+            self.loop_range_distance = [self.loop_range_distance]
+
         if not isinstance(self.top_cand,list):
             self.top_cand = [self.top_cand]
         
@@ -278,17 +285,16 @@ class PlaceRecognition():
                                                   self.poses,   # Poses
                                                   raw_labels, # Raw labels
                                                   k_top_cand, # Max top candidates
-                                                  radius=[self.loop_range_distance], # Radius
+                                                  radius=self.loop_range_distance, # Radius
                                                   window=self.window)
 
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
-        for top in tqdm(range(1,k_top_cand),'Performance'):
-            remapped_old_format[top]={'recall':metric['recall'][self.loop_range_distance][top]}
-            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
-
-        self.score_value = str(round(metric['recall'][self.loop_range_distance][0],3)) + f'@{1}'
-        self.results = remapped_old_format
+        self.score_value = {}
+        for range_value in self.loop_range_distance:
+            remapped_old_format[range_value]={'recall':[metric['recall'][range_value][top] for  top in [0,k_top_cand-1]] }            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
+            self.score_value[range_value] = str(round(metric['recall'][range_value][0],3)) + f'@{1}'
+        self.results = metric
 
         return remapped_old_format
 

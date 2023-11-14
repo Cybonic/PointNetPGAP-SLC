@@ -18,6 +18,13 @@ base_dir: "uk"
 memory: "DISK"
 modality: "bev"
 
+
+train_sequence: 
+            'orchards/sum22/extracted': ['orchards/june23/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
+            'orchards/june23/extracted': ['orchards/sum22/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
+            'orchards/aut22/extracted': ['orchards/sum22/extracted','orchards/june23/extracted','strawberry/june23/extracted']
+            'strawberry/june23/extracted': ['orchards/sum22/extracted','orchards/june23/extracted','orchards/aut22/extracted']
+
 row_label_file: "point_row_labels.pkl"
 # Ground-truth parameters
 ground_truth:
@@ -43,10 +50,10 @@ ground_truth:
 # Dataset parameters
 train_loader:
   sequence: [
-            #'orchards/sum22/extracted',
-            #'orchards/june23/extracted',
-            #'orchards/aut22/extracted',
-            'strawberry/june23/extracted'
+            'orchards/sum22/extracted',
+            'orchards/june23/extracted',
+            'orchards/aut22/extracted',
+            #'strawberry/june23/extracted'
             ]
 
   fraction: 0.3 

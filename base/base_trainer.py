@@ -144,7 +144,7 @@ class BaseTrainer:
     #
     # =========================================================================================
 
-    def Train(self,train_batch=10,train_entire_dataset=False,loop_range=10):
+    def Train(self,train_batch=10,train_entire_dataset=False,loop_range=[10,20]):
         
         for epoch in range(self.start_epoch, self.epochs):
             
@@ -169,7 +169,7 @@ class BaseTrainer:
                     self.logger.info(f'{str(k):15}: {v}')
                 
                 #self.print_table(val_results_label)
-                log = {'epoch' : epoch, **val_results[1]} # Top 1 candidate
+                log = {'epoch' : epoch, **val_results} # Top 1 candidate
                 
                 # CHECKING IF THIS IS THE BEST MODEL (ONLY FOR VAL)
                 if self.mnt_mode != 'off': # and epoch % self.config['trainer']['val_per_epochs'] == 0:

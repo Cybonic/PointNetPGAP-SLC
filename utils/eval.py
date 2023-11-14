@@ -150,6 +150,11 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
       numpy int: loop candidates 
       numpy float: loop scores
   """
+  assert isinstance(n_top_cand,int), "Number of top candidates must be an integer"  
+  assert n_top_cand > 0, "Number of top candidates must be greater than 0"
+
+  assert isinstance(radius,list), "Radius must be a list"
+
   if not isinstance(queries,np.ndarray):
      queries = np.array(queries)
      

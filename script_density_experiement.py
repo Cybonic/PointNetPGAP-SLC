@@ -3,8 +3,8 @@ import os
 
 full_cap = '--epoch 50'
 args = [#'--network PointNetVLAD',
-        '--network PointNet_ORCHNet',
-        #'--network ResNet50_ORCHNet',
+        #'--network PointNet_ORCHNet',
+        '--network ResNet50_ORCHNet',
         #'--network ResNet50GeM',
         #'--network PointNetGeM',
         #'--network overlap_transformer'

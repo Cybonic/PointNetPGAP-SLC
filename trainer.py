@@ -56,7 +56,8 @@ class Trainer(BaseTrainer):
                                                 window,
                                                 self.loss_dist,
                                                 logger,
-                                                device= self.device)
+                                                device= self.device,
+                                                logdir =  run_name['experiment'])
      
         
 
@@ -158,12 +159,21 @@ class Trainer(BaseTrainer):
 
     def _valid_epoch(self,epoch,loop_range = None):
 
-        overall_scores = self.eval_approach.run()
+        if loop_range is None or isinstance(loop_range,int):
+            loop_range = [loop_range]
+        
+        overall_scores = self.eval_approach.run(loop_range=loop_range)
 
+        max_cand = self.top_cand_retrieval[-1]
         # Post on tensorboard
-        for i,score in overall_scores.items():
-            self._write_scalars_tb(f'val@{i}',score,epoch)
-        return overall_scores,[]
+        #recall_scores = overall_scores['recall']
+        for range,scores in overall_scores.items():
+            for score,top in zip(scores['recall'],[1,max_cand]):
+                self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
+        
+        # For model comparison use the first range top 1 recall
+        output = {'recall':overall_scores[loop_range[0]]['recall'][0]}
+        return output,[]
 
 # ===================================================================================================================
 #    
@@ -193,6 +203,6 @@ class Trainer(BaseTrainer):
         }
 
         metric_dict = logs
-        self.writer.add_hparams(hparam_dict,metric_dict)
+        #self.writer.add_hparams(hparam_dict,metric_dict)
                         
     
