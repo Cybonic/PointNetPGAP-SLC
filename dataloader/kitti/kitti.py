@@ -5,8 +5,9 @@ from dataloader.kitti.kitti_triplet import KittiTriplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
 from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np
+import torch
 
-class KITTI():
+class cross_validation():
     def __init__(self,**kwargs):
 
         self.kwargs = kwargs
@@ -97,5 +98,91 @@ class KITTI():
         return valloader
     
     def __str__(self):
-        return ""
+        return "CROSS_VALIDATION"
 		#return  1-np.array(self.label_disto)
+
+
+
+"""
+================================================================================================
+================================================================================================
+"""
+
+
+
+class split():
+    def __init__(self,**kwargs):
+
+        self.kwargs = kwargs
+        self.root =  kwargs.pop('root')
+        self.dataset = kwargs.pop('dataset')
+        self.val_cfg   = kwargs.pop('val_loader')
+        self.train_cfg = kwargs['train_loader']
+        self.modality  = kwargs['modality']
+        self.max_points = kwargs['max_points']
+        self.memory = kwargs['memory']
+
+        self.split_ratio = 0.8
+        if "split_ratio" in kwargs.keys():
+            self.split_ratio = kwargs['split_ratio']
+
+        sequence  = self.train_cfg['sequence']
+        triplet_files = self.train_cfg['triplet_file']
+
+        #max_points = self.max_points
+        print(self.modality)
+        
+
+        loader = KittiTriplet( root = self.root,
+                                    dataset     = self.dataset,
+                                    sequences   = sequence,
+                                    triplet_file = triplet_files,
+                                    modality = self.modality,
+                                    #ground_truth = self.train_cfg['ground_truth'],
+                                    memory= self.memory
+                                                )
+
+        dataset_size = len(loader)
+        train_size = int(self.split_ratio * dataset_size)  # 80% for training
+        test_size = dataset_size - train_size  # 20% for testing
+        self.train_dataset, self.val_dataset = torch.utils.data.random_split(loader, [train_size, test_size])
+        
+        
+       
+        
+    def get_train_loader(self):
+        if str(self.modality) in ["bev","spherical","pcl"]:
+            self.collation_fn = CollationFunctionFactory("torch_tuple",voxel_size = 0.05, num_points=10000)
+        elif "sparse"in str(self.modality).lower():
+            self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
+
+        trainloader   = DataLoader(self.train_dataset,
+                                    batch_size = 1, #train_cfg['batch_size'],
+                                    shuffle    = self.train_cfg['shuffle'],
+                                    num_workers= 0,
+                                    pin_memory =False,
+                                    drop_last  =True,
+                                    collate_fn = self.collation_fn
+                                    )
+
+        return trainloader
+    
+    def get_val_loader(self):
+         
+        if str(self.modality) in ["bev","spherical","pcl"]:
+            self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
+        elif "sparse" in str(self.modality).lower() :
+            self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
+
+        self.val_dataset.dataset.set_evaluation_mode(True)
+        val_loader  = DataLoader(self.val_dataset,
+                                batch_size = self.val_cfg['batch_size'],
+                                num_workers= 0,
+                                pin_memory=False,
+                                collate_fn = self.collation_fn
+                                )
+    
+        return val_loader
+    
+    def __str__(self):
+        return "SPLIT"

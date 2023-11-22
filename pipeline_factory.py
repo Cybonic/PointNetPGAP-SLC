@@ -55,6 +55,8 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
 
     sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
     sensor_pram = sensor_pram[dataset]
+
+
     roi = sensor_pram['square_roi']
     if 'roi' in args and args['roi'] != None:
         print(f"\nROI: {args['roi']}\n")
@@ -82,25 +84,32 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         # Get point cloud based modality
         num_points = session['max_points']
         output_dim=256
-        #roi = sensor_pram['square_roi']
         modality = Scan(max_points=num_points,
                         aug_flag=session['aug'],square_roi=roi)
     else:
-        raise NotImplementedError("Network not implemented!")
+        raise NotImplementedError("Modality not implemented!")
 
     dataset = dataset.lower()
     
 
-    from dataloader.kitti.kitti import KITTI as DATALOADER
+    from dataloader.kitti.kitti import cross_validation,split
     
-    loader = DATALOADER( root = root_dir,
-                    dataset = dataset,
-                    modality = modality,
-                    memory   = session['memory'],
-                    train_loader  = session['train_loader'],
-                    val_loader    = session['val_loader'],
-                    max_points    = session['max_points']
-                    )
+    # Select experiment type by default is cross_validation
+    model_evaluation = "cross_validation"
+
+    if "model_evaluation" in session:
+        model_evaluation = session['model_evaluation']
+
+    print(f"\n[INFO]Model Evaluation: {model_evaluation}")
+
+    loader = cross_validation( root = root_dir,
+                dataset = dataset,
+                modality = modality,
+                memory   = session['memory'],
+                train_loader  = session['train_loader'],
+                val_loader    = session['val_loader'],
+                max_points    = session['max_points']
+                )
 
     return loader
 

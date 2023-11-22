@@ -173,7 +173,7 @@ if __name__ == '__main__':
         help='sampling points.'
     )
     parser.add_argument(
-        '--test_set',
+        '--val_set',
         type=str,
         required=False,
         default = 'orchards/june23/extracted',
@@ -185,7 +185,13 @@ if __name__ == '__main__':
         required=False,
         default = None,
     )
-
+    parser.add_argument(
+        '--model_evaluation',
+        type=str,
+        required=False,
+        default = "cross_validation",
+        choices = ["cross_validation"]
+    )
 
     FLAGS, unparsed = parser.parse_known_args()
 
@@ -198,21 +204,25 @@ if __name__ == '__main__':
 
 
     # Update config file with new settings
-
+    SESSION['experiment'] = FLAGS.experiment
     SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
     SESSION['modelwrapper']['feat_dim']  = FLAGS.feat_dim
-
+    
+    # Define evaluation mode: cross_validation or split
+    SESSION['model_evaluation'] = FLAGS.model_evaluation
+    SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
+    SESSION['val_loader']['sequence']   = [FLAGS.val_set]
+   
     SESSION['val_loader']['batch_size'] = FLAGS.batch_size
-    SESSION['val_loader']['sequence'] = [FLAGS.test_set]
-    SESSION['train_loader']['sequence'] = SESSION['train_sequence'][FLAGS.test_set]
-
+    SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
+    SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
+    
     SESSION['trainer']['epochs'] =  FLAGS.epoch
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
     
-    SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
-    SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
+    
     SESSION['loop_range'] = FLAGS.loop_range
 
 

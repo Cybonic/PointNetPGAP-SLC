@@ -4,7 +4,7 @@ sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 
 import os
 
-
+import pickle
 import numpy as np
 from dataloader.utils import get_files
 
@@ -112,6 +112,12 @@ class kittidataset():
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
         self.file_names, self.point_cloud_files = get_files(point_cloud_dir)
 
+        # Get row labels
+        row_label_file = os.path.join(self.target_dir,'point_row_labels.pkl')
+        assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
+        with open(row_label_file, 'rb') as f:
+            self.row_labels = pickle.load(f)
+
         if verbose:
             print("[INF] Loading poses from: %s"% pose_file)
             print("[INF] Found %d poses in %s" %(len(self.pose),pose_file))
@@ -128,6 +134,9 @@ class kittidataset():
 
     def _get_target_dir(self):
         return(self.target_dir)
+    
+    def _get_row_labels(self):
+        return(self.row_labels)
 
 
 

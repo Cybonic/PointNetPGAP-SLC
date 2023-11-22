@@ -99,7 +99,7 @@ class KITTIEval:
         self.num_samples = len(indices) # Update number of files
 
     def __str__(self):
-        return f'kitti-{self.sequence}'
+        return f'Eval_{self.modality}'
     
     def get_gt_map(self):
         return(self.table)

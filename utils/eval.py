@@ -161,7 +161,7 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
   n_frames = queries.shape[0]
   if isinstance(descriptrs,dict):
     descriptrs = np.array(list(descriptrs.values()))
-  #else:
+
   all_map_indices = np.arange(descriptrs.shape[0])
   
   # Initiate evaluation dictionary  

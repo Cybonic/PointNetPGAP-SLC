@@ -47,10 +47,9 @@ class PlaceRecognition():
         self.save_deptrs= save_deptrs # Save descriptors after being generated 
         self.use_load_deptrs= False # Load descriptors when they are already generated 
 
-        # Eval data
-      
+
         self.dataset_name = str(loader.dataset)
-        self.database = loader.dataset.get_idx_universe()
+        #self.database = loader.dataset.get_idx_universe()
         self.anchors  = loader.dataset.get_anchor_idx()
         table = loader.dataset.table
         self.poses = loader.dataset.get_pose()
@@ -270,15 +269,14 @@ class PlaceRecognition():
             self.descriptors = self.generate_descriptors(self.model,self.loader)
         
         # COMPUTE TOP 1%
-        # Compute number of samples to retrieve correspondin to 1% 
-        one_percent = int(round(len(self.database)/100,0))
+        # Compute number of samples to retrieve corresponding to 1% 
+        n_samples = len(self.descriptors)
+        one_percent = int(round(n_samples/100,0))
         self.top_cand.append(one_percent)
         k_top_cand = max(self.top_cand)
 
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
-        # the kitti dataset 
-        # radius = 2
         raw_labels = self.raw_labels
         metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
                                                   self.descriptors, # Descriptors

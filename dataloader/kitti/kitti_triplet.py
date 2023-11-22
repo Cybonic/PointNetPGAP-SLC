@@ -24,12 +24,15 @@ class KittiTriplet():
         assert modality != None, "Modality does not be None"
         self.modality = modality 
 
+        self.evaluation_mode = False
         self.plc_files  = []
         self.plc_names  = []
         self.poses      = []
         self.anchors    = []
         self.positives  = []
         self.negatives  = []
+
+        self.row_labels = []
         self.device     = device
         baseline_idx  = 0 
         self.memory = memory 
@@ -38,15 +41,14 @@ class KittiTriplet():
         assert self.memory in ["RAM","DISK"]
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
-
-
         for seq in sequences:
-            
             kitti_struct = kittidataset(root, dataset, seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
             pose = kitti_struct._get_pose_()
-                
+            row_labels = kitti_struct._get_row_labels()
+
+            self.row_labels.extend(row_labels)
             self.plc_files.extend(files)
             self.plc_names.extend(name)
             self.poses.extend(pose)
@@ -73,6 +75,7 @@ class KittiTriplet():
         # Load dataset and laser settings
         self.anchors = np.array(self.anchors)
         self.poses = np.array(self.poses)
+        self.row_labels = np.array(self.row_labels)
 
         self.num_anchors = len(self.anchors)
         self.num_samples = len(self.plc_files)
@@ -106,9 +109,10 @@ class KittiTriplet():
         return(self.poses)
     
     def __str__(self):
-        return "Kitti_" + str(self.modality)
-    
+        return "Triplet_" + str(self.modality)
+
     def __getitem__(self,idx):
+        # By default return the triplet data
         an_idx,pos_idx,neg_idx  = self.anchors[idx],self.positives[idx], self.negatives[idx]
 
         if self.memory == "DISK":
