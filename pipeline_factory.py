@@ -3,7 +3,7 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
-
+import yaml
 
 
 MODELS = ['LOGG3D',
@@ -28,7 +28,6 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
     print(f"Feat Dim: {feat_dim}")
     print("**************************************************\n")
 
-
     if pipeline_name == 'LOGG3D':
         pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name == 'PointNetVLAD':
@@ -50,12 +49,25 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
     return pipeline
 
 
-def dataloader_handler(root_dir,network,dataset,session):
+def dataloader_handler(root_dir,network,dataset,session,**args):
+
+    assert dataset in ['kitti','orchard-uk','uk'],'Dataset Name does not exist!'
+
+    sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
+    sensor_pram = sensor_pram[dataset]
+    roi = sensor_pram['square_roi']
+    if 'roi' in args and args['roi'] != None:
+        print(f"\nROI: {args['roi']}\n")
+        roi['xmin'] = -args['roi']
+        roi['xmax'] = args['roi']
+        roi['ymin'] = -args['roi']
+        roi['ymax'] = args['roi']
 
     if network in ['ResNet50_ORCHNet','overlap_transformer',"ResNet50GeM"]:
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
-            modality = BEVProjection(256,256)
+            bev_pram = sensor_pram['bev']
+            modality = BEVProjection(**bev_pram,square_roi=roi)
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256)
 
@@ -70,15 +82,14 @@ def dataloader_handler(root_dir,network,dataset,session):
         # Get point cloud based modality
         num_points = session['max_points']
         output_dim=256
+        #roi = sensor_pram['square_roi']
         modality = Scan(max_points=num_points,
-                        aug_flag=session['aug'])
+                        aug_flag=session['aug'],square_roi=roi)
     else:
         raise NotImplementedError("Network not implemented!")
 
-    #loader = utils.make_data_loader(root_dir,dataset,session,modality)
-
     dataset = dataset.lower()
-    assert dataset in ['kitti','orchard-uk','uk','pointnetvlad'],'Dataset Name does not exist!'
+    
 
     from dataloader.kitti.kitti import KITTI as DATALOADER
     

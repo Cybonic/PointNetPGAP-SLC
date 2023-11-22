@@ -61,6 +61,8 @@ class KittiTriplet():
                 seq_positives = data['positives']
                 seq_negatives = data['negatives']
             
+            print("Sequence: %s" % seq)
+            print("Anchors: %s" % len(seq_anchors))
             for a,p,n in zip(seq_anchors,seq_positives,seq_negatives):
                 self.anchors.extend([baseline_idx + a.item()])
                 self.positives.extend([baseline_idx + p])

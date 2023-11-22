@@ -92,7 +92,7 @@ def load_positions(file):
 
 class kittidataset():
     
-    def __init__(self,root,dataset,sequence,position_file="positions.txt"):
+    def __init__(self,root,dataset,sequence,position_file="positions.txt",verbose=False):
         # assert isinstance(sequences,list)
         self.pose = []
         self.point_cloud_files = []
@@ -105,19 +105,19 @@ class kittidataset():
         pose_file = os.path.join(self.target_dir,position_file)
 
         assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
-        print("[INF] Loading poses from: %s"% pose_file)
         
         self.pose = load_positions(pose_file)
-        print("[INF] Found %d poses in %s" %(len(self.pose),pose_file))
-
         # Get point cloud files
         point_cloud_dir = os.path.join(self.target_dir,'point_cloud')
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
-        
         self.file_names, self.point_cloud_files = get_files(point_cloud_dir)
 
-        print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
-    
+        if verbose:
+            print("[INF] Loading poses from: %s"% pose_file)
+            print("[INF] Found %d poses in %s" %(len(self.pose),pose_file))
+            print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
+
+
     def _get_point_cloud_file_(self,idx=None):
         if idx == None:
             return(self.point_cloud_files,self.file_names)

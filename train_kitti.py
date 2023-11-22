@@ -1,7 +1,7 @@
 
 import os
 
-full_cap = '--epoch 100'
+full_cap = '--epoch 30'
 args = [#'--network PointNetVLAD',
         '--network PointNet_ORCHNet',
         '--network ResNet50_ORCHNet --modality bev',
@@ -22,7 +22,7 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_validation/final_tuning'
+experiment = f'-e test_eval_data/30m' #cross_validation/final_tuning'
 
 for loss_func in losses:
         loss =  f'--loss {loss_func}'

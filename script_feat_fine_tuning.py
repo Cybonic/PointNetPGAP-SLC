@@ -16,26 +16,29 @@ args = [#'--network PointNetVLAD',
         #f'--memory RAM  --modality bev  --session kitti --model MuHA_resnet50',
 ]
 
-feat_dim = [16,32,64,128,256,512]
+feat_dim = [1024]
 
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_validation/final_tuning'
+#experiment = f'-e cross_validation/final_tuning'
+experiment = f'-e cross_validation/roi_30m'
 
 test_sequrnces = [
-        'orchards/sum22/extracted',
+        #'orchards/sum22/extracted',
         'orchards/june23/extracted',
-        'orchards/aut22/extracted',
-        'strawberry/june23/extracted'
+        #'orchards/aut22/extracted',
+        #'strawberry/june23/extracted'
 ]
 
 for arg in args:
         for seq in test_sequrnces:
                 for dim in feat_dim:
-                        feat_input = "--feat_dim {}".format(str(dim))
-                        experiment = f'-e cross_validation/final_tuning/featdim{dim}'
-                        test_seq = '--test_seq ' + seq
-                        func_arg = arg +  ' ' +  experiment +  ' ' + full_cap + ' ' + feat_input + ' ' + test_seq
-                        #print(func_arg)
-                        os.system('python3 train_knn.py ' + func_arg)
+                        for  roi in [1,5,10,20,30,40,50,60]:
+                                feat_input = "--feat_dim {}".format(str(dim))
+                                experiment = f'-e cross_validation/eval_roi/{roi}m/featdim{dim}'
+                                test_seq = '--test_set ' + seq
+                                roi_flag = "--roi " + str(roi)
+                                func_arg = arg +  ' ' +  experiment +  ' ' + full_cap + ' ' + feat_input + ' ' + test_seq + ' ' + roi_flag
+                                #print(func_arg)
+                                os.system('python3 train_knn.py ' + func_arg)

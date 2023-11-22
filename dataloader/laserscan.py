@@ -86,7 +86,7 @@ class LaserScan:
 
     self.reset()
     self.parser = parser
-    # self.max_rem = max_rem
+  
     self.max_points = max_points
     self.noise = 0
     self.set_aug_flag = aug
@@ -257,8 +257,8 @@ class LaserScan:
   
 
 class Scan(LaserScan):
-  def __init__(self,parser = None, max_points = -1, aug_flag=False):
-    super(Scan,self).__init__(parser,max_points,aug_flag)
+  def __init__(self,parser = None, max_points = -1, aug_flag=False,**argv):
+    super(Scan,self).__init__(parser,max_points,aug_flag,**argv)
     pass
 
   def load(self,file):
@@ -272,14 +272,8 @@ class Scan(LaserScan):
     return input
   
   def __call__(self,files):
-    #buff = []
-    #if not isinstance(files,list) and not isinstance(files,np.ndarray):
-    #    files = [files]
-    
-    #for file in files: 
+
     points,intensity = self.load(files)
-    #pcl = np.concatenate((points,intensity.reshape(-1,1)),axis=-1)
-    #buff.append(points)
 
     return self.to_tensor(points)
   

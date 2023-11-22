@@ -6,26 +6,28 @@ from PIL import Image
 import numpy as np
 
 def test_bev(file,width,height):
-    data_handler = BEVProjection(width,height)
+
+    square_roi = [{'xmin':-15,'xmax':15,'ymin':-15,'ymax':15,'zmin':-1,'zmax':2}]
+    data_handler = BEVProjection(width,height,square_roi=square_roi)
     input = data_handler.load(file)
 
-    w,h = input.shape
+    height_mod  = input['height']
+    density_mod = input['density']
+    intensity_mod = input['intensity']
+
+    w,h,b = height_mod.shape
     assert w == width,'Width is wrong'
     assert h == height,'Height is wrong'
-    return True
+    return True,input
 
 if __name__ == "__main__":
-    width = 512
-    height = 512
+    width = 256
+    height = 256
 
     file = 'tutorial_data/000000.bin'
-
-    flag = test_bev(file,width,height)
+    file = '../data/orchards_aut22.bin'
+    flag,input = test_bev(file,width,height)
     print("BEV is passing")
-
-    # Save Projection
-    data_handler = BEVProjection(width,height)
-    input = data_handler.load(file)
 
     proj_height = input['height']
     proj_height_np = proj_height.astype(np.uint8).squeeze()

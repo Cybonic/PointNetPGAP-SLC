@@ -8,8 +8,8 @@ PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 class SphericalProjection(LaserScan):
   def __init__(self, width = 900,height=64, fov_up=3.0, fov_down=-25.0, 
-               max_range=50,max_rem=1,
-               parser = None, max_points = -1, aug_flag=False):
+                max_range=50,max_rem=1,
+                parser = None, max_points = -1, aug_flag=False):
     '''
     width,
     height,
@@ -33,8 +33,8 @@ class SphericalProjection(LaserScan):
     self.open_scan(file)
     filtered_points,filtered_remissions = self.get_points()
     return range_projection(filtered_points, filtered_remissions,
-                            fov_up=3.0, fov_down=-25.0, proj_H=64, 
-                            proj_W=900, max_range=50)
+                            fov_up=self.fov_up, fov_down=self.fov_down, proj_H=self.height, 
+                            proj_W= self.width, max_range=self.max_depth)
 
   def __call__(self,files):
 
@@ -48,7 +48,7 @@ class SphericalProjection(LaserScan):
 
 
 class BEVProjection(LaserScan):
-  def __init__(self,width,height,parser = None, max_points = -1, aug_flag=False):
+  def __init__(self,width,height, parser = None, max_points = -1, aug_flag=False,**args):
     '''
     width,
     height,
@@ -57,7 +57,7 @@ class BEVProjection(LaserScan):
     aug_flag=False
     '''
 
-    super(BEVProjection,self).__init__(parser,max_points,aug_flag)
+    super(BEVProjection,self).__init__(parser,max_points,aug_flag,**args)
     self.width = width
     self.height = height
 

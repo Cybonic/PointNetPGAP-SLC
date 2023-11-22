@@ -18,7 +18,6 @@ base_dir: "uk"
 memory: "DISK"
 modality: "bev"
 
-
 train_sequence: 
             'orchards/sum22/extracted': ['orchards/june23/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
             'orchards/june23/extracted': ['orchards/sum22/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
@@ -49,6 +48,7 @@ ground_truth:
 
 # Dataset parameters
 train_loader:
+  triplet_file: 'triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl'
   sequence: [
             'orchards/sum22/extracted',
             'orchards/june23/extracted',
@@ -65,6 +65,7 @@ train_loader:
   #rotation: [180,-45,-45]
   
 val_loader:
+  ground_truth_file: "eval/ground_truth_loop_range_10m.pkl"
   dataset: ''
   sequence: ['strawberry/june23/extracted']
   batch_size: 1 #50         # batch size

@@ -130,7 +130,7 @@ if __name__ == '__main__':
         '--feat_dim',
         type=int,
         required=False,
-        default = 512,
+        default = 1024,
         help='sampling points.'
     )
     parser.add_argument(
@@ -176,7 +176,14 @@ if __name__ == '__main__':
         '--test_set',
         type=str,
         required=False,
-        default = 'orchards/aut22/extracted',
+        default = 'orchards/june23/extracted',
+    )
+
+    parser.add_argument(
+        '--roi',
+        type=float,
+        required=False,
+        default = None,
     )
 
 
@@ -251,7 +258,7 @@ if __name__ == '__main__':
 
     ###################################################################### 
 
-    # The development has been made on different PC, each has some custom settings
+    # The development has been made on different PCs, each has some custom settings
     # e.g the root path to the dataset;
     device_name = os.uname()[1]
     pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
@@ -263,13 +270,16 @@ if __name__ == '__main__':
                             output_dim=256,
                             feat_dim=FLAGS.feat_dim
                             )
-    
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
     model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
 
     print("*"*30)
     print("Model: %s" %(str(model)))
     print("*"*30)
+
+
+    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
+
+    
 
     run_name = {'dataset': str(SESSION['val_loader']['sequence'][0]),
                 'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
