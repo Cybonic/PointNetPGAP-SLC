@@ -106,6 +106,7 @@ trainer:
   val_per_epochs: 1
   eval_metric: 'L2'
   results_dir: "/media/tiago/BIG/Orchards/temp/"
+  early_stop: 30 #epochs 
 
 
 optimizer:

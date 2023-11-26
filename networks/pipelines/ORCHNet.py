@@ -8,14 +8,24 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 #from .heads.netvlad import NetVLADLoupe
 from networks.utils import *
 from networks.backbones import resnet, pointnet
-from networks.aggregators.multihead import MultiHead
+from networks.aggregators import multihead 
 import yaml
 import os
 
+def PointNetORCHNet(**argv):
+  return ORCHNet('pointnet',**argv)
 
+def ResNet50ORCHNet(**argv):
+  return ORCHNet('resnet50',**argv)
+
+def ResNet50ORCHNetMaxPooling(**argv):
+  return ORCHNet('resnet50',aggregator='MultiHeadMAXPolling',**argv)
+
+def PointNetORCHNetMaxPooling(**argv):
+  return ORCHNet('pointnet',aggregator='MultiHeadMAXPolling',**argv)
 
 class ORCHNet(nn.Module):
-  def __init__(self,backbone_name:str,output_dim:int,feat_dim:int,**argv):
+  def __init__(self,backbone_name:str,output_dim:int,feat_dim:int,aggregator="MultiHead",**argv):
     super(ORCHNet,self).__init__()
     
     #model_cfg = os.path.join('networks',f'{modelname.lower()}','param.yaml')
@@ -30,6 +40,8 @@ class ORCHNet(nn.Module):
     self.backbone_name = backbone_name
     #self.classifier = classifier
     if self.backbone_name == 'resnet50':
+      if 'num_points' in argv:
+        argv.pop('num_points')
       return_layers = {'layer4': 'out'}
       pretrained = model_param['pretrained_backbone']
       #max_points = model_param['max_points']
@@ -39,8 +51,11 @@ class ORCHNet(nn.Module):
     else:
       self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=False,scale=1)
 
+    self.aggregator = aggregator
     #self.backbone = self.backbone.to('cuda:0')
-    self.head = MultiHead(outdim=output_dim)
+    assert aggregator in multihead.__dict__,'Aggregator param do not exist'
+    head = multihead.__dict__[aggregator]
+    self.head = head(outdim=output_dim)
    
   def forward(self,x):
 
@@ -58,7 +73,7 @@ class ORCHNet(nn.Module):
     return self.head.parameters()
   
   def __str__(self):
-    return "ORCHNet_" + self.backbone_name
+    return self.backbone_name + "-ORCHNet-" + self.aggregator
 
 
 if __name__ == '__main__':

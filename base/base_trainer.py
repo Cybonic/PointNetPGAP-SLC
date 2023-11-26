@@ -195,7 +195,7 @@ class BaseTrainer:
             
  
             # SAVE CHECKPOINT
-            if epoch % self.save_period == 0 and self.save_period > 0:
+            if self.improved or (epoch % self.save_period == 0 and self.save_period > 0):
                 self._save_checkpoint(epoch, save_best = self.improved)
                 self.improved = False
             

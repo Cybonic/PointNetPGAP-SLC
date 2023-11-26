@@ -40,13 +40,19 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='ResNet50_ORCHNet',
-        choices=['PointNetVLAD',
+        default='ResNet50ORCHNetMaxPooling',
+        choices=['ResNet50ORCHNetMaxPooling',
+                 'PointNetORCHNetMaxPooling',
+                'PointNetVLAD',
                  'LOGG3D',
                  'PointNet_ORCHNet',
                  'ResNet50_ORCHNet',
                  'ResNet50GeM',
                  'PointNetGeM',
+                 'ResNet50MAC',
+                 'PointNetMAC',
+                 'ResNet50SPoC',
+                 'PointNetSPoC',
                  'overlap_transformer'],
         help='Directory to get the trained model.'
     )
@@ -291,8 +297,8 @@ if __name__ == '__main__':
 
     
 
-    run_name = {'dataset': str(SESSION['val_loader']['sequence'][0]),
-                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
+    run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
+                'experiment':FLAGS.experiment,
                 'model': str(model)
             }
 
@@ -307,8 +313,9 @@ if __name__ == '__main__':
             train_epoch_zero = False,
             debug = False
             )
-
+ 
     best_model_filename = trainer.Train(train_batch=FLAGS.batch_size)
+    
 
     if FLAGS.save_predictions:
     

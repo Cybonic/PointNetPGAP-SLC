@@ -94,11 +94,11 @@ class LaserScan:
     # Configure ROI
     self.roi = {}
     self.set_roi_flag = False
-    if 'square_roi' in argv:
+    if 'square_roi' in argv and argv['square_roi'] != None:
       self.set_roi_flag = True
       self.roi['square_roi'] = argv['square_roi']
     
-    if 'cylinder_roi' in argv:
+    if 'cylinder_roi' in argv and argv['cylinder_roi'] != None:
       self.set_roi_flag = True
       self.roi['cylinder_roi'] = argv['cylinder_roi']
 

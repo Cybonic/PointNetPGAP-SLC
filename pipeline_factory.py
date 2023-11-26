@@ -17,10 +17,12 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
     
     from networks.pipelines.PointNetVLAD import PointNetVLAD
     from networks.pipelines.LOGG3D import LOGG3D
-    from networks.pipelines.ORCHNet import ORCHNet
+    from networks.pipelines import ORCHNet
     from networks.pipelines.GeMNet import PointNetGeM,ResNet50GeM
     from networks.pipelines.overlap_transformer import featureExtracter
-
+    from networks.pipelines.SPoCNet import PointNetSPoC,ResNet50SPoC
+    from networks.pipelines.MACNet import PointNetMAC,ResNet50MAC   
+    
     print("\n**************************************************")
     print(f"Model: {pipeline_name}")
     print(f"N.points: {num_points}")
@@ -32,15 +34,24 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
         pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD( use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name.endswith("ORCHNet"):
-        if pipeline_name.startswith("PointNet"): # ['ORCHNet_PointNet','ORCHNet']:
-            pipeline = ORCHNet('pointnet',output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
-        elif pipeline_name.startswith("ResNet50"):# 'ORCHNet_ResNet50':
-            pipeline = ORCHNet('resnet50',output_dim=output_dim,feat_dim = feat_dim)
+    elif "ORCHNet" in pipeline_name:
+        #if pipeline_name.startswith("PointNet"): # ['ORCHNet_PointNet','ORCHNet']:
+        pipeline = ORCHNet.__dict__[pipeline_name](output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
+        #pipeline = ORCHNet('pointnet',output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
+        #elif pipeline_name.startswith("ResNet50"):# 'ORCHNet_ResNet50':
+        #    pipeline = ORCHNet('resnet50',output_dim=output_dim,feat_dim = feat_dim)
     elif pipeline_name == "PointNetGeM":
         pipeline = PointNetGeM(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "ResNet50GeM":    
         pipeline = ResNet50GeM(output_dim=output_dim,feat_dim = 1024)
+    elif pipeline_name == "PointNetSPoC":
+        pipeline = PointNetSPoC(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
+    elif pipeline_name == "ResNet50SPoC":    
+        pipeline = ResNet50SPoC(output_dim=output_dim,feat_dim = 1024)
+    elif pipeline_name == "PointNetMAC":
+        pipeline = PointNetMAC(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
+    elif pipeline_name == "ResNet50MAC":
+        pipeline = ResNet50MAC(output_dim=output_dim,feat_dim = 1024)
     elif pipeline_name == 'overlap_transformer':
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
@@ -57,15 +68,16 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
     sensor_pram = sensor_pram[dataset]
 
 
-    roi = sensor_pram['square_roi']
+    roi = None
     if 'roi' in args and args['roi'] != None:
+        roi = sensor_pram['square_roi']
         print(f"\nROI: {args['roi']}\n")
         roi['xmin'] = -args['roi']
         roi['xmax'] = args['roi']
         roi['ymin'] = -args['roi']
         roi['ymax'] = args['roi']
 
-    if network in ['ResNet50_ORCHNet','overlap_transformer',"ResNet50GeM"]:
+    if network in ['ResNet50_ORCHNet','overlap_transformer',"ResNet50GeM"] or network.startswith("ResNet50"):
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
             bev_pram = sensor_pram['bev']
@@ -80,7 +92,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         modality = SparseLaserScan(voxel_size=0.05,max_points=num_points,
                                    aug_flag=session['aug'])
     
-    elif network in ['PointNetVLAD','PointNet_ORCHNet',"PointNetGeM"]:
+    elif network in ['PointNetVLAD','PointNet_ORCHNet',"PointNetGeM"] or network.startswith("PointNet"):
         # Get point cloud based modality
         num_points = session['max_points']
         output_dim=256

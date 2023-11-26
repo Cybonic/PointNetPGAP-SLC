@@ -81,6 +81,38 @@ class MultiHead(nn.Module):
     
     return _l2norm(fu)
 
+class MultiHeadMAXPolling(nn.Module):
+  def __init__(self,outdim=256,init_std=0.1):
+    super(MultiHeadMAXPolling,self).__init__()
+    self.outdim = outdim
+    self.spoc = SPoC(outdim=outdim)
+    self.gem  = GeM(outdim=outdim)
+    self.mac  = MAC(outdim=outdim)
+    
+    self.fusion= nn.Parameter(torch.zeros(1,3))
+    # Initialization
+    nn.init.normal_(self.fusion.data, mean=0, std=init_std)
+
+  def forward(self,x):
+    spoc =  _l2norm(self.spoc(x))
+    gem  =  _l2norm(self.gem(x))
+    mac  =  _l2norm(self.mac(x))
+    z    =  torch.stack([spoc,gem,mac],dim=1)
+    fu = torch.max(z,dim=1)
+    return _l2norm(fu[0])
+
+
+
+if __name__=="__main__":
+    
+    head = MultiHeadMAXPolling(256)
+    
+    x = torch.randn(2,1024,10000)
+    y = head(x)
+    
+    
+    
+
 
 
 

@@ -1,10 +1,13 @@
 
 import os
 
-full_cap = '--epoch 30'
+full_cap = '--epoch 100'
 args = [#'--network PointNetVLAD',
-        '--network PointNet_ORCHNet',
-        '--network ResNet50_ORCHNet --modality bev',
+        #'--network PointNet_ORCHNet',
+        #'--network ResNet50_ORCHNet --modality bev',
+        '--network ResNet50ORCHNetMaxPooling --modality bev',
+        '--network PointNetORCHNetMaxPooling',
+        
         #'--network ResNet50GeM --modality bev',
         #'--network PointNetGeM',
         #'--network overlap_transformer'
@@ -22,11 +25,19 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e test_eval_data/30m' #cross_validation/final_tuning'
+experiment = f'-e cross_validation/final_tuning'
 
-for loss_func in losses:
-        loss =  f'--loss {loss_func}'
+
+test_sequrnces = [
+        'orchards/sum22/extracted',
+        'orchards/june23/extracted',
+        'orchards/aut22/extracted',
+        'strawberry/june23/extracted'
+]
+
+for seq in test_sequrnces:
         for arg in args:
-                func_arg = arg + ' ' + loss +  ' ' +  experiment +  ' ' + full_cap
+                test_seq = '--val_set ' + seq
+                func_arg = arg + ' ' +test_seq + ' ' +  experiment +  ' ' + full_cap
                 #print(func_arg)
                 os.system('python3 train_knn.py ' + func_arg)

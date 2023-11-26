@@ -1,7 +1,7 @@
 
 import os
 
-full_cap = '--epoch 50'
+full_cap = '--epoch 100'
 args = [#'--network PointNetVLAD',
         '--network PointNet_ORCHNet',
         '--network ResNet50_ORCHNet --modality bev',
@@ -22,11 +22,10 @@ feat_dim = [1024]
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
 #experiment = f'-e cross_validation/final_tuning'
-experiment = f'-e cross_validation/roi_30m'
 
 test_sequrnces = [
-        #'orchards/sum22/extracted',
-        'orchards/june23/extracted',
+        'orchards/sum22/extracted',
+        #'orchards/june23/extracted',
         #'orchards/aut22/extracted',
         #'strawberry/june23/extracted'
 ]
@@ -34,10 +33,10 @@ test_sequrnces = [
 for arg in args:
         for seq in test_sequrnces:
                 for dim in feat_dim:
-                        for  roi in [1,5,10,20,30,40,50,60]:
+                        for  roi in [10,20,30,40,50,60,100]:
                                 feat_input = "--feat_dim {}".format(str(dim))
                                 experiment = f'-e cross_validation/eval_roi/{roi}m/featdim{dim}'
-                                test_seq = '--test_set ' + seq
+                                test_seq = '--val_set ' + seq
                                 roi_flag = "--roi " + str(roi)
                                 func_arg = arg +  ' ' +  experiment +  ' ' + full_cap + ' ' + feat_input + ' ' + test_seq + ' ' + roi_flag
                                 #print(func_arg)
