@@ -2,15 +2,19 @@
 import os
 
 full_cap = '--epoch 300'
-args = [#'--network PointNetVLAD',
-        '--network PointNetORCHNet',
-        '--network ResNet50ORCHNet --modality bev'
+args = ['--network PointNetVLAD',
+        #'--network PointNetORCHNet',
+        #'--network ResNet50ORCHNet --modality bev'
         #'--network ResNet50ORCHNetMaxPooling --modality bev',
         #'--network PointNetORCHNetMaxPooling',
         
-        #'--network ResNet50GeM --modality bev',
-        #'--network PointNetGeM',
-        #'--network overlap_transformer'
+        '--network ResNet50GeM --modality bev',
+        '--network PointNetGeM',
+        '--network ResNet50MAC --modality bev',
+        '--network PointNetMAC',
+        '--network ResNet50SPoC --modality bev',
+        '--network PointNetSPoC',
+        '--network overlap_transformer'
 
         #' --network overlap_transformer',
         #f'--memory RAM  --modality bev  --session kitti --model VLAD_resnet50 ',
@@ -25,7 +29,7 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_validation/final_tuning'
+experiment = f'-e cross_validation/final'
 
 
 test_sequrnces = [
@@ -35,10 +39,9 @@ test_sequrnces = [
         'strawberry/june23/extracted'
 ]
 
-
-for arg in args:
-        for seq in test_sequrnces:
+for seq in test_sequrnces:
+        for arg in args:
                 test_seq = '--val_set ' + seq
                 func_arg = arg + ' ' +test_seq + ' ' +  experiment +  ' ' + full_cap
                 #print(func_arg)
-                os.system('python3 train_knn.py ' + func_arg)
+                os.system('python3 eval_knnv2.py ' + func_arg)

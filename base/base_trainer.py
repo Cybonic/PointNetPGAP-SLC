@@ -73,7 +73,7 @@ class BaseTrainer:
         if not os.path.isdir(self.checkpoint_dir):
             os.makedirs(self.checkpoint_dir)
 
-        self.save_best_model_filename = os.path.join(self.checkpoint_dir, f'checkpoint.pth')
+        self.save_best_model_filename = os.path.join(self.checkpoint_dir, f'best_model.pth')
 
         helpers.dir_exists(self.checkpoint_dir)
         config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
@@ -195,8 +195,12 @@ class BaseTrainer:
             
  
             # SAVE CHECKPOINT
-            if self.improved or (epoch % self.save_period == 0 and self.save_period > 0):
+            if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
                 self._save_checkpoint(epoch, save_best = self.improved)
+                self.eval_approach.save_params()
+                self.eval_approach.save_descriptors()
+                self.eval_approach.save_predictions_cv()
+                self.eval_approach.save_results_cv()
                 self.improved = False
             
 
@@ -243,8 +247,8 @@ class BaseTrainer:
         torch.save(state, filename)
 
         if save_best:
-            filename = os.path.join(self.checkpoint_dir, f'best_model.pth')
-            torch.save(state, filename)
+            
+            torch.save(state, self.save_best_model_filename)
             self.logger.info("Saving current best: best_model.pth")
 
 

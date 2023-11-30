@@ -317,7 +317,9 @@ class PlaceRecognition():
         for batch_idx in tbar:
             input,inx = next(dataloader)
             input = input.to(self.device)
-            input = input.type(torch.cuda.FloatTensor)
+            #if isinstance(input,torchsparse.tensor.SparseTensor):
+
+            #input = input.type(torch.cuda.FloatTensor)
             # Generate the Descriptor
             prediction = model(input)
             #prediction,feat = model(input)

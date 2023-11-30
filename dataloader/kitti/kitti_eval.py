@@ -110,7 +110,7 @@ class KITTIEval:
         if self.memory=="RAM":
             pcl = self.data_on_ram[index]
         else:
-            pcl = self.modality(self.files[index]).long()
+            pcl = self.modality(self.files[index])#.long()
 
         return(pcl,index)
 

@@ -26,7 +26,7 @@ class LOGG3D(nn.Module):
         y = torch.split(x, list(counts))
         x = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
         x = self.head(x)
-        return x, y[:2]
+        return x #, y[:2]
 
     def get_backbone_params(self):
         return self.backbone.parameters()

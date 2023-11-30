@@ -36,6 +36,7 @@ def force_cudnn_initialization():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
 
+    
     parser.add_argument(
         '--network', '-m',
         type=str,
@@ -59,7 +60,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='test/loop_range_10m',
+        default='cross_validation/final',
         help='Directory to get the trained model.'
     )
 
@@ -196,6 +197,14 @@ if __name__ == '__main__':
         default = "cross_validation",
         choices = ["cross_validation"]
     )
+    parser.add_argument(
+        '--chkpt_root',
+        type=str,
+        required=False,
+        default = "/media/deep/backup/orchnet/v2/aa-0.5/checkpoints"
+    )
+
+
 
     FLAGS, unparsed = parser.parse_known_args()
 
@@ -206,6 +215,8 @@ if __name__ == '__main__':
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
+
+    SESSION['trainer']['save_dir'] =  FLAGS.chkpt_root
 
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
@@ -222,6 +233,8 @@ if __name__ == '__main__':
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
     
     SESSION['trainer']['epochs'] =  FLAGS.epoch
+
+   
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
@@ -257,8 +270,8 @@ if __name__ == '__main__':
     print("----------\n")
 
     # For repeatability
-    # torch.manual_seed(0)
-    # np.random.seed(0)
+    torch.manual_seed(0)
+    np.random.seed(0)
 
     # Get Loss parameters
     loss_type  = SESSION['loss']['type']
@@ -314,17 +327,14 @@ if __name__ == '__main__':
             )
     
     loop_range = [1,5,10,15,20,30,40,50,500]
-    best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
-    
+    best_model_filename = trainer.save_best_model_filename 
+    # Generate descriptors, predictions and performance for the best weights
+    print(f'\nLoading best model: {best_model_filename}\n')
+    trainer.eval_approach.load_pretrained_model(best_model_filename)
+    #loop_range = [1,5,10,15,20,500]
+    trainer.eval_approach.run(loop_range=loop_range)
 
-    if FLAGS.save_predictions:
-    
-        # Generate descriptors, predictions and performance for the best weights
-        trainer.eval_approach.load_pretrained_model(best_model_filename)
-        #loop_range = [1,5,10,15,20,500]
-        trainer.eval_approach.run(loop_range=loop_range)
-
-        trainer.eval_approach.save_params()
-        trainer.eval_approach.save_descriptors()
-        trainer.eval_approach.save_predictions_cv()
-        trainer.eval_approach.save_results_cv()
+    trainer.eval_approach.save_params()
+    trainer.eval_approach.save_descriptors()
+    trainer.eval_approach.save_predictions_cv()
+    trainer.eval_approach.save_results_cv()

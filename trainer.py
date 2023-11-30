@@ -168,11 +168,12 @@ class Trainer(BaseTrainer):
         # Post on tensorboard
         #recall_scores = overall_scores['recall']
         for range,scores in overall_scores.items():
-            for score,top in zip(scores['recall'],[1,max_cand]):
+            for score,top in zip(scores['recall'],['1','1%']):
                 self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
         
         # For model comparison use the first range top 1 recall
-        output = {'recall':overall_scores[loop_range[0]]['recall'][0]}
+        monitor_idx = 2 # 10
+        output = {'recall':overall_scores[loop_range[monitor_idx]]['recall'][0]}
         return output,[]
 
 # ===================================================================================================================
