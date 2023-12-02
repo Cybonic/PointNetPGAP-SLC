@@ -193,8 +193,8 @@ if __name__ == '__main__':
         '--model_evaluation',
         type=str,
         required=False,
-        default = "cross_validation",
-        choices = ["cross_validation"]
+        default = "split",
+        choices = ["cross_validation","split"]
     )
 
     FLAGS, unparsed = parser.parse_known_args()
@@ -214,8 +214,12 @@ if __name__ == '__main__':
     
     # Define evaluation mode: cross_validation or split
     SESSION['model_evaluation'] = FLAGS.model_evaluation
-    SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
-    SESSION['val_loader']['sequence']   = [FLAGS.val_set]
+    if SESSION['model_evaluation'] == "cross_validation":
+        SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
+        SESSION['val_loader']['sequence']   = [FLAGS.val_set]
+    elif SESSION['model_evaluation'] == "split":
+        SESSION['train_loader']['sequence'] = [FLAGS.val_set]
+        SESSION['val_loader']['sequence']   = [FLAGS.val_set]
    
     SESSION['val_loader']['batch_size'] = FLAGS.batch_size
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file

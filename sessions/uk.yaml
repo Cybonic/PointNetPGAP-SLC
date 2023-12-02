@@ -12,7 +12,7 @@ retrieval:
   range_thres: 6
 
 max_points: 10000 # Maximum number of points to be used in the network
-aug: True 
+aug: False # Augment data with rotations 
 
 base_dir: "uk"
 memory: "DISK"
@@ -27,9 +27,9 @@ cross_validation:
 split:
   split_ratio: 0.95
   sequences: ['orchards/sum22/extracted',
-            'orchards/june23/extracted',
-            'orchards/aut22/extracted',
-            'strawberry/june23/extracted'] 
+              'orchards/june23/extracted',
+              'orchards/aut22/extracted',
+              'strawberry/june23/extracted'] 
 
 row_label_file: "point_row_labels.pkl"
 # Ground-truth parameters
@@ -78,7 +78,6 @@ val_loader:
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False
-
   loop_range: 10 # Loop Threshold [m]
 
 
@@ -106,7 +105,7 @@ trainer:
   val_per_epochs: 1
   eval_metric: 'L2'
   results_dir: "/media/tiago/BIG/Orchards/temp/"
-  early_stop: 30 #epochs 
+  early_stop: 50 #epochs 
 
 
 optimizer:

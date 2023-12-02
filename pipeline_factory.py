@@ -3,6 +3,16 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
+from dataloader.kitti.kitti import cross_validation,split
+
+
+from networks.pipelines.PointNetVLAD import PointNetVLAD
+from networks.pipelines.LOGG3D import LOGG3D
+from networks.pipelines import ORCHNet
+from networks.pipelines.GeMNet import PointNetGeM,ResNet50GeM
+from networks.pipelines.overlap_transformer import featureExtracter
+from networks.pipelines.SPoCNet import PointNetSPoC,ResNet50SPoC
+from networks.pipelines.MACNet import PointNetMAC,ResNet50MAC 
 import yaml
 
 
@@ -13,15 +23,30 @@ MODELS = ['LOGG3D',
           'overlap_transformer',
           'ORCHNet']
 
+# ==================================================================================================
+# ======================================== PIPELINE FACTORY ========================================
+# ==================================================================================================
+
 def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
+    """
+    This function returns the model 
     
-    from networks.pipelines.PointNetVLAD import PointNetVLAD
-    from networks.pipelines.LOGG3D import LOGG3D
-    from networks.pipelines import ORCHNet
-    from networks.pipelines.GeMNet import PointNetGeM,ResNet50GeM
-    from networks.pipelines.overlap_transformer import featureExtracter
-    from networks.pipelines.SPoCNet import PointNetSPoC,ResNet50SPoC
-    from networks.pipelines.MACNet import PointNetMAC,ResNet50MAC   
+    Parmeters:
+    ----------
+    pipeline_name: str
+        Name of the pipeline to be used
+    num_points: int
+        Number of points to be used as input
+    output_dim: int
+        Dimension of the output feature vector
+    feat_dim: int
+        Dimension of the hidden feature vector
+
+    Returns:
+    --------
+    pipeline: object
+        Pipeline object
+    """
     
     print("\n**************************************************")
     print(f"Model: {pipeline_name}")
@@ -35,11 +60,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD( use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif "ORCHNet" in pipeline_name:
-        #if pipeline_name.startswith("PointNet"): # ['ORCHNet_PointNet','ORCHNet']:
         pipeline = ORCHNet.__dict__[pipeline_name](output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
-        #pipeline = ORCHNet('pointnet',output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
-        #elif pipeline_name.startswith("ResNet50"):# 'ORCHNet_ResNet50':
-        #    pipeline = ORCHNet('resnet50',output_dim=output_dim,feat_dim = feat_dim)
     elif pipeline_name == "PointNetGeM":
         pipeline = PointNetGeM(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "ResNet50GeM":    
@@ -59,6 +80,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
         raise NotImplementedError("Network not implemented!")   
     return pipeline
 
+# ==================================================================================================
+# ======================================== DATALOADER FACTORY ======================================
+# ==================================================================================================
 
 def dataloader_handler(root_dir,network,dataset,session,**args):
 
@@ -84,7 +108,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
             modality = BEVProjection(**bev_pram,square_roi=roi)
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256)
-
+            
     elif network == 'LOGG3D':
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
@@ -102,26 +126,35 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         raise NotImplementedError("Modality not implemented!")
 
     dataset = dataset.lower()
-    
 
-    from dataloader.kitti.kitti import cross_validation,split
-    
     # Select experiment type by default is cross_validation
-    model_evaluation = "cross_validation"
+    model_evaluation = "cross_validation" # Default
 
     if "model_evaluation" in session:
         model_evaluation = session['model_evaluation']
 
     print(f"\n[INFO]Model Evaluation: {model_evaluation}")
 
-    loader = cross_validation( root = root_dir,
-                dataset = dataset,
-                modality = modality,
-                memory   = session['memory'],
-                train_loader  = session['train_loader'],
-                val_loader    = session['val_loader'],
-                max_points    = session['max_points']
-                )
+    if model_evaluation == "cross_validation":
+        loader = cross_validation( root = root_dir,
+                                    dataset = dataset,
+                                    modality = modality,
+                                    memory   = session['memory'],
+                                    train_loader  = session['train_loader'],
+                                    val_loader    = session['val_loader'],
+                                    max_points    = session['max_points']
+                                    )
+    elif model_evaluation == "split":
+        loader = split( root = root_dir,
+                                    dataset = dataset,
+                                    modality = modality,
+                                    memory   = session['memory'],
+                                    train_loader  = session['train_loader'],
+                                    val_loader    = session['val_loader'],
+                                    max_points    = session['max_points']
+                                    )
+    else:
+        raise NotImplementedError("Model Evaluation not implemented!")
 
     return loader
 

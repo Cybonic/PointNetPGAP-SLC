@@ -39,13 +39,13 @@ class ModelWrapper(nn.Module):
         
         self.model.cuda()
         # Mini Batch training due to memory constrains
-        pcl = pcl.type(torch.cuda.FloatTensor)
         if self.training == False:
-            
+            pcl = pcl.type(torch.cuda.FloatTensor)
             pred = self.model(pcl)
             #pred = F.softmax(pred,dim=1) # Normalize descriptors such that ||D||2 = 1
             return(pred)
 
+        
         anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'],pcl[0]['negative']
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
         num_anchor,num_pos,num_neg = 1,len(positive),len(negative)

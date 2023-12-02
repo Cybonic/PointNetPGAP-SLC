@@ -51,7 +51,6 @@ class KITTIEval:
         ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
         assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
 
-
          # load the numpy arrays from the file using pickle
         with open(ground_truth_path, 'rb') as f:
             data = pickle.load(f)
@@ -77,13 +76,15 @@ class KITTIEval:
         for a,pos in zip(self.anchors,self.positives):
             for p in pos:
                 self.table[a,p]=1
-
         if self.memory == "RAM":
             self.load_to_RAM()
 
         self.idx_universe = np.arange(self.num_samples)
         self.map_idx  = np.setxor1d(self.idx_universe,self.anchors)
    
+    def load_split(self,split):
+        self.anchors = np.array(self.anchors)[split]
+
     def load_to_RAM(self):
         self.memory=="RAM"
         indices = list(range(self.num_samples))

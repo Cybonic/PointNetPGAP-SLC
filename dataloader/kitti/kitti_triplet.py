@@ -31,12 +31,11 @@ class KittiTriplet():
         self.anchors    = []
         self.positives  = []
         self.negatives  = []
-
+        
         self.row_labels = []
         self.device     = device
-        baseline_idx  = 0 
+        baseline_idx    = 0 
         self.memory = memory 
-
         
         assert self.memory in ["RAM","DISK"]
         #self.ground_truth_mode = argv['ground_truth']
@@ -98,6 +97,9 @@ class KittiTriplet():
             plt = self.modality(self.plc_files[idx])
             self.data_on_ram.append(plt)
                 
+    def load_split(self,split):
+        self.anchors = np.array(self.anchors)[split]
+        self.num_anchors = len(self.anchors)
 
     def __len__(self):
         return(self.num_anchors)
@@ -110,6 +112,9 @@ class KittiTriplet():
     
     def __str__(self):
         return "Triplet_" + str(self.modality)
+
+    def set_evaluation_mode(self):
+        self.evaluation_mode = True
 
     def __getitem__(self,idx):
         # By default return the triplet data
@@ -124,8 +129,8 @@ class KittiTriplet():
             plt_pos = [self.data_on_ram[i] for i in pos_idx]
             plt_neg = [self.data_on_ram[i] for i in neg_idx]
 
-            
-        pcl = {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
+        
+        pcl =  {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
         indx = {'anchor':an_idx,'positive':pos_idx,'negative':neg_idx}
 
         return(pcl,indx)
