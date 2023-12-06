@@ -20,6 +20,7 @@ class LOGG3D(nn.Module):
             signed_sqrt=False, do_fc=False, input_dim=16, is_tuple=False)
 
     def forward(self, x):
+        
         _, counts = torch.unique(x.C[:, -1], return_counts=True)
 
         x = self.backbone(x)

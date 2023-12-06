@@ -15,7 +15,10 @@ from networks.pipelines.SPoCNet import PointNetSPoC,ResNet50SPoC
 from networks.pipelines.MACNet import PointNetMAC,ResNet50MAC 
 import yaml
 
+from utils import loss as losses
+from networks import contrastive
 
+# ==================================================================================================
 MODELS = ['LOGG3D',
           'PointNetVLAD',
           'ORCHNet_PointNet',
@@ -27,7 +30,7 @@ MODELS = ['LOGG3D',
 # ======================================== PIPELINE FACTORY ========================================
 # ==================================================================================================
 
-def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
+def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,device='cuda',**argv):
     """
     This function returns the model 
     
@@ -77,8 +80,28 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024):
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
     else:
-        raise NotImplementedError("Network not implemented!")   
-    return pipeline
+        raise NotImplementedError("Network not implemented!")
+
+    loss_type  = argv['loss']['type']
+    loss_param = argv['loss']['args']
+
+    loss = losses.__dict__[loss_type](**loss_param,device = device)
+
+    print("*"*30)
+    print(f'Loss: {loss}')
+    print("*"*30)
+
+    if pipeline_name in ['LOGG3D','spvcnnORCHNet']:
+        # Sparse model has a different wrapper, because of the splitting 
+        model = contrastive.SparseModelWrapper(pipeline,loss = loss,**argv['modelwrapper'])
+    else:
+        model = contrastive.ModelWrapper(pipeline,loss =loss,**argv['modelwrapper'])
+
+    print("*"*30)
+    print("Model: %s" %(str(model)))
+    print("*"*30)
+
+    return model
 
 # ==================================================================================================
 # ======================================== DATALOADER FACTORY ======================================
@@ -105,11 +128,11 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
             bev_pram = sensor_pram['bev']
-            modality = BEVProjection(**bev_pram,square_roi=roi)
+            modality = BEVProjection(**bev_pram,square_roi=roi,aug_flag=session['aug'])
         elif session['modality'] == "spherical" or network != "overlap_transformer":
-            modality = SphericalProjection(256,256)
+            modality = SphericalProjection(256,256,square_roi=roi,aug_flag=session['aug'])
             
-    elif network == 'LOGG3D':
+    elif network in ['LOGG3D','spvcnnORCHNet']:
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
         output_dim=256

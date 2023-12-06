@@ -4,9 +4,9 @@ import os
 full_cap = '--epoch 300'
 args = [# '--network PointNetVLAD',
         '--network PointNetORCHNet',
-        #'--network ResNet50ORCHNet --modality bev'
-        #'--network ResNet50ORCHNetMaxPooling --modality bev',
-        #'--network PointNetORCHNetMaxPooling',
+        '--network ResNet50ORCHNet --modality bev'
+        '--network ResNet50ORCHNetMaxPooling --modality bev',
+        '--network PointNetORCHNetMaxPooling',
         
         #'--network ResNet50GeM --modality bev',
         #'--network PointNetGeM',
@@ -25,7 +25,9 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_validation/final_tuning/no_aug'
+
+evaluation_type = "cross_validation"
+experiment = f'-e {evaluation_type}/finalMyModels-no_aug'
 
 
 test_sequrnces = [
@@ -39,7 +41,7 @@ test_sequrnces = [
 for arg in args:
         for seq in test_sequrnces:
                 test_seq = '--val_set ' + seq
-                model_evaluation = '--model_evaluation cross_validation' 
+                model_evaluation = f'--model_evaluation {evaluation_type}' 
                 func_arg = arg + ' ' +test_seq + ' ' +  experiment +  ' ' + full_cap + ' ' + model_evaluation
                 #print(func_arg)
                 os.system('python3 train_knn.py ' + func_arg)

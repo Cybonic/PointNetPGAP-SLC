@@ -8,9 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 #from .heads.netvlad import NetVLADLoupe
 from networks.utils import *
 from networks.backbones import resnet, pointnet
+from networks.backbones.spvnas.model_zoo import spvcnn
+
 from networks.aggregators import multihead 
 import yaml
 import os
+
+def spvcnnORCHNet(**argv):
+  return ORCHNet('spvcnn',**argv)
 
 def PointNetORCHNet(**argv):
   return ORCHNet('pointnet',**argv)
@@ -38,7 +43,6 @@ class ORCHNet(nn.Module):
     model_param = model_cfg[backbone_name]
 
     self.backbone_name = backbone_name
-    #self.classifier = classifier
     if self.backbone_name == 'resnet50':
       if 'num_points' in argv:
         argv.pop('num_points')
@@ -48,20 +52,29 @@ class ORCHNet(nn.Module):
       backbone = resnet.__dict__[backbone_name](pretrained,**argv)
       self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
     
-    else:
+    elif self.backbone_name == 'pointnet':
       self.backbone = pointnet.PointNet_features(dim_k=feat_dim,use_tnet=False,scale=1)
 
+    elif self.backbone_name == 'spvcnn':
+      self.backbone = spvcnn(output_dim=16)
+
+    # Define Aggregator
     self.aggregator = aggregator
-    #self.backbone = self.backbone.to('cuda:0')
     assert aggregator in multihead.__dict__,'Aggregator param do not exist'
-    head = multihead.__dict__[aggregator]
-    self.head = head(outdim=output_dim)
+    self.head  = multihead.__dict__[aggregator](outdim=output_dim)
+
    
   def forward(self,x):
 
     y = self.backbone(x)
     if self.backbone_name == 'resnet50':
       y = y['out']
+    elif self.backbone_name == 'spvcnn':
+      _, counts = torch.unique(x.C[:, -1], return_counts=True)
+      y = torch.split(y, list(counts))
+      y = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
+      width = int(np.sqrt(y.shape[2]))
+      y = y.view(y.size(0),y.size(1),width,width) 
     z = self.head(y)
 
     return z

@@ -75,12 +75,12 @@ if __name__ == "__main__":
     parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/research/datasets')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'GreenHouse',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "e3",type = str)
+    parser.add_argument('--seq',default  = "strawberry/june23",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print("[INF] Loading data from directory: %s\n" % dir_path)
 
     # Create Save Directory
-    save_root_dir  = os.path.join(root_dir,dataset,seq,"extracted")
+    save_root_dir  = os.path.join(root_dir,dataset,seq,"tempv2")
     if args.debug_mode:
         save_root_dir = os.path.join('temp',dataset,seq)
     
@@ -165,9 +165,15 @@ if __name__ == "__main__":
     
         print("[INF] saved ground truth at:" + file)
 
+    # For the Paper
+    # ========================================
+    angle_degrees = -93
+    #rotated_poses = rotate_poses(poses.copy(),angle_degrees)
+    min_y = np.min(rotated_poses[:,1])
+    rotated_poses[:,1] = rotated_poses[:,1] - min_y
+    xy = rotated_poses[:,:2]
+    # ========================================
 
-   
-    
     if show:
         print("[INF] Plotting data...")
          # color pallet based on the number of unique labels

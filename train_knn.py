@@ -22,8 +22,8 @@ import torch
 
 #from networks.orchnet import *
 from trainer import Trainer
-from networks import contrastive
-from utils import loss as losses
+
+
 from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
 
@@ -40,9 +40,10 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetVLAD',
+        default='ResNet50ORCHNet',
         choices=['PointNetVLAD',
                  'LOGG3D',
+                 'PointNetORCHNetMaxPooling',
                  'PointNetORCHNet',
                  'ResNet50ORCHNet',
                  'ResNet50GeM',
@@ -230,7 +231,6 @@ if __name__ == '__main__':
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
     
-    
     SESSION['loop_range'] = FLAGS.loop_range
 
 
@@ -265,19 +265,10 @@ if __name__ == '__main__':
     # np.random.seed(0)
 
     # Get Loss parameters
-    loss_type  = SESSION['loss']['type']
-    loss_param = SESSION['loss']['args']
-
-    loss = losses.__dict__[loss_type](**loss_param,device = FLAGS.device)
-
-    print("*"*30)
-    print(f'Loss: {loss}')
-    print("*"*30)
-
     ###################################################################### 
-
     # The development has been made on different PCs, each has some custom settings
     # e.g the root path to the dataset;
+
     device_name = os.uname()[1]
     pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
 
@@ -287,26 +278,22 @@ if __name__ == '__main__':
     model_ = model_handler(FLAGS.network,
                             num_points=SESSION['max_points'],
                             output_dim=256,
-                            feat_dim=FLAGS.feat_dim
+                            feat_dim=FLAGS.feat_dim,
+                            device = FLAGS.device,
+                            loss = SESSION['loss'],
+                            modelwrapper = SESSION['modelwrapper']
                             )
-    model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
-
-    print("*"*30)
-    print("Model: %s" %(str(model)))
-    print("*"*30)
-
-
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
 
     
+    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
 
     run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
                 'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
-                'model': str(model)
+                'model': str(model_)
             }
 
     trainer = Trainer(
-            model        = model,
+            model        = model_,
             train_loader = loader.get_train_loader(),
             val_loader   = loader.get_val_loader(),
             resume = FLAGS.resume,

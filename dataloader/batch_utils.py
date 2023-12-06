@@ -42,8 +42,6 @@ class CollationFunctionFactory:
     def collate_default(self, list_data):
         #if len(list_data) > 1:
         return self.collate_torch(list_data)
-        #else:
-        #    return list_data
 
     def collate_torch(self, list_data):
         outputs_pts = []
@@ -57,7 +55,6 @@ class CollationFunctionFactory:
             #outputs.extend(contrastive_tuple)
         #outputs = [torch.from_numpy(ct).float() for ct in contrastive_tuple]
         outputs = torch.stack(outputs_pts)
-
         return outputs,torch.tensor(output_idx)
     
 
@@ -86,7 +83,6 @@ class CollationFunctionFactory:
         sparse_list = []
         id_list = []
         for batch_data in list_data:
-                        
             for data in batch_data:
                 if isinstance(data, SparseTensor):
                     sparse_list.append(data)
@@ -100,14 +96,40 @@ class CollationFunctionFactory:
         assert len(list_data)==1
 
         #outputs = []
+        sparse_list = []
+        sparse_name = []
+        sparse_data = []
+        indices_list = []
+        labels = []
         contrastive_tuple = []
-        for tuple_data in list_data[0]:
-            for name in tuple_data.keys():
+        for i,tuple_data in enumerate(list_data):
+            
+            # indice 0 - data
+            # indice 1 - indices of the data in the dataset
+
+            if i>0: # currently only support one tuple
+                break
+
+            for name in tuple_data[0].keys():
+                if name in "anchor":
+                    sparse_list.extend([tuple_data[0][name]])
+                    sparse_name.append(name)
                 if name in  ['positive','negative']:
-                    if isinstance(tuple_data[name][0], SparseTensor):
-                        tuple_data[name] = sparse_collate(tuple_data[name])
-            contrastive_tuple.append(tuple_data)
-        return contrastive_tuple
+                    if isinstance(tuple_data[0][name][0], SparseTensor):
+                        n_elem = len(tuple_data[0][name])
+                        sparse_name.extend([name]*n_elem)
+                        sparse_list.extend(tuple_data[0][name])
+
+            labels.extend(sparse_name)
+
+            for name in tuple_data[1].keys():
+                if name in "anchor":
+                    indices_list.extend([tuple_data[1][name]])
+                else:
+                    indices_list.extend(tuple_data[1][name])
+
+        sparse_data = sparse_collate(sparse_list)
+        return sparse_data,indices_list,labels
     
 
     def collate_torch_tuple(self, list_data):

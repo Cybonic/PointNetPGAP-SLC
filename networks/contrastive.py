@@ -3,6 +3,87 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 import math
+import numpy as np
+
+
+class SparseModelWrapper(nn.Module):
+    def __init__(self,  model,
+                        loss        = None,
+                        minibatch_size = 3, 
+                        device = 'cuda',
+                        **args,
+                        ):
+                        
+        super(SparseModelWrapper,self).__init__()
+        assert minibatch_size>= 3, 'Minibatch size too small'
+        
+        self.loss = loss
+        self.minibatch_size = minibatch_size
+        self.device = device
+        self.batch_counter = 0 
+        self.model = model
+        
+
+    def mean_grad(self):
+        if self.batch_counter == 0:
+            self.batch_counter  = 1 
+
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                param.grad /= self.batch_counter
+        
+        self.batch_counter = 0 
+
+
+    def forward(self,pcl,):
+        
+        self.model.cuda()
+        # Mini Batch training due to memory constrains
+        if self.training == False:
+            #pcl = pcl.type(torch.cuda.FloatTensor)
+            pred = self.model(pcl.cuda())
+            #pred = F.softmax(pred,dim=1) # Normalize descriptors such that ||D||2 = 1
+            return(pred)
+
+        # Training
+        # Adaptation to new paradigm
+        batch_loss = 0
+        sparse_data = pcl[0].cuda()  # pcl[0] is the sparse tensor
+        sparse_index = np.array(pcl[1]) # pcl[1] is the sparse index
+        labels = pcl[2]       # pcl[2] is the labels
+
+        pred = self.model(sparse_data)
+
+        
+        anchor_idx = np.array([idx for idx,label in enumerate(labels) if label == 'anchor'])
+        positive_idx = np.array([idx for idx,label in enumerate(labels) if label == 'positive'])
+        negative_idx = np.array([idx for idx,label in enumerate(labels) if label == 'negative'])
+
+
+        descriptor = {'a':pred[anchor_idx],'p':pred[positive_idx],'n':pred[negative_idx]}
+        poses = {'a':sparse_index[anchor_idx],'p':sparse_index[positive_idx],'n':sparse_index[negative_idx]}
+        loss_value,info = self.loss(descriptor = descriptor, poses = poses)
+
+        loss_value.backward() # Backpropagate gradients and free graph
+        batch_loss += loss_value
+
+        return(batch_loss,info)
+    
+    def get_backbone_params(self):
+        return self.model.get_backbone_params()
+
+    def get_classifier_params(self):
+        return self.model.get_classifier_params()
+    
+    def resume(self,path):
+        assert os.path.isfile(path),'Something is work with the path: '+ path
+        checkpoint = torch.load(path)
+        self.model.load_state_dict(checkpoint['state_dict'])
+        print("Loader pretrained model: " + path)
+
+    def __str__(self):
+        return str(self.model) + '-' + str(self.loss)
+    
 
 
 class ModelWrapper(nn.Module):
@@ -29,7 +110,6 @@ class ModelWrapper(nn.Module):
 
         for name, param in self.model.named_parameters():
             if param.requires_grad:
-                
                 param.grad /= self.batch_counter
         
         self.batch_counter = 0 
@@ -40,16 +120,18 @@ class ModelWrapper(nn.Module):
         self.model.cuda()
         # Mini Batch training due to memory constrains
         if self.training == False:
-            pcl = pcl.type(torch.cuda.FloatTensor)
+            #pcl = pcl.type(torch.cuda.FloatTensor)
             pred = self.model(pcl)
             #pred = F.softmax(pred,dim=1) # Normalize descriptors such that ||D||2 = 1
             return(pred)
 
-        
+        # Training
+        # Adaptation to new paradigm
         anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'],pcl[0]['negative']
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
         num_anchor,num_pos,num_neg = 1,len(positive),len(negative)
         
+
         if len(anchor.shape)<4:
             anchor = anchor.unsqueeze(0)
         if positive.shape[0]>1:
@@ -58,7 +140,6 @@ class ModelWrapper(nn.Module):
         pose = {'a':pose_anchor,'p':pose_positive,'n':pose_negative}
         
         batch_loss = 0
-
         mini_batch_total_iteration = math.ceil(num_neg/self.minibatch_size)
         for i in range(0,mini_batch_total_iteration): # This works because neg < pos
             

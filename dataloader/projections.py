@@ -3,6 +3,7 @@
 import numpy as np
 from .laserscan import LaserScan
 import torchvision.transforms as Tr
+import torch 
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
@@ -27,14 +28,17 @@ class SphericalProjection(LaserScan):
     self.max_depth = max_range
 
   def to_tensor(self,input):
-    return PREPROCESSING(input)
+    return PREPROCESSING(input).type(torch.float32)
   
   def load(self,file):
     self.open_scan(file)
     filtered_points,filtered_remissions = self.get_points()
     return range_projection(filtered_points, filtered_remissions,
-                            fov_up=self.fov_up, fov_down=self.fov_down, proj_H=self.height, 
-                            proj_W= self.width, max_range=self.max_depth)
+                            fov_up=self.fov_up, 
+                            fov_down=self.fov_down, 
+                            proj_H=self.height, 
+                            proj_W= self.width, 
+                            max_range=self.max_depth)
 
   def __call__(self,files):
 
@@ -62,7 +66,7 @@ class BEVProjection(LaserScan):
     self.height = height
 
   def to_tensor(self,input):
-    return PREPROCESSING(input)
+    return PREPROCESSING(input).type(torch.float32)
   
   def load(self,file):
     self.open_scan(file)
@@ -73,14 +77,11 @@ class BEVProjection(LaserScan):
     image = self.load(file)
     values = list(image.values())
     image = np.concatenate(values,axis=-1)
-
     return self.to_tensor(image)
   
   def __str__(self):
     return "bev"
 
-
-  
 
 def get_bev_proj(points,remissions,Width,Height):
   """ Project a pointcloud into a spherical projection image.projection.
