@@ -40,12 +40,13 @@ class KITTIEval:
             
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
+        self.row_labels = kitti_struct._get_row_labels()
         
 
-        row_label_file = os.path.join(root,dataset,sequence,'point_row_labels.pkl')
-        assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
-        with open(row_label_file, 'rb') as f:
-            self.row_labels = pickle.load(f)
+        #row_label_file = os.path.join(root,dataset,sequence,'point_row_labels.pkl')
+        #assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
+        #with open(row_label_file, 'rb') as f:
+        #    self.row_labels = pickle.load(f)
         
         # Load aline rotation
         ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
