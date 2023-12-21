@@ -69,6 +69,24 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
     return(pos_distro)
 
 
+def generate_labels(seq,poses):
+    # Load row ids
+    seq = seq.replace('/','_')
+    print("[INF] Loading row segments from: %s"% seq)
+    dataset_raws = row_segments.__dict__[seq]
+    # Load aline rotation
+    rotation_angle = dataset_raws['angle']
+    # Rotate poses to match the image frame
+    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
+    xy = rotated_poses[:,:2]
+
+    # Load row segments
+    rectangle_rois = np.array(dataset_raws['rows'])
+    labels  = extract_points_in_rectangle_roi(xy,rectangle_rois)
+    
+    return(labels,xy)
+
+
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
@@ -85,8 +103,10 @@ if __name__ == "__main__":
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
-    parser.add_argument('--save_data',default  = True ,type = bool,
+    parser.add_argument('--save_data',default  = False ,type = bool,
                         help='save evaluation data to a pickle file')
+    parser.add_argument('--load_labels',default  = False ,type = bool,
+                        help='load labels from a pickle file')
     
     
     args = parser.parse_args()
@@ -135,30 +155,27 @@ if __name__ == "__main__":
 
     print("[INF] Reading poses from: %s"% pose_file)
     print("[INF] Number of poses: %d"% poses.shape[0])
-
-    # Load row ids
-    seq = seq.replace('/','_')
-    print("[INF] Loading row segments from: %s"% seq)
-    dataset_raws = row_segments.__dict__[seq]
-    # Load aline rotation
-    rotation_angle = dataset_raws['angle']
-    # Rotate poses to match the image frame
-    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
-    xy = rotated_poses[:,:2]
-
-    # Load row segments
-    rectangle_rois = np.array(dataset_raws['rows'])
-    labels  = extract_points_in_rectangle_roi(xy,rectangle_rois)
-
+    
+    # ========================================
+    # Load Row Labels
+    
+    if args.load_labels:
+        labels = []
+        row_label_file = os.path.join(root_dir,dataset,seq,'extracted','point_row_labels.pkl')
+        assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
+        with open(row_label_file, 'rb') as f:
+            labels = pickle.load(f)
+    
+    else:
+        labels,poses = generate_labels(seq,poses)
+        
     unique_labels = np.unique(labels)
 
-    n_points = xy.shape[0]
+    n_points = poses.shape[0]
 
     # Generate Ground-truth Table
     if args.save_data:
-    
         file = os.path.join(save_root_dir,'point_row_labels.pkl')
-
          # save the numpy arrays to a file using pickle
         with open(file, 'wb') as f:
             pickle.dump(labels, f)
@@ -167,11 +184,11 @@ if __name__ == "__main__":
 
     # For the Paper
     # ========================================
-    angle_degrees = -93
+    #angle_degrees = -93
     #rotated_poses = rotate_poses(poses.copy(),angle_degrees)
-    min_y = np.min(rotated_poses[:,1])
-    rotated_poses[:,1] = rotated_poses[:,1] - min_y
-    xy = rotated_poses[:,:2]
+    min_y = np.min(poses[:,1])
+    poses[:,1] = poses[:,1] - min_y
+    xy = poses[:,:2]
     # ========================================
 
     if show:
@@ -187,6 +204,8 @@ if __name__ == "__main__":
         ax.scatter(xy[:,0],xy[:,1],s=10,c=point_color)
         ax.set_aspect('equal')
         plt.savefig(os.path.join(save_root_dir,'point_row_labels.png'))
+        plt.savefig('point_row_labels.png')
+        print("[INF] Saved figure to: %s"% os.path.join(save_root_dir,'point_row_labels.png'))
         plt.show()
 
  
