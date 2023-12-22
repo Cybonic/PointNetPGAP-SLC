@@ -130,6 +130,111 @@ def eval_place(queries,descriptrs,poses,k=25,radius=[25],reranking = None,window
 
 
 
+def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[25],reranking = None,window=1):
+  """_summary_
+
+  Args:
+      queries (numpy): query indices 
+      descriptrs (numpy): array with all descriptors [n x d], 
+                          where n is the number of descriptors and 
+                          ´d´ is the dimensionality;
+      poses (numpy): array with all the poses [n x 3], where
+                    n is the number os positions; 
+      k (int, optional): number of top candidates. Defaults to 25.
+      radius (list, optional): radius in meters [m] of true loops. Defaults to [25].
+      reranking (numpy, optional): _description_. Defaults to None.
+      window (int, optional): _description_. Defaults to 1.
+
+  Returns:
+      dict: retrieval metrics,
+      numpy int: loop candidates 
+      numpy float: loop scores
+  """
+  assert isinstance(n_top_cand,int), "Number of top candidates must be an integer"  
+  assert n_top_cand > 0, "Number of top candidates must be greater than 0"
+
+  assert isinstance(radius,list), "Radius must be a list"
+     
+
+  if isinstance(descriptrs,dict):
+    descriptrs = np.array(list(descriptrs.values()))
+
+  all_indices = np.arange(descriptrs.shape[0])
+  from utils.metric import reloc_metrics
+  
+  metric = reloc_metrics(n_top_cand,radius)
+
+  ignore_indices = 100
+  if ignore_indices < window:
+    ignore_indices = window + 10
+    
+  queries = all_indices[ignore_indices:]
+  
+  loop_cands = []
+  loop_scores= []
+  gt_loops   = []
+  import tqdm
+  poses[:,2] = 0 # ignore z axis
+  for i,(q) in tqdm.tqdm(enumerate(queries),total=len(queries)):
+    
+    query_pos = poses[q,:]
+    query_destps = descriptrs[q]
+    query_labels = row_labels[q]
+    
+    # Ignore scans within a window around the query
+    selected_map_idx = np.arange(0,q-window) # generate indices until q - window 
+  
+    selected_poses   = poses[selected_map_idx,:]
+    selected_desptrs = descriptrs[selected_map_idx,:]
+    selected_map_labels   = row_labels[selected_map_idx]
+    # ====================================================== 
+     # compute ground truth distance
+    delta = query_pos.reshape(1,3) - selected_poses
+    gt_euclid_dist = np.linalg.norm(delta, axis=-1) 
+    
+    # True Loops
+    true_loops = np.argsort(gt_euclid_dist)[:n_top_cand]
+   
+    true_loops_labels = selected_map_labels[true_loops]
+    true_loop_same_row_idx = np.where(query_labels == true_loops_labels)[0]
+    true_loops_same_row = true_loops[true_loop_same_row_idx]
+    true_loops_dist = gt_euclid_dist[true_loops_same_row]
+    gt_loops.append(true_loops_same_row)
+    
+     # Compute loop candidates
+    delta_dscpts = query_destps - selected_desptrs
+    embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
+    # Sort to get the most similar (lowest values) vectors first
+    loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
+    # ROW FILTERING
+    loop_cand_labels = selected_map_labels[loop_cand_idx]
+    cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
+    
+    loop_cand_idx = loop_cand_idx[cand_in_same_row_idx]
+    loop_cand_sim = embed_dist[loop_cand_idx]
+    loop_cand_dist = gt_euclid_dist[loop_cand_idx]
+    # return the euclidean distance of the top descriptor predictions
+    loop_cands.append(loop_cand_idx)
+    loop_scores.append(loop_cand_sim)
+    #max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
+    #print(max_dist_within_row)
+    #min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
+
+    metric.update(true_loops_dist,loop_cand_dist,loop_cand_sim)
+
+    # save loop candidates indices 
+    
+  
+  global_metrics = metric.get_metrics()
+  #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
+  prediction =  {'loop_cand':loop_cands,
+                 'loop_scores':loop_scores,
+                 'gt_loops':gt_loops}
+  
+  return global_metrics,prediction
+
+
+
 def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[25],reranking = None,window=1):
   """_summary_
 
@@ -158,7 +263,7 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
   if not isinstance(queries,np.ndarray):
      queries = np.array(queries)
      
-  n_frames = queries.shape[0]
+
   if isinstance(descriptrs,dict):
     descriptrs = np.array(list(descriptrs.values()))
 
@@ -209,7 +314,6 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     gt_loops_cand_euclid_dist = gt_euclid_dist[est_loop_cand_idx]
     
     # ======================================================
-    
     loop_cand_labels = selected_map_labels[est_loop_cand_idx]
     cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
     
@@ -217,32 +321,12 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
     #print(max_dist_within_row)
     min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
-    #cand_in_same_row_idx  = np.where(query_labels == selected_map_labels)[0]
-    
-    
-    #loop_cand_in_row_idx = selected_map_idx[cand_in_same_row_idx]
-    #dist_loops_cand_in_row = gt_loops_cand_euclid_dist[loop_cand_in_row_idx] # consider only loops that are in the same row
 
-    #dist_all_points_in_row = gt_loops_cand_euclid_dist[loop_cand_in_row_idx]
-    
     metric.update(loop_cand_eucl_dist_within_row)
-    # ======================================================
-    # Count true positives for different radius and NN number
-    
-    #global_metrics['tp'] = {r: [global_metrics['tp'][r][nn] + (1 if (loop_cand_eucl_dist_within_row[:nn + 1] <= r).any() 
-                                                               # else 0) for nn in range(n_top_cand)] for r in radius}
-    
-    #global_metrics['RR'] = {r: global_metrics['RR'][r]+[next((1.0/(i+1) for i, x in enumerate(loop_cand_eucl_dist_within_row <= r) if x), 0)]
-                                                                  #for r in radius}
-    
+
     # save loop candidates indices 
-    #assert len(nn_ndx) == n_top_cand, "Number of candidates is not equal to the number of top candidates"
     loop_cands.append(est_loop_cand_idx)
     loop_scores.append(est_loop_cand_sim_dist)
-    
-  # Calculate mean metrics
-  #global_metrics["recall"] = {r: [global_metrics['tp'][r][nn] / n_frames for nn in range(n_top_cand)] for r in radius}
-  #global_metrics['MRR'] = {r: np.mean(np.asarray(global_metrics['RR'][r])) for r in radius}
   
   global_metrics = metric.get_metrics()
   #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
@@ -304,21 +388,6 @@ def eval_row_retrieval(queries,descriptrs,poses, row_labels, n_top_cand=25,radiu
   global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
   global_metrics['RR'] = {r: [] for r in radius}
 
-def retrieval_knn(query_dptrs,map_dptrs, top_cand,metric):
-    
-    #retrieved_loops ,scores = euclidean_knnv2(query_dptrs,map_dptrs, top_cand= max_top)
-    metric_fun = loss_lib.get_distance_function(metric)
-    scores,winner = [],[]
-
-    for q in query_dptrs:
-        q_torch,map_torch = totensorformat(q.reshape(1,-1),map_dptrs) 
-        sim = metric_fun(q_torch,map_torch,dim=2).squeeze() # similarity-based metrics 0 :-> same; +inf: -> Dissimilar 
-        sort_value,sort_idx = sim.sort() # Sort to get the most similar vectors first
-        # save top candidates
-        scores.append(sort_value.detach().cpu().numpy()[:top_cand])
-        winner.append(sort_idx.detach().cpu().numpy()[:top_cand])
-
-    return np.array(winner),np.array(scores)
 
 
 def retrieve_eval(retrieved_map,true_relevant_map,top=1,**argv):

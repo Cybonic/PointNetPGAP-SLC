@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 from networks import contrastive
-from utils.eval import eval_row_place
+from utils.eval import eval_row_place,eval_row_relocalization
 import logging
 import pandas as pd
 
@@ -27,8 +27,10 @@ class PlaceRecognition():
                     loop_range_distance = 10,
                     save_deptrs=True,
                     device='cpu',
+                    eval_protocol = 'place',
                     **arg):
 
+        self.eval_protocol = eval_protocol
         self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
         self.logger = logger
@@ -53,7 +55,7 @@ class PlaceRecognition():
         self.anchors  = loader.dataset.get_anchor_idx()
         table = loader.dataset.table
         self.poses = loader.dataset.get_pose()
-        self.raw_labels = loader.dataset.get_row_labels()
+        self.row_labels = loader.dataset.get_row_labels()
 
         self.true_loop = np.array([line==1 for line in table])
 
@@ -74,6 +76,7 @@ class PlaceRecognition():
         self.param['dataset_name'] = self.dataset_name
         self.param['model_name'] = self.model_name
         self.param['predictions_dir'] = self.predictions_dir
+        self.param['eval_protocol'] = self.eval_protocol
 
 
 
@@ -97,17 +100,23 @@ class PlaceRecognition():
         self.logger.warning('\n ** Architecture: ' + checkpoint['arch'])
         self.logger.warning('\n ** Best Score: %0.2f'%checkpoint['monitor_best']['recall'])
 
-    def save_params(self):
+    def save_params(self,save_dir=None):
         """
         Save the parameters of the model
         params:
 
         return: None
         """
+        
+        if save_dir == None:
+            target_dir = os.path.join(self.predictions_dir,self.score_value[10])
+        else:
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10])
 
-        target_dir = os.path.join(self.predictions_dir,self.score_value[10])
+            
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
+            print('\n ** Created a new directory: ' + target_dir)
         
         file_name = os.path.join(target_dir,'params.yaml')
         with open(file_name, 'w') as file:
@@ -127,6 +136,7 @@ class PlaceRecognition():
         target_dir = os.path.join(self.predictions_dir,file)
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
+            print('\n ** Created a new directory: ' + target_dir)
         
         file = os.path.join(target_dir,'descriptors.torch')
             
@@ -146,7 +156,7 @@ class PlaceRecognition():
     
 
 
-    def save_descriptors(self,file=None):
+    def save_descriptors(self,save_dir=None):
         '''
         Save the generated descriptors
         params:
@@ -154,20 +164,21 @@ class PlaceRecognition():
         return: None
         '''
 
-        if file == None:
+        if save_dir == None:
             target_dir = os.path.join(self.predictions_dir,self.score_value[10])
         else:
-            target_dir = os.path.join(self.predictions_dir,file)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10])
         
         # Create directory
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
+            print('\n ** Created a new directory: ' + target_dir)
         file = os.path.join(target_dir,'descriptors.torch')
 
         # LOADING DESCRIPTORS
-        if self.save_deptrs == True:
-            torch.save(self.descriptors,file)
-            self.logger.warning('\n ** Saving descriptors at File: ' + file)
+        #if self.save_deptrs == True:
+        torch.save(self.descriptors,file)
+        self.logger.warning('\n ** Saving descriptors at File: ' + file)
     
 
     def get_descriptors(self):
@@ -177,7 +188,7 @@ class PlaceRecognition():
         return self.descriptors
         
 
-    def save_predictions_cv(self,file=None):
+    def save_predictions_cv(self,save_dir=None):
         '''
         Save the predictions in a csv file
         params:
@@ -193,10 +204,10 @@ class PlaceRecognition():
 
         assert hasattr(self, 'score_value'), 'Results were not generated!'
         
-        if file == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[10],'place') # Internal File name 
+        if save_dir == None:
+            target_dir = os.path.join(self.predictions_dir,self.score_value[10],self.eval_protocol) # Internal File name 
         else:
-            target_dir = os.path.join(self.predictions_dir,file,'place') # Internal File name 
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10],self.eval_protocol)
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -216,7 +227,7 @@ class PlaceRecognition():
 
         
 
-    def save_results_cv(self,file=None):
+    def save_results_cv(self,save_dir=None):
         """
         Save the results in a csv file
         params:
@@ -226,10 +237,10 @@ class PlaceRecognition():
 
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
-        if file == None:
+        if save_dir == None:
             target_dir = os.path.join(self.predictions_dir,self.score_value[10],'place') # Internal File name 
         else:
-            target_dir = os.path.join(self.predictions_dir,file,'place') # Internal File name 
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10],self.eval_protocol)
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -277,14 +288,25 @@ class PlaceRecognition():
 
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
-        raw_labels = self.raw_labels
-        metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
-                                                  self.descriptors, # Descriptors
-                                                  self.poses,   # Poses
-                                                  raw_labels, # Raw labels
-                                                  k_top_cand, # Max top candidates
-                                                  radius=self.loop_range_distance, # Radius
-                                                  window=self.window)
+        if self.eval_protocol == 'relocalization':
+            metric, self.predictions = eval_row_relocalization(
+                                                    self.descriptors, # Descriptors
+                                                    self.poses,   # Poses
+                                                    self.row_labels, # Raw labels
+                                                    k_top_cand, # Max top candidates
+                                                    radius=self.loop_range_distance, # Radius
+                                                    window=self.window)
+        
+        elif self.eval_protocol == 'place':
+            metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
+                                                    self.descriptors, # Descriptors
+                                                    self.poses,   # Poses
+                                                    self.row_labels, # Raw labels
+                                                    k_top_cand, # Max top candidates
+                                                    radius=self.loop_range_distance, # Radius
+                                                    window=self.window)
+        else:
+            raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
 
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}

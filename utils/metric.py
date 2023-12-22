@@ -3,6 +3,62 @@
 import numpy as np
 
 
+class reloc_metrics:
+  '''
+  This class is used to compute the metrics for the retrieval task
+  '''
+  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10],sim_thresh = 0.5):
+    self.k_top = k_top
+    self.radius = radius
+    self.sim_thresh = sim_thresh
+    self.reset()
+    
+  
+  def reset(self):
+    self.n_updates = 0
+    self.global_metrics = {'tp': {r: [0]*(self.k_top+1) for r in self.radius},
+                                'fp': {r: [0]*(self.k_top+1) for r in self.radius},
+                                'fn': {r: [0]*(self.k_top+1) for r in self.radius},
+                                'tn': {r: [0]*(self.k_top+1) for r in self.radius},
+                                'RR': {r: [] for r in self.radius},
+                                'precision': {r: [0]*(self.k_top+1) for r in self.radius},
+                                'recall': {r: [0]*(self.k_top+1) for r in self.radius},
+    }
+    
+    
+  def update(self,true_loop_dist,cand_true_dist,similarity):
+    
+    # Update global metrics
+    self.n_updates += 1
+    for r in self.radius:
+      for nn in range(0,self.k_top):
+        
+        num_loop = len(np.where(true_loop_dist[:nn+1]<r)[0] )
+        
+        can = cand_true_dist[:nn + 1]
+        sim = similarity[:nn+1]
+        
+        if num_loop > 0:
+          self.global_metrics['tp'][r][nn] += 1 if (can<=r).any() and (sim <= self.sim_thresh).any() else 0
+          self.global_metrics['fn'][r][nn] += 1 if (can <= r).any() and (sim > self.sim_thresh).any() else 0
+          self.global_metrics['fp'][r][nn] += 1 if (can> r).any() and (sim<= self.sim_thresh).any() else 0
+          self.global_metrics['tn'][r][nn] += 1 if (can> r).any() and (sim > self.sim_thresh).any() else 0
+        else:
+          self.global_metrics['tn'][r][nn] += 1 if len(can) ==0 and len(sim)==0 else 0
+          self.global_metrics['tn'][r][nn] += 1 if (can > r).any() and (sim> self.sim_thresh).any() else 0
+          self.global_metrics['fp'][r][nn] += 1 if (can > r).any() and (sim <= self.sim_thresh).any() else 0
+          #self.global_metrics['nl']['fp'][r][nn] += 1 if (can <= r).any() and (sim > self.sim_thresh).any() else 0
+          #self.global_metrics['nl']['tn'][r][nn] += 1 if (can <= r).any() and (sim<= self.sim_thresh).any() else 0
+          
+  
+        self.global_metrics['recall'][r][nn] = (self.global_metrics['tp'][r][nn] + self.global_metrics['fn'][r][nn])/self.n_updates
+        self.global_metrics['precision'][r][nn] = ((self.global_metrics['tp'][r][nn] + self.global_metrics['fn'][r][nn])/(nn+1))/self.n_updates
+        
+    return {'recall':self.global_metrics['recall'] , 'precision':self.global_metrics['precision']}
+  
+  def get_metrics(self):
+    return self.global_metrics
+
 class retrieval_metrics:
   '''
   This class is used to compute the metrics for the retrieval task
