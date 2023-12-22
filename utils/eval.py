@@ -163,7 +163,9 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     descriptrs = np.array(list(descriptrs.values()))
 
   all_map_indices = np.arange(descriptrs.shape[0])
+  from utils.metric import retrieval_metrics
   
+  metric = retrieval_metrics(n_top_cand,radius)
   # Initiate evaluation dictionary  
   global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
   global_metrics['RR'] = {r: [] for r in radius}
@@ -171,63 +173,78 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
   loop_cands = []
   loop_scores= []
   gt_loops   = []
+  
+  poses[:,2] = 0 # ignore z axis
   for i,(q) in enumerate(queries):
     
-    query_pos = poses[q]
+    query_pos = poses[q,:]
     query_destps = descriptrs[q]
-
-    # Get map indices for the selected query
+    query_labels = row_labels[q]
+    
+    # Ignore scans within a window around the query
     q_map_idx = np.arange(0,q-window) # generate indices until q - window 
     selected_map_idx = all_map_indices[q_map_idx]
 
-    selected_poses   = poses[selected_map_idx]
-    selected_desptrs = descriptrs[selected_map_idx]
+    selected_poses   = poses[selected_map_idx,:]
+    selected_desptrs = descriptrs[selected_map_idx,:]
+    selected_map_labels   = row_labels[selected_map_idx]
+    # ====================================================== 
+     # compute ground truth distance
+    delta = query_pos.reshape(1,3) - selected_poses
+    gt_euclid_dist = np.linalg.norm(delta, axis=-1) 
+    max_dist = np.max(gt_euclid_dist)
+    min_dist = np.min(gt_euclid_dist)
+    # return the indices of the sorted array
+    gt_loops.append(np.argsort(gt_euclid_dist)[:n_top_cand])
     
-    # ======================================================
-    # Compute loop candidates
+     # Compute loop candidates
     delta_dscpts = query_destps - selected_desptrs
     embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
-    
+    max_sim = np.max(embed_dist)
+    min_sim = np.min(embed_dist)
     # Sort to get the most similar (lowest values) vectors first
     est_loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
     est_loop_cand_sim_dist = embed_dist[est_loop_cand_idx]
-
-    # ======================================================
-    # compute ground truth distance
-    delta = query_pos - selected_poses
-    euclid_dist = np.linalg.norm(delta, axis=-1)
-    # return the indices of the sorted array
-    gt_loops.append(np.argsort(euclid_dist)[:n_top_cand])
     # return the euclidean distance of the top descriptor predictions
-    dist_est_loops = euclid_dist[est_loop_cand_idx]
+    gt_loops_cand_euclid_dist = gt_euclid_dist[est_loop_cand_idx]
     
-     # Get row labels for the selected poses
-    map_labels   = row_labels[selected_map_idx]
-    query_labels = row_labels[q]
-
     # ======================================================
-    cand_in_same_row_idx  = np.where(query_labels == map_labels)[0]
-    loop_cand_in_row_idx = selected_map_idx[cand_in_same_row_idx]
-    dist_loops_cand_in_row = dist_est_loops[loop_cand_in_row_idx] # consider only loops that are in the same row
+    
+    loop_cand_labels = selected_map_labels[est_loop_cand_idx]
+    cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
+    
+    loop_cand_eucl_dist_within_row = gt_loops_cand_euclid_dist[cand_in_same_row_idx]
+    max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
+    #print(max_dist_within_row)
+    min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
+    #cand_in_same_row_idx  = np.where(query_labels == selected_map_labels)[0]
+    
+    
+    #loop_cand_in_row_idx = selected_map_idx[cand_in_same_row_idx]
+    #dist_loops_cand_in_row = gt_loops_cand_euclid_dist[loop_cand_in_row_idx] # consider only loops that are in the same row
 
-    dist_all_points_in_row = euclid_dist[loop_cand_in_row_idx]
+    #dist_all_points_in_row = gt_loops_cand_euclid_dist[loop_cand_in_row_idx]
+    
+    metric.update(loop_cand_eucl_dist_within_row)
     # ======================================================
     # Count true positives for different radius and NN number
-    global_metrics['tp'] = {r: [global_metrics['tp'][r][nn] + (1 if (dist_loops_cand_in_row[:nn + 1] <= r).any() 
-                                                                else 0) for nn in range(n_top_cand)] for r in radius}
     
-    global_metrics['RR'] = {r: global_metrics['RR'][r]+[next((1.0/(i+1) for i, x in enumerate(dist_all_points_in_row <= r) if x), 0)]
-                                                                  for r in radius}
+    #global_metrics['tp'] = {r: [global_metrics['tp'][r][nn] + (1 if (loop_cand_eucl_dist_within_row[:nn + 1] <= r).any() 
+                                                               # else 0) for nn in range(n_top_cand)] for r in radius}
+    
+    #global_metrics['RR'] = {r: global_metrics['RR'][r]+[next((1.0/(i+1) for i, x in enumerate(loop_cand_eucl_dist_within_row <= r) if x), 0)]
+                                                                  #for r in radius}
     
     # save loop candidates indices 
     #assert len(nn_ndx) == n_top_cand, "Number of candidates is not equal to the number of top candidates"
-    loop_cands.append(loop_cand_in_row_idx)
+    loop_cands.append(est_loop_cand_idx)
     loop_scores.append(est_loop_cand_sim_dist)
     
   # Calculate mean metrics
-  global_metrics["recall"] = {r: [global_metrics['tp'][r][nn] / n_frames for nn in range(n_top_cand)] for r in radius}
-  global_metrics['MRR'] = {r: np.mean(np.asarray(global_metrics['RR'][r])) for r in radius}
+  #global_metrics["recall"] = {r: [global_metrics['tp'][r][nn] / n_frames for nn in range(n_top_cand)] for r in radius}
+  #global_metrics['MRR'] = {r: np.mean(np.asarray(global_metrics['RR'][r])) for r in radius}
   
+  global_metrics = metric.get_metrics()
   #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
   prediction =  {'loop_cand':loop_cands,
                  'loop_scores':loop_scores,

@@ -3,7 +3,41 @@
 import numpy as np
 
 
-
+class retrieval_metrics:
+  '''
+  This class is used to compute the metrics for the retrieval task
+  '''
+  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10]):
+    self.k_top = k_top
+    self.radius = radius
+    self.reset()
+    
+  
+  def reset(self):
+    self.n_updates = 0
+    self.global_metrics = {'tp': {r: [0]*(self.k_top+1) for r in self.radius},
+                      'RR': {r: [] for r in self.radius},
+                      'precision': {r: [0]*(self.k_top+1) for r in self.radius},
+                      'recall': {r: [0]*(self.k_top+1) for r in self.radius},
+    }
+    
+  def update(self,cand_true_dist):
+    
+    # Update global metrics
+    self.n_updates += 1
+    for r in self.radius:
+      for nn in range(0,self.k_top):
+        self.global_metrics['tp'][r][nn] += 1 if (cand_true_dist[:nn + 1] <= r).any() else 0
+      
+  
+        self.global_metrics['recall'][r][nn] = self.global_metrics['tp'][r][nn]/self.n_updates
+        self.global_metrics['precision'][r][nn] = (self.global_metrics['tp'][r][nn]/(nn+1))/self.n_updates
+      
+    return {'recall':self.global_metrics['recall'] , 'precision':self.global_metrics['precision']}
+  
+  def get_metrics(self):
+    return self.global_metrics
+    
 def relocal_metric(relevant_hat,true_relevant):
     '''
     Difference between relocal metric and retrieval metric is that 
