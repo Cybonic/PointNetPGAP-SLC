@@ -57,6 +57,7 @@ class Trainer(BaseTrainer):
                                                 self.loss_dist,
                                                 logger,
                                                 device= self.device,
+                                                eval_protocol='place',
                                                 logdir =  run_name['experiment'])
      
         

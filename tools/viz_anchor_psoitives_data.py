@@ -71,7 +71,7 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/research/datasets')
+    parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/SHARE/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
                                     default = 'uk',
@@ -108,11 +108,11 @@ if __name__ == "__main__":
     print("[INF] record gif Flag: " + str(record_gif_flag))
     print("[INF] Rotation Angle:  " + str(rotation_angle))
 
-    ground_truth = {'pos_range': 1, # Loop Threshold [m]
+    ground_truth = {'pos_range': 10, # Loop Threshold [m]
                     'num_pos': -1,
                     'warmupitrs': 800, # Number of frames to ignore at the beguinning
                     'roi': 700,
-                    'anchor_range': 0.1}
+                    'anchor_range': 0.5}
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
@@ -157,17 +157,23 @@ if __name__ == "__main__":
     print("[INF] Number of poses: %d"% poses.shape[0])
 
     # Rotate poses to align with the ROI frame
-    xy = rotate_poses(poses.copy(),rotation_angle)
+   
     # Load row ids
     seq = seq.replace('/','_')
     print("[INF] Loading row segments from: %s"% seq)
     dataset_raws = row_segments.__dict__[seq]
+    
+    
     # Load aline rotation
     rotation_angle = dataset_raws['angle']
     # Rotate poses to match the image frame
-    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
+    rotated_poses = rotate_poses(poses.copy(),rotation_angle) # Rotate 90 degrees to align with the image frame
     xy = rotated_poses[:,:2]
 
+    xy_rotated = rotate_poses(rotated_poses.copy(),0)
+    min_y = np.min(xy_rotated[:,1])
+    xy_rotated[:,1] = xy_rotated[:,1] - min_y
+    
     # Load row segments
     rectangle_rois = np.array(dataset_raws['rows'])
 
@@ -208,14 +214,24 @@ if __name__ == "__main__":
         
         flatten_pos = np.unique(np.array(flatten_pos))
         fig, ax = plt.subplots()
-        ax.scatter(xy[:,0],xy[:,1],s=20,c='black',label='path')
-        ax.scatter(xy[flatten_pos,0],xy[flatten_pos,1],s=20,c='green',label='positive')
-        ax.scatter(xy[anchors,0],xy[anchors,1],s=10,c='blue',label='anchor')
+        ax.scatter(xy_rotated[:,0],xy_rotated[:,1],s=20,c='black',label='path')
+        ax.scatter(xy_rotated[flatten_pos,0],xy_rotated[flatten_pos,1],s=30,c='green',label='positive')
+        ax.scatter(xy_rotated[anchors,0],xy_rotated[anchors,1],s=3,c='blue',label='anchor')
         ax.set_aspect('equal')
         plt.xlabel('m')
         plt.ylabel('m')
+        # set axis limits
+        #plt.xlim(0, 100)
+        
+        file = os.path.join(save_root_dir,f'anchor_positive_pair_{positive_range_str}.png')
+        # show the legend
+        #ax.legend()
+        plt.savefig(file)
         #ax.legend()
         plt.show()
+        
+        print("[INF] Plotting path and ground truth")
+        print("[INF] Saving plot to: %s"% file)
 
 
 

@@ -88,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = False ,type = bool)
-    parser.add_argument('--save_triplet_data',default  = True ,type = bool)
+    parser.add_argument('--save_triplet_data',default  = False ,type = bool)
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files are saved at temp/.../... ')
     

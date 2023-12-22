@@ -82,10 +82,12 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     else:
         raise NotImplementedError("Network not implemented!")
 
-    loss_type  = argv['loss']['type']
-    loss_param = argv['loss']['args']
+    loss = None
+    if 'loss' in argv:
+        loss_type  = argv['loss']['type']
+        loss_param = argv['loss']['args']
 
-    loss = losses.__dict__[loss_type](**loss_param,device = device)
+        loss = losses.__dict__[loss_type](**loss_param,device = device)
 
     print("*"*30)
     print(f'Loss: {loss}')
@@ -116,7 +118,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
 
 
     roi = None
-    if 'roi' in args and args['roi'] != None:
+    if 'roi' in args and args['roi'] > 0:
         roi = sensor_pram['square_roi']
         print(f"\nROI: {args['roi']}\n")
         roi['xmin'] = -args['roi']
