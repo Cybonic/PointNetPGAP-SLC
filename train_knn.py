@@ -188,7 +188,7 @@ if __name__ == '__main__':
         '--roi',
         type=float,
         required=False,
-        default = None,
+        default = 0,
     )
     parser.add_argument(
         '--model_evaluation',
@@ -261,8 +261,8 @@ if __name__ == '__main__':
     print("----------\n")
 
     # For repeatability
-    # torch.manual_seed(0)
-    # np.random.seed(0)
+    torch.manual_seed(0)
+    np.random.seed(0)
 
     # Get Loss parameters
     ###################################################################### 

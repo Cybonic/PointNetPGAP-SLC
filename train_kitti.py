@@ -3,10 +3,10 @@ import os
 
 full_cap = '--epoch 300'
 args = [# '--network PointNetVLAD',
+        #'--network PointNetORCHNet',
+        #'--network ResNet50ORCHNet --modality bev'
+        #'--network ResNet50ORCHNetMaxPooling --modality bev',
         '--network PointNetORCHNet',
-        '--network ResNet50ORCHNet --modality bev'
-        '--network ResNet50ORCHNetMaxPooling --modality bev',
-        '--network PointNetORCHNetMaxPooling',
         
         #'--network ResNet50GeM --modality bev',
         #'--network PointNetGeM',
@@ -27,11 +27,11 @@ losses = ['LazyTripletLoss']
 density = ['10000']
 
 evaluation_type = "cross_validation"
-experiment = f'-e {evaluation_type}/finalMyModels-no_aug'
+experiment = f'-e {evaluation_type}/finalMyModels-no_augv2'
 
 
 test_sequrnces = [
-        'orchards/sum22/extracted',
+        #'orchards/sum22/extracted',
         'orchards/june23/extracted',
         'orchards/aut22/extracted',
         'strawberry/june23/extracted'

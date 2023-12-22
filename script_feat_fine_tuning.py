@@ -3,8 +3,8 @@ import os
 
 full_cap = '--epoch 100'
 args = [#'--network PointNetVLAD',
-        '--network PointNet_ORCHNet',
-        '--network ResNet50_ORCHNet --modality bev',
+        '--network PointNetORCHNet',
+        #'--network ResNet50_ORCHNet --modality bev',
         #'--network ResNet50GeM --modality bev',
         #'--network PointNetGeM',
         #'--network overlap_transformer'
@@ -24,20 +24,22 @@ density = ['10000']
 #experiment = f'-e cross_validation/final_tuning'
 
 test_sequrnces = [
-        'orchards/sum22/extracted',
+        #'orchards/sum22/extracted',
         #'orchards/june23/extracted',
         #'orchards/aut22/extracted',
-        #'strawberry/june23/extracted'
+        'strawberry/june23/extracted'
 ]
+evaluation_type = "cross_validation"
 
 for arg in args:
         for seq in test_sequrnces:
                 for dim in feat_dim:
-                        for  roi in [10,20,30,40,50,60,100]:
-                                feat_input = "--feat_dim {}".format(str(dim))
-                                experiment = f'-e cross_validation/eval_roi/{roi}m/featdim{dim}'
+                        for  roi in [10,50,100,150,200]:
+                                model_evaluation = f'--model_evaluation {evaluation_type}' 
+                                #feat_input = "--feat_dim {}".format(str(dim))
+                                experiment = f'-e {evaluation_type}/eval_roi/{roi}m'
                                 test_seq = '--val_set ' + seq
                                 roi_flag = "--roi " + str(roi)
-                                func_arg = arg +  ' ' +  experiment +  ' ' + full_cap + ' ' + feat_input + ' ' + test_seq + ' ' + roi_flag
+                                func_arg = arg +  ' ' +  experiment +  ' ' + full_cap + ' '  + ' ' + test_seq + ' ' + roi_flag + ' ' + model_evaluation
                                 #print(func_arg)
                                 os.system('python3 train_knn.py ' + func_arg)

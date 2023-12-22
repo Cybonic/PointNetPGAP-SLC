@@ -2,19 +2,21 @@
 import os
 
 full_cap = '--epoch 300'
-args = ['--network PointNetVLAD',
+args = ['--network PointNetVLAD  -e cross_validation/baselines',
         #'--network PointNetORCHNet',
         #'--network ResNet50ORCHNet --modality bev'
         #'--network ResNet50ORCHNetMaxPooling --modality bev',
-        #'--network PointNetORCHNetMaxPooling',
+        '--network PointNetORCHNet -e cross_validation/finalMyModels-no_aug' ,
         
-        '--network ResNet50GeM --modality bev',
-        '--network PointNetGeM',
-        '--network ResNet50MAC --modality bev',
-        '--network PointNetMAC',
-        '--network ResNet50SPoC --modality bev',
-        '--network PointNetSPoC',
-        '--network overlap_transformer'
+        #'--network ResNet50GeM --modality bev',
+        '--network PointNetGeM -e cross_validation/baselines',
+        #'--network ResNet50MAC --modality bev',
+        '--network PointNetMAC  -e cross_validation/baselines' ,
+        #'--network ResNet50SPoC --modality bev',
+        '--network PointNetSPoC -e cross_validation/baselines',
+        '--network overlap_transformer  --modality bev -e cross_validation/baselines',
+        '--network LOGG3D -e cross_validation/baselines',
+        #'--network overlap_transformer --modality bev',
 
         #' --network overlap_transformer',
         #f'--memory RAM  --modality bev  --session kitti --model VLAD_resnet50 ',
@@ -29,7 +31,7 @@ losses = ['LazyTripletLoss']
 
 #density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
-experiment = f'-e cross_validation/final'
+#experiment = f'-e cross_validation/finalMyModels-no_aug'
 
 
 test_sequrnces = [
@@ -42,6 +44,6 @@ test_sequrnces = [
 for seq in test_sequrnces:
         for arg in args:
                 test_seq = '--val_set ' + seq
-                func_arg = arg + ' ' +test_seq + ' ' +  experiment +  ' ' + full_cap
+                func_arg = arg + ' ' +test_seq #+ ' ' +  experiment +  ' ' + full_cap
                 #print(func_arg)
                 os.system('python3 eval_knnv2.py ' + func_arg)

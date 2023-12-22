@@ -42,7 +42,8 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default='PointNetVLAD',
-        choices=['PointNetVLAD',
+        choices=['PointNetORCHNet',
+                 'PointNetVLAD',
                  'LOGG3D',
                  'PointNetORCHNet',
                  'ResNet50ORCHNet',
@@ -60,7 +61,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='cross_validation/final',
+        default='cross_validation/baselines',
         help='Directory to get the trained model.'
     )
 
@@ -181,14 +182,14 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'orchards/june23/extracted',
+        default = 'strawberry/june23/extracted',
     )
 
     parser.add_argument(
         '--roi',
         type=float,
         required=False,
-        default = None,
+        default = 0,
     )
     parser.add_argument(
         '--model_evaluation',
@@ -201,7 +202,7 @@ if __name__ == '__main__':
         '--chkpt_root',
         type=str,
         required=False,
-        default = "/media/deep/backup/orchnet/v2/aa-0.5/checkpoints"
+        default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
     )
 
 
@@ -273,15 +274,6 @@ if __name__ == '__main__':
     torch.manual_seed(0)
     np.random.seed(0)
 
-    # Get Loss parameters
-    loss_type  = SESSION['loss']['type']
-    loss_param = SESSION['loss']['args']
-
-    loss = losses.__dict__[loss_type](**loss_param,device = FLAGS.device)
-
-    print("*"*30)
-    print(f'Loss: {loss}')
-    print("*"*30)
 
     ###################################################################### 
 
@@ -293,12 +285,16 @@ if __name__ == '__main__':
     root_dir = pc_config[device_name]
     
     # Build the model and the loader
-    model_ = model_handler(FLAGS.network,
+    model = model_handler(FLAGS.network,
                             num_points=SESSION['max_points'],
                             output_dim=256,
-                            feat_dim=FLAGS.feat_dim
+                            feat_dim=FLAGS.feat_dim,
+                            device = FLAGS.device,
+                            loss = SESSION['loss'], # Loss is required to build the model name correctly (change this in the future)
+                            modelwrapper = SESSION['modelwrapper']
                             )
-    model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
+    
+    #model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
 
     print("*"*30)
     print("Model: %s" %(str(model)))
@@ -316,7 +312,7 @@ if __name__ == '__main__':
 
     trainer = Trainer(
             model        = model,
-            train_loader = loader.get_train_loader(),
+            train_loader = None,#loader.get_train_loader(),
             val_loader   = loader.get_val_loader(),
             resume = FLAGS.resume,
             config = SESSION,
@@ -326,15 +322,20 @@ if __name__ == '__main__':
             debug = False
             )
     
-    loop_range = [1,5,10,15,20,30,40,50,500]
+    loop_range = list(range(0,11,1))
+    
     best_model_filename = trainer.save_best_model_filename 
     # Generate descriptors, predictions and performance for the best weights
     print(f'\nLoading best model: {best_model_filename}\n')
     trainer.eval_approach.load_pretrained_model(best_model_filename)
     #loop_range = [1,5,10,15,20,500]
+    load_from = "range_predictions"
+    #os.makedirs(save_to,exist_ok=True)
+    trainer.eval_approach.load_descriptors(load_from)
     trainer.eval_approach.run(loop_range=loop_range)
-
-    trainer.eval_approach.save_params()
-    trainer.eval_approach.save_descriptors()
-    trainer.eval_approach.save_predictions_cv()
-    trainer.eval_approach.save_results_cv()
+    
+    save_to = "saved_model_data/paper"
+    trainer.eval_approach.save_params(save_to)
+    trainer.eval_approach.save_descriptors(save_to)
+    trainer.eval_approach.save_predictions_cv(save_to)
+    trainer.eval_approach.save_results_cv(save_to)
