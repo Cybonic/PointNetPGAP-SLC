@@ -2,20 +2,24 @@
 import os
 
 full_cap = '--epoch 300'
-args = ['--network PointNetVLAD  -e cross_validation/baselines',
+
+chkpt_root_B = '/home/deep/Dropbox/SHARE/orchards-uk/code/place_recognition_models/checkpoints'
+chkpt_root_A = '/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints'
+args = [f'--network PointNetVLAD  -e cross_validation/final@range1  --chkpt_root {chkpt_root_B}',
         #'--network PointNetORCHNet',
         #'--network ResNet50ORCHNet --modality bev'
         #'--network ResNet50ORCHNetMaxPooling --modality bev',
-        '--network PointNetORCHNet -e cross_validation/finalMyModels-no_aug' ,
+        
+        f'--network PointNetORCHNet -e cross_validation/finalMyModels-no_augv2  --chkpt_root {chkpt_root_B}' ,
         
         #'--network ResNet50GeM --modality bev',
-        '--network PointNetGeM -e cross_validation/baselines',
+        f'--network PointNetGeM -e cross_validation/baselines  --chkpt_root {chkpt_root_A}',
         #'--network ResNet50MAC --modality bev',
-        '--network PointNetMAC  -e cross_validation/baselines' ,
+        f'--network PointNetMAC  -e cross_validation/baselines --chkpt_root {chkpt_root_A}' ,
         #'--network ResNet50SPoC --modality bev',
-        '--network PointNetSPoC -e cross_validation/baselines',
-        '--network overlap_transformer  --modality bev -e cross_validation/baselines',
-        '--network LOGG3D -e cross_validation/baselines',
+        f'--network PointNetSPoC -e cross_validation/baselines --chkpt_root {chkpt_root_A}',
+        f'--network overlap_transformer  --modality bev -e cross_validation/baselines --chkpt_root {chkpt_root_A}',
+        f'--network LOGG3D -e cross_validation/baselines --chkpt_root {chkpt_root_A}',
         #'--network overlap_transformer --modality bev',
 
         #' --network overlap_transformer',
@@ -41,9 +45,10 @@ test_sequrnces = [
         'strawberry/june23/extracted'
 ]
 
+
 for seq in test_sequrnces:
         for arg in args:
                 test_seq = '--val_set ' + seq
-                func_arg = arg + ' ' +test_seq #+ ' ' +  experiment +  ' ' + full_cap
+                func_arg = arg + ' ' +test_seq  #+ ' ' +  experiment +  ' ' + full_cap
                 #print(func_arg)
                 os.system('python3 eval_knnv2.py ' + func_arg)

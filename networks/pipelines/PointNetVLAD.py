@@ -8,7 +8,7 @@ from networks.backbones.pointnet import *
 import yaml
 
 class PointNetVLAD(nn.Module):
-    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=True, output_dim=1024):
+    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024):
         super(PointNetVLAD, self).__init__()
 
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)

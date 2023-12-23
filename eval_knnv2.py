@@ -202,6 +202,7 @@ if __name__ == '__main__':
         '--chkpt_root',
         type=str,
         required=False,
+        #default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
         default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
     )
 
@@ -322,7 +323,7 @@ if __name__ == '__main__':
             debug = False
             )
     
-    loop_range = list(range(0,11,1))
+    loop_range = list(range(0,120,1))
     
     best_model_filename = trainer.save_best_model_filename 
     # Generate descriptors, predictions and performance for the best weights
@@ -331,10 +332,10 @@ if __name__ == '__main__':
     #loop_range = [1,5,10,15,20,500]
     load_from = "range_predictions"
     #os.makedirs(save_to,exist_ok=True)
-    trainer.eval_approach.load_descriptors(load_from)
+    #trainer.eval_approach.load_descriptors(load_from)
     trainer.eval_approach.run(loop_range=loop_range)
     
-    save_to = "saved_model_data/paper"
+    save_to = "saved_model_data/paperv3"
     trainer.eval_approach.save_params(save_to)
     trainer.eval_approach.save_descriptors(save_to)
     trainer.eval_approach.save_predictions_cv(save_to)

@@ -22,6 +22,7 @@ class Trainer(BaseTrainer):
                         run_name = 'default',
                         train_epoch_zero = True,
                         debug = False,
+                        monitor_range = 1 # The range to monitor the performance (meters)
                         
                         ):
 
@@ -49,7 +50,7 @@ class Trainer(BaseTrainer):
         
         
         window = 600 # Avoid the nearby frames
-        self.monitor_range = 1 
+        self.monitor_range = monitor_range
         self.eval_approach = PlaceRecognition(self.model ,
                                                 self.val_loader,
                                                 self.top_cand_retrieval,
@@ -58,7 +59,9 @@ class Trainer(BaseTrainer):
                                                 logger,
                                                 device= self.device,
                                                 eval_protocol='place',
-                                                logdir =  run_name['experiment'])
+                                                logdir =  run_name['experiment'],
+                                                monitor_range = monitor_range
+                                                )
      
         
 

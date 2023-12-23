@@ -166,7 +166,7 @@ if __name__ == '__main__':
         '--loop_range',
         type=float,
         required=False,
-        default = 10,
+        default = 1,
         help='sampling points.'
     )
 
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
     
-    SESSION['loop_range'] = FLAGS.loop_range
+    SESSION['monitor_range'] = FLAGS.loop_range
 
 
     print("----------")
@@ -301,10 +301,11 @@ if __name__ == '__main__':
             device = FLAGS.device,
             run_name = run_name,
             train_epoch_zero = False,
-            debug = False
+            debug = False,
+            monitor_range = SESSION['monitor_range']
             )
     
-    loop_range = [1,5,10,15,20,30,40,50,500]
+    loop_range = list(range(0,120,1))
     best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
     
 
