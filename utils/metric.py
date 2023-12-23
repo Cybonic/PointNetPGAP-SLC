@@ -77,15 +77,23 @@ class retrieval_metrics:
                       'recall': {r: [0]*(self.k_top+1) for r in self.radius},
     }
     
-  def update(self,cand_true_dist):
+  def update(self,cand_true_dist,cand_in_row):
     
     # Update global metrics
     self.n_updates += 1
     for r in self.radius:
       for nn in range(0,self.k_top):
-        self.global_metrics['tp'][r][nn] += 1 if (cand_true_dist[:nn + 1] <= r).any() else 0
-      
-  
+        # Get the top-k candidates
+        label = cand_in_row[:nn + 1]
+        dist  = cand_true_dist[:nn + 1]
+        # Verify if there is a loop in the top-k candidates
+        cand_in_range = np.where(dist <= r)[0]
+        # Verify if the loop is in the same row
+        cand_inrange_and_inrow = label[cand_in_range]
+        # Update metrics
+        if (cand_inrange_and_inrow == True).any():
+          self.global_metrics['tp'][r][nn] += 1
+          
         self.global_metrics['recall'][r][nn] = self.global_metrics['tp'][r][nn]/self.n_updates
         self.global_metrics['precision'][r][nn] = (self.global_metrics['tp'][r][nn]/(nn+1))/self.n_updates
       

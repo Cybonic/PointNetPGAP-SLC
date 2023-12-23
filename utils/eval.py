@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 import os
+import tqdm
 
 def save_results_csv2(self,file,results,top,**argv):
     import pandas as pd
@@ -269,18 +270,14 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
 
   all_map_indices = np.arange(descriptrs.shape[0])
   from utils.metric import retrieval_metrics
-  
   metric = retrieval_metrics(n_top_cand,radius)
-  # Initiate evaluation dictionary  
-  global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
-  global_metrics['RR'] = {r: [] for r in radius}
   
   loop_cands = []
   loop_scores= []
   gt_loops   = []
   
   poses[:,2] = 0 # ignore z axis
-  for i,(q) in enumerate(queries):
+  for i,(q) in tqdm.tqdm(enumerate(queries),total = len(queries),desc='Evaluating Retrieval'):
     
     query_pos = poses[q,:]
     query_destps = descriptrs[q]
@@ -297,32 +294,21 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
      # compute ground truth distance
     delta = query_pos.reshape(1,3) - selected_poses
     gt_euclid_dist = np.linalg.norm(delta, axis=-1) 
-    max_dist = np.max(gt_euclid_dist)
-    min_dist = np.min(gt_euclid_dist)
     # return the indices of the sorted array
     gt_loops.append(np.argsort(gt_euclid_dist)[:n_top_cand])
     
      # Compute loop candidates
     delta_dscpts = query_destps - selected_desptrs
     embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
-    max_sim = np.max(embed_dist)
-    min_sim = np.min(embed_dist)
     # Sort to get the most similar (lowest values) vectors first
     est_loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
+    
     est_loop_cand_sim_dist = embed_dist[est_loop_cand_idx]
-    # return the euclidean distance of the top descriptor predictions
     gt_loops_cand_euclid_dist = gt_euclid_dist[est_loop_cand_idx]
-    
-    # ======================================================
     loop_cand_labels = selected_map_labels[est_loop_cand_idx]
-    cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
-    
-    loop_cand_eucl_dist_within_row = gt_loops_cand_euclid_dist[cand_in_same_row_idx]
-    #max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
-    #print(max_dist_within_row)
-    #min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
-
-    metric.update(loop_cand_eucl_dist_within_row)
+    #cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
+    cand_in_same_row_bool = query_labels == loop_cand_labels
+    metric.update(gt_loops_cand_euclid_dist,cand_in_same_row_bool)
 
     # save loop candidates indices 
     loop_cands.append(est_loop_cand_idx)
