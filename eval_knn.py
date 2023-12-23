@@ -28,8 +28,11 @@ class PlaceRecognition():
                     save_deptrs=True,
                     device='cpu',
                     eval_protocol = 'place',
+                    monitor_range = 1, # m
                     **arg):
 
+        
+        self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
         self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
@@ -109,9 +112,9 @@ class PlaceRecognition():
         """
         
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[10])
+            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range])
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10])
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range])
 
             
         if not os.path.isdir(target_dir):
@@ -156,7 +159,7 @@ class PlaceRecognition():
     
 
 
-    def save_descriptors(self,save_dir=None):
+    def save_descriptors(self,save_dir=None,):
         '''
         Save the generated descriptors
         params:
@@ -165,9 +168,9 @@ class PlaceRecognition():
         '''
 
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[10])
+            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range])
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10])
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range])
         
         # Create directory
         if not os.path.isdir(target_dir):
@@ -205,9 +208,9 @@ class PlaceRecognition():
         assert hasattr(self, 'score_value'), 'Results were not generated!'
         
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[10],self.eval_protocol) # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10],self.eval_protocol)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -238,9 +241,9 @@ class PlaceRecognition():
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[10],'place') # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],'place') # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[10],self.eval_protocol)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -313,8 +316,10 @@ class PlaceRecognition():
         self.score_value = {}
         for range_value in self.loop_range_distance:
             remapped_old_format[range_value]={'recall':[metric['recall'][range_value][top] for  top in [0,k_top_cand-1]] }            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
-            self.score_value[range_value] = str(round(metric['recall'][range_value][0],3)) + f'@{1}'
+            
         self.results = metric
+        
+        self.score_value[self.monitor_range] = str(round(metric['recall'][self.monitor_range][0],3)) + f'@{1}'
 
         return remapped_old_format
 

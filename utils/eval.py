@@ -318,9 +318,9 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
     
     loop_cand_eucl_dist_within_row = gt_loops_cand_euclid_dist[cand_in_same_row_idx]
-    max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
+    #max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
     #print(max_dist_within_row)
-    min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
+    #min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
 
     metric.update(loop_cand_eucl_dist_within_row)
 
