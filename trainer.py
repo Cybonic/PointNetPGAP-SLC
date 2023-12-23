@@ -49,7 +49,7 @@ class Trainer(BaseTrainer):
         
         
         window = 600 # Avoid the nearby frames
-
+        self.monitor_range = 1 
         self.eval_approach = PlaceRecognition(self.model ,
                                                 self.val_loader,
                                                 self.top_cand_retrieval,
@@ -173,8 +173,8 @@ class Trainer(BaseTrainer):
                 self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
         
         # For model comparison use the first range top 1 recall
-        monitor_idx = 2 # 10
-        output = {'recall':overall_scores[loop_range[monitor_idx]]['recall'][0]}
+        # 10
+        output = {'recall':overall_scores[self.monitor_range]['recall'][0]}
         return output,[]
 
 # ===================================================================================================================
