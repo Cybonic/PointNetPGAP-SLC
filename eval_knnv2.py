@@ -219,7 +219,6 @@ if __name__ == '__main__':
 
 
     SESSION['trainer']['save_dir'] =  FLAGS.chkpt_root
-
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
     SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
@@ -233,10 +232,7 @@ if __name__ == '__main__':
     SESSION['val_loader']['batch_size'] = FLAGS.batch_size
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
-    
     SESSION['trainer']['epochs'] =  FLAGS.epoch
-
-   
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory

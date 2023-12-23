@@ -50,7 +50,6 @@ class BaseTrainer:
 
         self.optimizer = get_instance(torch.optim, 'optimizer', config, trainable_params)
         
-
         # SHEDULER
         sheduler_type = config['optimizer']['lr_scheduler']
         args = config[sheduler_type]
@@ -70,6 +69,7 @@ class BaseTrainer:
         # CHECKPOINTS & TENSOBOARD
         checkpoint_dst_dir = os.sep.join([run_name['experiment'],run_name['dataset'],run_name['model']])
         self.checkpoint_dir = os.path.join(cfg_trainer['save_dir'], checkpoint_dst_dir)
+        
         if not os.path.isdir(self.checkpoint_dir):
             os.makedirs(self.checkpoint_dir)
 

@@ -215,6 +215,7 @@ if __name__ == '__main__':
     
     # Define evaluation mode: cross_validation or split
     SESSION['model_evaluation'] = FLAGS.model_evaluation
+    
     if SESSION['model_evaluation'] == "cross_validation":
         SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
         SESSION['val_loader']['sequence']   = [FLAGS.val_set]
