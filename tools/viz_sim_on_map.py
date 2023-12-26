@@ -3,8 +3,9 @@ from genericpath import isdir
 import os 
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
-from dataloader.ORCHARDS import ORCHARDS,ORCHARDSEval
-from dataloader.KITTI import KITTIEval
+
+
+from dataloader.kitti import kitti 
 import yaml
 from utils.loss import L2_np
 from utils.viz import plot_retrieval_on_map,color_similarity_on_map
@@ -15,34 +16,6 @@ import argparse
 import torch
 from utils.viz import myplot
 from tqdm import tqdm
-
-def generate_descriptors(model,val_loader, device):
-    model.eval()
-    model.to(device)
-    dataloader = iter(val_loader)
-    tbar = tqdm(range(len(val_loader)), ncols=100)
-
-    prediction_bag = {}
-    idx_bag = []
-    for batch_idx in tbar:
-        input,inx = next(dataloader)
-        if device in ['gpu','cuda']:
-            input = input.to(device)
-            input = input.cuda(non_blocking=True)
-        
-        if len(input.shape)<4:
-            input = input.unsqueeze(0)
-            
-        if not torch.is_tensor(inx):
-            inx = torch.tensor(inx)
-        # Generate the Descriptor
-        prediction = model(input)
-        # Keep descriptors
-        #for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):
-        i = inx.detach().cpu().numpy().tolist()
-        d = prediction.detach().cpu().numpy().tolist()[0]
-        prediction_bag[i] = d
-    return(prediction_bag)
 
 
 def plot_sim_on_map(descriptors,anchor,map_idx,poses,record_gif=False):
@@ -121,23 +94,7 @@ if __name__ == '__main__':
     
     # open arch config file
     cfg_file = os.path.join('dataloader','sensor-cfg.yaml')
-    if FLAGS.dataset == 'kitti':
-        orchard_loader = KITTIEval(
-                        root =  SESSION['root'],
-                        mode = 'Disk',
-                        num_subsamples = -1,
-                        sequence  = [FLAGS.sequence],
-                        dataset  = FLAGS.dataset,
-                        modality = FLAGS.modality
-                        )
 
-    else:
-        orchard_loader = ORCHARDSEval(  root =  SESSION['root'],
-                                        mode = 'Disk',
-                                        num_subsamples = -1,
-                                        sequence  = FLAGS.sequence,
-                                        dataset  =  FLAGS.dataset,
-                                        modality =  FLAGS.modality
                                         )
     
     record_gif = True
