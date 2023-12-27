@@ -26,27 +26,39 @@ class reloc_metrics:
     }
     
     
-  def update(self,true_loop_dist,cand_true_dist,similarity):
+  def update(self,true_loop_dist,cand_dist,similarity,is_inrow):
     
     # Update global metrics
+    correct = {r: [0]*(self.k_top+1) for r in self.radius}
+    wrong = {r: [0]*(self.k_top+1) for r in self.radius}
+    
     self.n_updates += 1
     for r in self.radius:
       for nn in range(0,self.k_top):
         
         num_loop = len(np.where(true_loop_dist[:nn+1]<r)[0] )
         
-        can = cand_true_dist[:nn + 1]
+        same_row = is_inrow[:nn+1]
+        cand_range = cand_dist[:nn + 1]
         sim = similarity[:nn+1]
         
-        if num_loop > 0:
-          self.global_metrics['tp'][r][nn] += 1 if (can<=r).any() and (sim <= self.sim_thresh).any() else 0
-          self.global_metrics['fn'][r][nn] += 1 if (can <= r).any() and (sim > self.sim_thresh).any() else 0
-          self.global_metrics['fp'][r][nn] += 1 if (can> r).any() and (sim<= self.sim_thresh).any() else 0
-          self.global_metrics['tn'][r][nn] += 1 if (can> r).any() and (sim > self.sim_thresh).any() else 0
+        if num_loop > 0 and same_row.any():
+          if (cand_range <= r).any() and (sim <= self.sim_thresh).any():
+            self.global_metrics['tp'][r][nn] += 1 
+            #correct[r][nn] = 1
+          if (cand_range <= r).any() and (sim > self.sim_thresh).any():
+            self.global_metrics['fn'][r][nn] += 1
+            #wrong[r][nn] = 1
+          if (cand_range >  r).any() and (sim<= self.sim_thresh).any():
+            self.global_metrics['fp'][r][nn] += 1
+            #wrong[r][nn] = 1
+          if (cand_range >  r).any() and (sim > self.sim_thresh).any():
+            self.global_metrics['tn'][r][nn] += 1
+          
         else:
-          self.global_metrics['tn'][r][nn] += 1 if len(can) ==0 and len(sim)==0 else 0
-          self.global_metrics['tn'][r][nn] += 1 if (can > r).any() and (sim> self.sim_thresh).any() else 0
-          self.global_metrics['fp'][r][nn] += 1 if (can > r).any() and (sim <= self.sim_thresh).any() else 0
+          self.global_metrics['tn'][r][nn] += 1 if len(cand_range) ==0 and len(sim)==0 else 0
+          self.global_metrics['tn'][r][nn] += 1 if (cand_range > r).any() and (sim > self.sim_thresh).any() else 0
+          self.global_metrics['fp'][r][nn] += 1 if (cand_range > r).any() and (sim <= self.sim_thresh).any() else 0
           #self.global_metrics['nl']['fp'][r][nn] += 1 if (can <= r).any() and (sim > self.sim_thresh).any() else 0
           #self.global_metrics['nl']['tn'][r][nn] += 1 if (can <= r).any() and (sim<= self.sim_thresh).any() else 0
           
@@ -58,6 +70,8 @@ class reloc_metrics:
   
   def get_metrics(self):
     return self.global_metrics
+
+
 
 class retrieval_metrics:
   '''

@@ -61,13 +61,22 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
         true_loops = predictions[query]['true_loops']
         cand_loops = predictions[query]['cand_loops']
         
-        bool_cand = np.logical_and(cand_loops['sim'] < sim_thresh, cand_loops['dist'] < loop_range, cand_loops['labels'] == query_label)
-        cand_idx = cand_loops['idx'][bool_cand][:topk]
+        # array of booleans
+        knn = np.zeros(len(cand_loops['idx']),dtype=bool)
+        knn[:topk] = True
         
+        positives = cand_loops['sim'] < sim_thresh 
+        inrange   = cand_loops['dist'] < loop_range
+        inrow     = cand_loops['labels'] == query_label
+        
+        bool_cand = positives*inrange*inrow*knn
+        
+        cand_idx = cand_loops['idx'][bool_cand]
         loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
 
         c[query] = 'b'
         s[query] = 80
+        
         
         if len(loop_idx) > 0 and len(cand_idx) > 0:
             true_positive.append(cand_idx)
@@ -101,7 +110,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetGeM',
+        default='PointNetORCHNet',
         choices=['PointNetORCHNet',
                  'PointNetVLAD',
                  'LOGG3D',
@@ -121,7 +130,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='cross_validation/baselines',
+        default='cross_validation/finalMyModels-no_aug',
         help='Directory to get the trained model.'
     )
 
@@ -242,7 +251,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'strawberry/june23/extracted',
+        default = 'orchards/june23/extracted',
     )
 
     parser.add_argument(
@@ -376,16 +385,18 @@ if __name__ == '__main__':
     
     loop_range = [1]
     
-    best_model_filename = trainer.save_best_model_filename 
-    # Generate descriptors, predictions and performance for the best weights
-    print(f'\nLoading best model: {best_model_filename}\n')
+    
     
     #trainer.eval_approach.load_descriptors()
-    trainer.eval_approach.load_pretrained_model(best_model_filename)
-    trainer.eval_approach.run(loop_range=loop_range)
-    trainer.eval_approach.save_predictions_pkl()
     
-    #trainer.eval_approach.load_predictions_pkl()
+    if trainer.eval_approach.load_predictions_pkl() == None:
+        best_model_filename = trainer.save_best_model_filename 
+    # Generate descriptors, predictions and performance for the best weights
+        print(f'\nLoading best model: {best_model_filename}\n')
+        trainer.eval_approach.load_pretrained_model(best_model_filename)
+        trainer.eval_approach.run(loop_range=loop_range)
+        trainer.eval_approach.save_predictions_pkl()
+        
     predictions = trainer.eval_approach.get_predictions()
     
     poses = val_loader.dataset.get_pose()
@@ -399,12 +410,20 @@ if __name__ == '__main__':
     # Rotate poses to match the image frame
     rotated_poses = rotate_poses(poses.copy(),rotation_angle)
     xy = rotated_poses[:,:2]
-    
+    min_xy = np.min(xy,axis=0)
+    xy -= min_xy
     # Save gif
     save_dir = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower().replace('/',''),FLAGS.network.lower()])
-    file = save_dir+'.gif'
+    loop_range=1
+    topk=10
     
-    plot_retrieval_on_map(xy,predictions,record_gif=True,name=file)
+    root2save = os.path.join('results','retrieval_on_map')
+    os.makedirs(root2save,exist_ok=True)
+    print("Saving to: ",root2save)
+    
+    file = os.path.join(root2save,save_dir+f'range{loop_range}_top{topk}.gif')
+    
+    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=topk,record_gif=True,name=file)
     
     
     
