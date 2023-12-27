@@ -26,7 +26,7 @@ class myplot():
 
     def init_plot(self,x,y,s,c):
         # https://matplotlib.org/stable/gallery/color/named_colors.html
-        color = mcolors.CSS4_COLORS[c]
+        color = mcolors.BASE_COLORS[c]
         self.p = self.ax.scatter(x,y,s = s, c = color)
     
     def update_color_scale(self,color=[],scale = []):
