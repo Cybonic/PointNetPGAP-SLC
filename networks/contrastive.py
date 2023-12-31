@@ -117,7 +117,7 @@ class ModelWrapper(nn.Module):
 
     def forward(self,pcl,):
         
-        self.model.cuda()
+        # self.model.cuda()
         # Mini Batch training due to memory constrains
         if self.training == False:
             #pcl = pcl.type(torch.cuda.FloatTensor)

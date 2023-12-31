@@ -95,9 +95,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name in ['LOGG3D','spvcnnORCHNet']:
         # Sparse model has a different wrapper, because of the splitting 
-        model = contrastive.SparseModelWrapper(pipeline,loss = loss,**argv['modelwrapper'])
+        model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['modelwrapper'])
     else:
-        model = contrastive.ModelWrapper(pipeline,loss =loss,**argv['modelwrapper'])
+        model = contrastive.ModelWrapper(pipeline,loss =loss,device = device, **argv['modelwrapper'])
 
     print("*"*30)
     print("Model: %s" %(str(model)))
@@ -146,7 +146,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         num_points = session['max_points']
         output_dim=256
         modality = Scan(max_points=num_points,
-                        aug_flag=session['aug'],square_roi=roi)
+                        aug_flag=session['aug'],square_roi=roi,pcl_norm = False)
     else:
         raise NotImplementedError("Modality not implemented!")
 

@@ -206,8 +206,6 @@ if __name__ == '__main__':
         default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
     )
 
-
-
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
@@ -290,8 +288,6 @@ if __name__ == '__main__':
                             loss = SESSION['loss'], # Loss is required to build the model name correctly (change this in the future)
                             modelwrapper = SESSION['modelwrapper']
                             )
-    
-    #model = contrastive.ModelWrapper(model_,loss = loss,**SESSION['modelwrapper'])
 
     print("*"*30)
     print("Model: %s" %(str(model)))
@@ -299,8 +295,6 @@ if __name__ == '__main__':
 
 
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
-
-    
 
     run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
                 'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 

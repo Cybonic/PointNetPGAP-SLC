@@ -26,13 +26,14 @@ class BaseTrainer:
         self.start_epoch = 0
         self.improved = False
         self.best_log =None
+        self.device = device
 
         # SETTING THE DEVICE
         if device in ['gpu','cuda']:
             from utils.utils import get_available_devices
             self.device, availble_gpus = get_available_devices(self.config['n_gpu'])
             #self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
-            self.model.model.to(self.device)
+        self.model.model.to(self.device)
 
         # CONFIGS
         cfg_trainer = self.config['trainer']
