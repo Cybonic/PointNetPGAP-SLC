@@ -4,6 +4,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from .NetVLAD import NetVLADLoupe
 #from ..utils import *
 
 '''
@@ -71,7 +72,6 @@ class MultiHead(nn.Module):
     # Initialization
     nn.init.normal_(self.fusion.data, mean=0, std=init_std)
     # print(self.fusion.data)
-
   def forward(self,x):
     spoc =  self.spoc(x)
     gem  =  self.gem(x)
@@ -81,6 +81,63 @@ class MultiHead(nn.Module):
     
     return _l2norm(fu)
 
+class VLADSPoCMaxPooling(nn.Module):
+  def __init__(self,outdim=256,init_std=0.1):
+    super(VLADSPoCMaxPooling,self).__init__()
+    self.spoc = SPoC(outdim=outdim)
+    self.vlad  = NetVLADLoupe(feature_size=1024, max_samples=10000, cluster_size=64,
+                                     output_dim=outdim, gating=True, add_batch_norm=True,
+                                     is_training=True)
+  def forward(self,x):
+    spoc =  _l2norm(self.spoc(x))
+    vlad  = _l2norm(self.vlad(x))
+    z     =  torch.stack([spoc,vlad],dim=1)
+    fu    = torch.max(z,dim=1)[0]
+    return _l2norm(fu)
+
+class VLADSPoCGeMMaxPooling(nn.Module):
+  def __init__(self,outdim=256,init_std=0.1):
+    super(VLADSPoCMaxPooling,self).__init__()
+    self.spoc = SPoC(outdim=outdim)
+    self.gem  = GeM(outdim=outdim)
+    self.vlad = NetVLADLoupe(feature_size=1024, max_samples=10000, cluster_size=64,
+                                     output_dim=outdim, gating=True, add_batch_norm=True,
+                                     is_training=True)
+    
+    self.fusion= nn.Parameter(torch.zeros(1,3))
+    # Initialization
+    nn.init.normal_(self.fusion.data, mean=0, std=init_std)
+    # print(self.fusion.data)
+
+  def forward(self,x):
+    spoc  =  _l2norm(self.spoc(x))
+    vlad  = _l2norm(self.vlad(x))
+    gem   = _l2norm(self.gem(x))
+    z     =  torch.stack([spoc,gem,vlad],dim=1)
+    fu = torch.max(z,dim=1)[0]
+    return _l2norm(fu)
+  
+class VLADSPoCLearned(nn.Module):
+  def __init__(self,outdim=256,init_std=0.1):
+    super(VLADSPoCLearned,self).__init__()
+   
+    self.vlad  = NetVLADLoupe(feature_size=1024, max_samples=10000, cluster_size=64,
+                                     output_dim=outdim, gating=True, add_batch_norm=True,
+                                     is_training=True)
+    self.spoc  = SPoC(outdim=outdim)
+    
+    self.fusion= nn.Parameter(torch.zeros(1,2))
+    # Initialization
+    nn.init.normal_(self.fusion.data, mean=0, std=init_std)
+    
+  def forward(self,x):
+    spoc  = self.spoc(x)
+    vlad  =  self.vlad(x)
+    z    =  torch.stack([spoc,vlad],dim=1)
+    fu   =  torch.matmul(self.fusion,z).squeeze()
+    return _l2norm(fu)
+  
+  
 class MultiHeadMAXPolling(nn.Module):
   def __init__(self,outdim=256,init_std=0.1):
     super(MultiHeadMAXPolling,self).__init__()

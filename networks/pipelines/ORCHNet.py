@@ -29,6 +29,12 @@ def ResNet50ORCHNetMaxPooling(**argv):
 def PointNetORCHNetMaxPooling(**argv):
   return ORCHNet('pointnet',aggregator='MultiHeadMAXPolling',**argv)
 
+def PointNetORCHNetVLADSPoCMaxPooling(**argv):
+  return ORCHNet('pointnet',aggregator='VLADSPoCMaxPooling',**argv)
+
+def PointNetORCHNetVLADSPoCLearned(**argv):
+  return ORCHNet('pointnet',aggregator='VLADSPoCLearned',**argv)
+
 class ORCHNet(nn.Module):
   def __init__(self,backbone_name:str,output_dim:int,feat_dim:int,aggregator="MultiHead",**argv):
     super(ORCHNet,self).__init__()
