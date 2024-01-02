@@ -40,8 +40,11 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='ResNet50ORCHNet',
-        choices=['PointNetVLAD',
+        default='spvcnnORCHNetMeanSOP',
+        choices=['spvcnnORCHNetMeanSOP',
+                'PointNetORCHNetVLADSPoCLearned',
+                'PointNetORCHNetVLADSPoCMaxPooling',
+                'PointNetVLAD',
                  'LOGG3D',
                  'PointNetORCHNetMaxPooling',
                  'PointNetORCHNet',
@@ -67,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--resume', '-r',
         type=str,
+        choices=['none', 'best_model'],
         required=False,
         default='None',
         help='Directory to get the trained model.'
@@ -279,8 +283,8 @@ if __name__ == '__main__':
     model_ = model_handler(FLAGS.network,
                             num_points=SESSION['max_points'],
                             output_dim=256,
-                            feat_dim=FLAGS.feat_dim,
-                            device = FLAGS.device,
+                            feat_dim  =FLAGS.feat_dim,
+                            device    =FLAGS.device,
                             loss = SESSION['loss'],
                             modelwrapper = SESSION['modelwrapper']
                             )
@@ -306,7 +310,7 @@ if __name__ == '__main__':
             monitor_range = SESSION['monitor_range']
             )
     
-    loop_range = list(range(0,120,1))
+    loop_range = [1,5,10,20]
     best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
     
 

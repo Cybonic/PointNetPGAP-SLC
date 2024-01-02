@@ -160,6 +160,12 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
   if isinstance(descriptrs,dict):
     descriptrs = np.array(list(descriptrs.values()))
 
+  # Normalize descriptors
+  descriptrs = descriptrs / np.linalg.norm(descriptrs, axis=-1, keepdims=True) 
+  descriptrs = (descriptrs + 1)/2
+  assert np.sum(descriptrs,axis=-1).all() == 1, "Descriptors must be normalized"
+  
+  #descriptrs = np.linalg.norm(descriptrs, axis=-1) 
   all_indices = np.arange(descriptrs.shape[0])
   from utils.metric import reloc_metrics
   
@@ -174,6 +180,9 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
   loop_cands = []
   loop_scores= []
   gt_loops   = []
+  
+  predictions = {}
+  
   import tqdm
   poses[:,2] = 0 # ignore z axis
   for i,(q) in tqdm.tqdm(enumerate(queries),total=len(queries)):
@@ -193,46 +202,51 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
     delta = query_pos.reshape(1,3) - selected_poses
     gt_euclid_dist = np.linalg.norm(delta, axis=-1) 
     
-    # True Loops
-    true_loops = np.argsort(gt_euclid_dist)[:n_top_cand]
-   
-    true_loops_labels = selected_map_labels[true_loops]
-    true_loop_same_row_idx = np.where(query_labels == true_loops_labels)[0]
-    true_loops_same_row = true_loops[true_loop_same_row_idx]
-    true_loops_dist = gt_euclid_dist[true_loops_same_row]
-    gt_loops.append(true_loops_same_row)
+    # TRUE LOOPS
+    true_loops_idx = np.argsort(gt_euclid_dist)[:n_top_cand]
+    # Get labels of true loops
+    true_loops_labels = selected_map_labels[true_loops_idx]
+    true_loop_same_row_bool = query_labels == true_loops_labels
+    # filter true loops that are not in the same row
+    true_loops_inrow_idx = true_loops_idx[true_loop_same_row_bool]
+    true_loops_inrow_dist = gt_euclid_dist[true_loops_inrow_idx]
     
-     # Compute loop candidates
+    gt_loops.append(true_loops_inrow_idx)
+    
+     # CANDIDATES LOOP
+    #delta_dscpts = np.dot(query_destps,selected_desptrs.transpose())
     delta_dscpts = query_destps - selected_desptrs
-    embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
+    embed_sim = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
+    max_value = np.max(embed_sim)
+    min_value = np.min(embed_sim)
     # Sort to get the most similar (lowest values) vectors first
-    loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
-    # ROW FILTERING
-    loop_cand_labels = selected_map_labels[loop_cand_idx]
-    cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
+    cand_loop_idx = np.argsort(embed_sim)[:n_top_cand]
+    cand_dist = gt_euclid_dist[cand_loop_idx]
+    cand_sim  = embed_sim[cand_loop_idx]
+    cand_labels = selected_map_labels[cand_loop_idx]
     
-    loop_cand_idx = loop_cand_idx[cand_in_same_row_idx]
-    loop_cand_sim = embed_dist[loop_cand_idx]
-    loop_cand_dist = gt_euclid_dist[loop_cand_idx]
+    # filter  same row
+    cand_inrow_bool  = query_labels == cand_labels
+    
+    metric.update(true_loops_inrow_dist,cand_dist,cand_sim,cand_inrow_bool)
     # return the euclidean distance of the top descriptor predictions
-    loop_cands.append(loop_cand_idx)
-    loop_scores.append(loop_cand_sim)
-    #max_dist_within_row = np.max(loop_cand_eucl_dist_within_row)
-    #print(max_dist_within_row)
-    #min_dist_within_row = np.min(loop_cand_eucl_dist_within_row)
+    
+    predictions[q]={'label':query_labels,
+     'true_loops':{'idx':true_loops_inrow_idx,'dist':true_loops_inrow_dist,'labels':true_loops_labels},
+      'cand_loops':{'idx':cand_loop_idx,'dist':cand_dist,'sim':cand_sim,'labels':cand_labels}}
+    
 
-    metric.update(true_loops_dist,loop_cand_dist,loop_cand_sim)
 
     # save loop candidates indices 
     
   
   global_metrics = metric.get_metrics()
   #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
-  prediction =  {'loop_cand':loop_cands,
-                 'loop_scores':loop_scores,
-                 'gt_loops':gt_loops}
+  #prediction =  {'loop_cand':loop_cands,
+  #               'loop_scores':loop_scores,
+  #               'gt_loops':gt_loops}
   
-  return global_metrics,prediction
+  return global_metrics,predictions
 
 
 

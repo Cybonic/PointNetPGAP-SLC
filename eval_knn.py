@@ -3,7 +3,7 @@
 import argparse
 import yaml
 import os
-os.environ['NUMEXPR_NUM_THREADS'] = '8'
+os.environ['NUMEXPR_NUM_THREADS'] = '16'
 
 import torch 
 from tqdm import tqdm
@@ -15,8 +15,17 @@ import pandas as pd
 
 from utils.utils import get_available_devices
 from pipeline_factory import model_handler,dataloader_handler
+import pickle
 
 
+def search_files_in_dir(directory,search_file):
+    files_found = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.startswith(search_file):
+                files_found.append(os.path.join(root, file))
+    return files_found
+            
 class PlaceRecognition():
     def __init__(self,model,
                     loader,
@@ -26,12 +35,11 @@ class PlaceRecognition():
                     logger,
                     loop_range_distance = 10,
                     save_deptrs=True,
-                    device='cpu',
+                    device= 'cpu',
                     eval_protocol = 'place',
                     monitor_range = 1, # m
                     **arg):
 
-        
         self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
         self.loop_range_distance = loop_range_distance
@@ -80,8 +88,8 @@ class PlaceRecognition():
         self.param['model_name'] = self.model_name
         self.param['predictions_dir'] = self.predictions_dir
         self.param['eval_protocol'] = self.eval_protocol
-
-
+        self.param['monitor_range'] = self.monitor_range
+        
 
 
     def load_pretrained_model(self,checkpoint_path):
@@ -91,17 +99,18 @@ class PlaceRecognition():
             checkpoint_path (string): path to the pretrained model
         return: None
         '''
+        assert os.path.isfile(checkpoint_path), "No checkpoint found at '{}'".format(checkpoint_path)
         checkpoint = torch.load(checkpoint_path)
         self.model.load_state_dict(checkpoint['state_dict'])
-        
+        self.model = self.model.to(self.device)
         self.param['checkpoint_arch'] = checkpoint['arch']
         self.param['checkpoint_best_score'] = checkpoint['monitor_best']['recall']
         self.param['checkpoint_path'] = checkpoint_path
-
         
         self.logger.warning('\n ** Loaded pretrained model from: ' + checkpoint_path)
         self.logger.warning('\n ** Architecture: ' + checkpoint['arch'])
         self.logger.warning('\n ** Best Score: %0.2f'%checkpoint['monitor_best']['recall'])
+
 
     def save_params(self,save_dir=None):
         """
@@ -110,7 +119,6 @@ class PlaceRecognition():
 
         return: None
         """
-        
         if save_dir == None:
             target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range])
         else:
@@ -128,20 +136,22 @@ class PlaceRecognition():
 
 
 
-    def load_descriptors(self,file):
+    def load_descriptors(self,root_dir=None):
         """
         Load descriptors from a file
         params:
             file (string): file name to load the descriptors
         return: None
         """
+        target_dir = os.path.join(self.predictions_dir)
+        if root_dir != None:
+            target_dir = os.path.join(root_dir,self.predictions_dir)
+        #target_dir = os.path.join(self.predictions_dir,file)
         
-        target_dir = os.path.join(self.predictions_dir,file)
-        if not os.path.isdir(target_dir):
-            os.makedirs(target_dir)
-            print('\n ** Created a new directory: ' + target_dir)
+        file = search_files_in_dir(target_dir,'descriptors')[0]
         
-        file = os.path.join(target_dir,'descriptors.torch')
+        # Search for descriptors.torch
+        #file = os.path.join(self.predictions_dir,'descriptors.torch')
             
         if not os.path.isfile(file): 
             self.logger.error("\n ** File does not exist: "+ file)
@@ -189,8 +199,81 @@ class PlaceRecognition():
         Return the generated descriptors
         '''
         return self.descriptors
+    
+    
+    def get_predictions(self):
+        '''
+        Return the predictions
+        '''
+        return self.predictions
+    
+    
+    def load_predictions_pkl(self,save_dir=None):
+        '''
+        Save the predictions in a pkl file
+        params:
+            file (string): file name to save the predictions, default is None
+        return: None
+        '''
+        # Check if the results were generated
+        #assert  hasattr(self, 'predictions')
         
+        # prediction is a dictionary
+        #assert isinstance(self.predictions,dict), 'Predictions were not generated!'
+        # Keys are ant array of integers
+        #assert isinstance(list(self.predictions.keys())[0].item(),int), 'Predictions were not generated!'
 
+        file = search_files_in_dir(self.predictions_dir,'predictions.pkl') # More then one file can be found (handle this later)
+        if len(file) == 0 or not os.path.isfile(file[0]): 
+            self.logger.error("\n ** File does not exist: ")
+            self.logger.warning("\n ** Generating predictions!")
+            return None
+    
+        file = file[0]
+        
+        with open(file, 'rb') as handle:
+            # Load the predictions
+            self.predictions = pickle.load(handle)
+            #pickle.dump(self.predictions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.logger.warning('\n ** Loading predictions at File: ' + file)
+        return self.predictions
+    
+
+    def save_predictions_pkl(self,save_dir=None):
+        '''
+        Save the predictions in a pkl file
+        params:
+            file (string): file name to save the predictions, default is None
+        return: None
+        '''
+        # Check if the results were generated
+        assert  hasattr(self, 'predictions')
+        
+        # prediction is a dictionary
+        assert isinstance(self.predictions,dict), 'Predictions were not generated!'
+        # Keys are ant array of integers
+        assert isinstance(list(self.predictions.keys())[0].item(),int), 'Predictions were not generated!'
+      
+        
+        if save_dir == None:
+            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
+        else:
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
+        
+        if not os.path.isdir(target_dir):
+            os.makedirs(target_dir)
+            self.logger.warning('\n ** Created DIR at: ' +target_dir)
+        
+        file = os.path.join(target_dir,'predictions.pkl')
+        # save predictions as a pkl file
+        with open(file, 'wb') as handle:
+            pickle.dump(self.predictions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.logger.warning('\n ** Saving predictions at File: ' + file)
+        return self.predictions
+
+        
+            
+            
     def save_predictions_cv(self,save_dir=None):
         '''
         Save the predictions in a csv file
@@ -201,6 +284,7 @@ class PlaceRecognition():
         # Check if the results were generated
         assert  hasattr(self, 'predictions')
         
+        assert 'loop_cand' in self.predictions.keys(), 'Predictions were not generated!'
         loop_cand   = self.predictions['loop_cand']
         loop_scores = self.predictions['loop_scores']
         gt_loops    = self.predictions['gt_loops']
@@ -266,6 +350,7 @@ class PlaceRecognition():
         file_results = os.path.join(target_dir,'results_recall.csv')
         df.to_csv(file_results)
         self.logger.warning("Saved results at: " + file_results)
+
 
 
     def run(self,loop_range= None):

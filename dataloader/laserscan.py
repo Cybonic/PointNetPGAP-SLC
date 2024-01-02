@@ -54,7 +54,6 @@ def square_roi(PointCloud,roi_array):
   return(mask)
 
 
-
 def cylinder_roi(PointCloud,roi_array):
 
   mask_list = []
@@ -76,7 +75,18 @@ def cylinder_roi(PointCloud,roi_array):
   return(mask)
 
 
-
+def normalize_pcl(points):
+  """
+  Normalize the point cloud to fit in a unit sphere
+  https://medium.com/@kidargueta/normalizing-feature-scaling-point-clouds-for-machine-learning-8138c6e69f5
+  
+  """
+  
+  centroid = np.mean(points, axis=0)
+  points -= centroid
+  furthest_distance = np.max(np.sqrt(np.sum(abs(points)**2,axis=-1)))
+  points /= furthest_distance
+  return points
 
 class LaserScan:
   """Class that contains LaserScan with x,y,z,r"""
@@ -86,7 +96,12 @@ class LaserScan:
 
     self.reset()
     self.parser = parser
-  
+
+
+    self.set_pcl_norm_flag = False
+    if 'pcl_norm' in argv and argv['pcl_norm'] == True:
+      self.set_pcl_norm_flag = True
+      
     self.max_points = max_points
     self.noise = 0
     self.set_aug_flag = aug
@@ -206,12 +221,6 @@ class LaserScan:
     self.remissions = Remissions[mask]
 
   # ==================================================================
-  def set_normalization(self):
-    norm_pointcloud = self.points - np.mean(self.points, axis=0) 
-    norm_pointcloud /= np.max(np.linalg.norm(norm_pointcloud, axis=1))
-    self.points = norm_pointcloud
-
-
   # ==================================================================
   def set_augmentation(self):
     # https://towardsdatascience.com/deep-learning-on-point-clouds-implementing-pointnet-in-google-colab-1fd65cd3a263
@@ -253,6 +262,9 @@ class LaserScan:
     if self.set_aug_flag:
       self.set_augmentation()
 
+    if self.set_pcl_norm_flag:
+      self.points = normalize_pcl(self.points)
+    
     return self.points,self.remissions
   
 

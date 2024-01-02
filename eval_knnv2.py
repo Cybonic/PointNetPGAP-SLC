@@ -42,7 +42,10 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default='PointNetVLAD',
-        choices=['PointNetORCHNet',
+        choices=['PointNetORCHNetMaxPooling',
+                'PointNetORCHNetVLADSPoCLearned',
+                'PointNetORCHNetVLADSPoCMaxPooling',   
+                'PointNetORCHNet',
                  'PointNetVLAD',
                  'LOGG3D',
                  'PointNetORCHNet',
@@ -61,7 +64,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='cross_validation/baselines',
+        default='cross_validation/final@range1',
         help='Directory to get the trained model.'
     )
 
@@ -320,12 +323,11 @@ if __name__ == '__main__':
     print(f'\nLoading best model: {best_model_filename}\n')
     trainer.eval_approach.load_pretrained_model(best_model_filename)
     #loop_range = [1,5,10,15,20,500]
-    load_from = "range_predictions"
     #os.makedirs(save_to,exist_ok=True)
     #trainer.eval_approach.load_descriptors(load_from)
     trainer.eval_approach.run(loop_range=loop_range)
     
-    save_to = "saved_model_data/paperv3"
+    save_to = "saved_model_data/final@range1"
     trainer.eval_approach.save_params(save_to)
     trainer.eval_approach.save_descriptors(save_to)
     trainer.eval_approach.save_predictions_cv(save_to)

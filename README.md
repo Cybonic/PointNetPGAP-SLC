@@ -20,7 +20,7 @@ conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit
 ```
 pip install torch torchvision torchaudio
 import torch
-torch.cuda.is_available()
+pu  h
 ```
 ## Install sparse
 ```

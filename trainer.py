@@ -22,17 +22,17 @@ class Trainer(BaseTrainer):
                         run_name = 'default',
                         train_epoch_zero = True,
                         debug = False,
-                        monitor_range = 1 # The range to monitor the performance (meters)
+                        monitor_range = 1, # The range to monitor the performance (meters)
+                        eval_protocol='place'
                         
                         ):
 
-        super(Trainer, self).__init__(model, resume, config,run_name=run_name,device=device,train_epoch_zero=train_epoch_zero)
+        super(Trainer, self).__init__(model, resume, config, run_name=run_name, device=device, train_epoch_zero=train_epoch_zero)
 
 
         self.trainer_cfg    = config
         self.train_loader   = train_loader
         self.val_loader     = val_loader
-        
         self.test_loader    = None
         self.device         = device
         self.model          = model.to(self.device)
@@ -43,6 +43,7 @@ class Trainer(BaseTrainer):
         
         self.eval_metric = config['trainer']['eval_metric']
         self.top_cand_retrieval = config['retrieval']['top_cand']
+        
         assert isinstance(self.top_cand_retrieval,list)
 
         self.train_metrics = None #StreamSegMetrics(len(labels))
@@ -58,7 +59,7 @@ class Trainer(BaseTrainer):
                                                 self.loss_dist,
                                                 logger,
                                                 device= self.device,
-                                                eval_protocol='place',
+                                                eval_protocol = eval_protocol,
                                                 logdir =  run_name['experiment'],
                                                 monitor_range = monitor_range
                                                 )
