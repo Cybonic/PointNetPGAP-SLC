@@ -14,6 +14,10 @@ from networks.aggregators import multihead
 import yaml
 import os
 
+
+def spvcnnORCHNetMeanSOP(**argv):
+  return ORCHNet('spvcnn',aggregator='MeanSOP',**argv)
+
 def spvcnnORCHNet(**argv):
   return ORCHNet('spvcnn',**argv)
 
@@ -22,6 +26,9 @@ def PointNetORCHNet(**argv):
 
 def ResNet50ORCHNet(**argv):
   return ORCHNet('resnet50',**argv)
+
+def spvcnnORCHNetSPoC(**argv):
+  return ORCHNet('spvcnn',aggregator='SPoC',**argv)
 
 def ResNet50ORCHNetMaxPooling(**argv):
   return ORCHNet('resnet50',aggregator='MultiHeadMAXPolling',**argv)
@@ -66,8 +73,12 @@ class ORCHNet(nn.Module):
 
     # Define Aggregator
     self.aggregator = aggregator
-    assert aggregator in multihead.__dict__,'Aggregator param do not exist'
-    self.head  = multihead.__dict__[aggregator](outdim=output_dim)
+    if aggregator.endswith('SOP'):
+      import networks.aggregators.SOP as SOP
+      self.head = SOP.__dict__[aggregator](input_dim=16,is_tuple=False)
+    else:
+      assert aggregator in multihead.__dict__,'Aggregator param do not exist'
+      self.head  = multihead.__dict__[aggregator](outdim=output_dim)
 
    
   def forward(self,x):
@@ -79,8 +90,8 @@ class ORCHNet(nn.Module):
       _, counts = torch.unique(x.C[:, -1], return_counts=True)
       y = torch.split(y, list(counts))
       y = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
-      width = int(np.sqrt(y.shape[2]))
-      y = y.view(y.size(0),y.size(1),width,width) 
+      #width = int(np.sqrt(y.shape[2]))
+      #y = y.view(y.size(0),y.size(1),width,width) 
     z = self.head(y)
 
     return z

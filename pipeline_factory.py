@@ -93,7 +93,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f'Loss: {loss}')
     print("*"*30)
 
-    if pipeline_name in ['LOGG3D','spvcnnORCHNet']:
+    if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("spvcnn"):
         # Sparse model has a different wrapper, because of the splitting 
         model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['modelwrapper'])
     else:
@@ -134,7 +134,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256,square_roi=roi,aug_flag=session['aug'])
             
-    elif network in ['LOGG3D','spvcnnORCHNet']:
+    elif network in ['LOGG3D'] or network.startswith("spvcnn"):
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
         output_dim=256

@@ -49,7 +49,36 @@ class SOP(nn.Module):
 
         x = torch.reshape(x, (batchSize, tupleLen, dimFeat, dimFeat))
         return x  # .float()
+    
+    def _so_meanpool(self, x):
+        while len(x.data.shape) < 4:
+            x = torch.unsqueeze(x, 0)
+        batchSize, tupleLen, nFeat, dimFeat = x.data.shape
+        x = torch.reshape(x, (-1, dimFeat))
+        x = torch.unsqueeze(x, -1)
+        x = x.matmul(x.transpose(1, 2))
 
+        x = torch.reshape(x, (batchSize, tupleLen, nFeat, dimFeat, dimFeat))
+        x = torch.mean(x, 2)
+        x = torch.reshape(x, (-1, dimFeat, dimFeat))
+        if self.do_pe:
+            x = x.double()
+            # u_, s_, vh_ = torch.linalg.svd(x)
+            # dist = torch.dist(x, u_ @ torch.diag_embed(s_) @ vh_)
+            # dist_same = torch.allclose(x, u_ @ torch.diag_embed(s_) @ vh_)
+            # s_alpha = torch.pow(s_, 0.5)
+            # x = u_ @ torch.diag_embed(s_alpha) @ vh_
+
+            # For pytorch versions < 1.9
+            u_, s_, v_ = torch.svd(x)
+            # dist = torch.dist(x, u_ @ torch.diag_embed(s_) @  v_.transpose(-2, -1))
+            # dist_same = torch.allclose(x, u_ @ torch.diag_embed(s_) @  v_.transpose(-2, -1))
+            s_alpha = torch.pow(s_, 0.5)
+            x = u_ @ torch.diag_embed(s_alpha) @ v_.transpose(-2, -1)
+
+        x = torch.reshape(x, (batchSize, tupleLen, dimFeat, dimFeat))
+        return x  # .float()
+    
     def _l2norm(self, x):
         x = nn.functional.normalize(x, p=2, dim=-1)
         return x
@@ -64,8 +93,38 @@ class SOP(nn.Module):
         #     x = F.relu(self.fc2(x))
         x = self._l2norm(x)
         return torch.squeeze(x)
+  
+ 
+class MaxSOP(SOP):
+    def __init__(self, **argv):
+        super(MaxSOP,self).__init__(**argv)
+        self.operator = self._so_maxpool
+        
+    def forward(self, x):
+        x = self.operator(x)
+        if self.is_vec:
+            x = torch.reshape(x, (x.size(0), x.size(1), -1))
+        # if self.do_fc:
+        #     x = F.relu(self.fc1(x.float()))
+        #     x = F.relu(self.fc2(x))
+        x = self._l2norm(x)
+        return torch.squeeze(x)
 
-
+class MeanSOP(SOP):
+    def __init__(self, **argv):
+        super(MeanSOP,self).__init__(**argv)
+        self.operator = self._so_meanpool
+        
+    def forward(self, x):
+        x = self.operator(x)
+        if self.is_vec:
+            x = torch.reshape(x, (x.size(0), x.size(1), -1))
+        # if self.do_fc:
+        #     x = F.relu(self.fc1(x.float()))
+        #     x = F.relu(self.fc2(x))
+        x = self._l2norm(x)
+        return torch.squeeze(x)
+              
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
