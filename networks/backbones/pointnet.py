@@ -126,18 +126,18 @@ class PointNet_features(torch.nn.Module):
             t1 = self.tnet1(x)
             x = t1.bmm(x)
 
-        x = self.h1(x)
+        x2 = self.h1(x)
         if self.tnet2:
-            t2 = self.tnet2(x)
+            t2 = self.tnet2(x2)
             self.t_out_t2 = t2
-            x = t2.bmm(x)
+            x2 = t2.bmm(x2)
         
-        self.t_out_h1 = x # local features
+        self.t_out_h1 = x2 # local features
 
-        x = self.h2(x)
+        x3 = self.h2(x2)
         #x = {'out':x}
 
-        return x
+        return x3
 
 class PointNet_classifier(torch.nn.Module):
     def __init__(self, num_c, ptfeat, dim_k):
