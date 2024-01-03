@@ -34,7 +34,7 @@ orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
  } 
 
 
-orchards_sum22 = {'angle':-3, # Angle to aline the rows with the image frame
+orchards_sum22 = {'angle':87, # -3, # Angle to aline the rows with the image frame
         'rows':
             [
             [ -39,-0,-2,0.7],#, # row 3
