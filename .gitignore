@@ -16,4 +16,6 @@ data/*
 *.png
 *.bin
 Worklog.md
-Worklog.md
+*.ipynb
+*.sh
+
