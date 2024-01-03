@@ -3,7 +3,7 @@ import os
 
 full_cap = '--epoch 80'
 args = [#'--network PointNetVLAD',
-        '--network PointNetORCHNetSGMaxPoolingFC',
+        '--network PointNetSOP',
         #'--network LOGG3D',
         
         #'--network PointNetGeM',
@@ -47,6 +47,6 @@ for seq in test_sequrnces:
         
                 test_seq = '--val_set ' + seq
                 model_evaluation = f'--model_evaluation {evaluation_type}' 
-                func_arg = arg + ' ' + test_seq + ' ' +  experiment +  ' ' + full_cap + ' ' + model_evaluation + ' ' + resume
+                func_arg = arg + ' ' + '--device cuda'+ ' ' + test_seq + ' ' +  experiment +  ' ' + full_cap + ' ' + model_evaluation + ' ' + resume
                 #print(func_arg)
                 os.system('python3 train_knn.py ' + func_arg)

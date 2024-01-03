@@ -25,7 +25,7 @@ class PointNetGeM(nn.Module):
         return self.point_net.parameters()
 
     def get_classifier_params(self):
-        return self.net_vlad.parameters()
+        return self.head.parameters()
   
     def __str__(self):
         return "PointNetGeM"

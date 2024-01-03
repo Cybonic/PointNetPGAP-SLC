@@ -17,7 +17,6 @@ import os
 def PointNetORCHNetSGMaxPoolingFC(**argv):
   return ORCHNet('pointnet',aggregator='MultiHeadSGMaxPoolingFC',**argv)
 
-
 def spvcnnORCHNetMeanSOP(**argv):
   return ORCHNet('spvcnn',aggregator='MeanSOP',**argv)
 
@@ -38,6 +37,9 @@ def ResNet50ORCHNetMaxPooling(**argv):
 
 def PointNetORCHNetMaxPooling(**argv):
   return ORCHNet('pointnet',aggregator='MultiHeadMAXPolling',**argv)
+
+def PointNetORCHNetSOP(**argv):
+  return ORCHNet('pointnet',aggregator='SOP',**argv)
 
 def PointNetORCHNetVLADSPoCMaxPooling(**argv):
   return ORCHNet('pointnet',aggregator='VLADSPoCMaxPooling',**argv)
@@ -93,8 +95,12 @@ class ORCHNet(nn.Module):
       _, counts = torch.unique(x.C[:, -1], return_counts=True)
       y = torch.split(y, list(counts))
       y = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
+      if self.aggregator != 'SOP':
+        # swap axis
+        y = y.permute(0,2,1)
       #width = int(np.sqrt(y.shape[2]))
       #y = y.view(y.size(0),y.size(1),width,width) 
+         
     z = self.head(y)
 
     return z

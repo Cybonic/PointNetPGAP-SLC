@@ -34,6 +34,8 @@ class SPoC(nn.Module):
 
     def forward(self, x):
         # Return (batch_size, n_features) tensor
+        # Swap the axis
+        #x = x.permute(0, 2, 1)
         x = x.view(x.shape[0],x.shape[1],-1)
         x = self.fc(torch.mean(x, dim=-1, keepdim=False)) # Return (batch_size, n_features) tensor
         return _l2norm(x)
