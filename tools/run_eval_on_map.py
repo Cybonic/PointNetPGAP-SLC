@@ -78,19 +78,24 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
         s[query] = 80
         
         
+                
         if len(loop_idx) > 0 and len(cand_idx) > 0:
-            true_positive.append(cand_idx)
+            true_positive.extend(cand_idx)
             
         if len(loop_idx) > 0 and len(cand_idx) == 0:
             wrong.append(query)
+           
         if len(loop_idx) == 0 and len(cand_idx) > 0:
-            wrong.append(cand_idx)
-            
-        c[true_positive] = 'g'
-        s[true_positive] = 100
+            wrong.append(query)
         
-        c[wrong] = 'r'
-        s[wrong] = 100
+        np_true_positive = np.array(true_positive,dtype=np.int32).flatten()
+        np_wrong = np.array(wrong,dtype=np.int32).flatten()
+        
+        c[np_true_positive] = 'g'
+        s[np_true_positive] = 150
+        
+        c[np_wrong] = 'r'
+        s[np_wrong] = 50
 
         plot.update_plot(poses[:query+1,0],poses[:query+1,1],color = c , offset= 1, zoom=-1,scale=s)
  
@@ -111,7 +116,8 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default='PointNetORCHNet',
-        choices=['PointNetORCHNet',
+        choices=['PointNetSPoC',
+                 'PointNetORCHNetMaxPooling',
                  'PointNetVLAD',
                  'LOGG3D',
                  'PointNetORCHNet',
@@ -169,7 +175,7 @@ if __name__ == '__main__':
         '--device',
         type=str,
         required=False,
-        default='cpu',
+        default='cuda',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -236,7 +242,7 @@ if __name__ == '__main__':
         '--loop_range',
         type=float,
         required=False,
-        default = 10,
+        default = 1,
         help='sampling points.'
     )
 
@@ -251,7 +257,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'orchards/june23/extracted',
+        default = 'orchards/sum22/extracted',
     )
 
     parser.add_argument(
@@ -374,6 +380,7 @@ if __name__ == '__main__':
             model        = model,
             train_loader = None,#loader.get_train_loader(),
             val_loader   = val_loader,
+            monitor_range= SESSION['loop_range'],
             resume       = FLAGS.resume,
             config       = SESSION,
             device       = FLAGS.device,
@@ -383,10 +390,9 @@ if __name__ == '__main__':
             eval_protocol='relocalization',
             )
     
-    loop_range = [1]
+    topk=1
     
-    
-    
+    loop_range = SESSION['loop_range']
     #trainer.eval_approach.load_descriptors()
     
     if trainer.eval_approach.load_predictions_pkl() == None:
@@ -394,7 +400,7 @@ if __name__ == '__main__':
     # Generate descriptors, predictions and performance for the best weights
         print(f'\nLoading best model: {best_model_filename}\n')
         trainer.eval_approach.load_pretrained_model(best_model_filename)
-        trainer.eval_approach.run(loop_range=loop_range)
+        trainer.eval_approach.run(loop_range = loop_range)
         trainer.eval_approach.save_predictions_pkl()
         
     predictions = trainer.eval_approach.get_predictions()
@@ -414,14 +420,15 @@ if __name__ == '__main__':
     xy -= min_xy
     # Save gif
     save_dir = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower().replace('/',''),FLAGS.network.lower()])
-    loop_range=1
-    topk=10
     
-    root2save = os.path.join('results','retrieval_on_map')
+
+    
+    
+    root2save = os.path.join('results','retrieval_on_map',f'range{loop_range}m')
     os.makedirs(root2save,exist_ok=True)
     print("Saving to: ",root2save)
     
-    file = os.path.join(root2save,save_dir+f'range{loop_range}_top{topk}.gif')
+    file = os.path.join(root2save,save_dir+f'_top{topk}.gif')
     
     plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=topk,record_gif=True,name=file)
     

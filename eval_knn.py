@@ -33,7 +33,7 @@ class PlaceRecognition():
                     window,
                     eval_metric,
                     logger,
-                    loop_range_distance = 10,
+                    #loop_range_distance = 10,
                     save_deptrs=True,
                     device= 'cpu',
                     eval_protocol = 'place',
@@ -42,7 +42,7 @@ class PlaceRecognition():
 
         self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
-        self.loop_range_distance = loop_range_distance
+        #self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
         self.logger = logger
         if device in ['gpu','cuda']:
@@ -81,7 +81,7 @@ class PlaceRecognition():
         self.param['top_cand'] = top_cand
         self.param['window'] = window
         self.param['eval_metric'] = eval_metric
-        self.param['loop_range_distance'] = loop_range_distance
+        #self.param['loop_range_distance'] = loop_range_distance
         self.param['save_deptrs'] = save_deptrs
         self.param['device'] = device
         self.param['dataset_name'] = self.dataset_name
@@ -222,8 +222,8 @@ class PlaceRecognition():
         #assert isinstance(self.predictions,dict), 'Predictions were not generated!'
         # Keys are ant array of integers
         #assert isinstance(list(self.predictions.keys())[0].item(),int), 'Predictions were not generated!'
-
-        file = search_files_in_dir(self.predictions_dir,'predictions.pkl') # More then one file can be found (handle this later)
+        predictions_dir = os.path.join(self.predictions_dir,f"{self.monitor_range}m")
+        file = search_files_in_dir(predictions_dir,'predictions.pkl') # More then one file can be found (handle this later)
         if len(file) == 0 or not os.path.isfile(file[0]): 
             self.logger.error("\n ** File does not exist: ")
             self.logger.warning("\n ** Generating predictions!")
@@ -256,9 +256,9 @@ class PlaceRecognition():
       
         
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,f"{self.monitor_range}m",self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f"{self.monitor_range}m",self.monitor_range,self.score_value[self.monitor_range],self.eval_protocol)
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -353,12 +353,19 @@ class PlaceRecognition():
 
 
 
-    def run(self,loop_range= None):
-        
-        if isinstance(loop_range,list):
-            self.loop_range_distance = loop_range
+    def run(self,loop_range=10):
+        self.loop_range_distance = loop_range
         if not isinstance(self.loop_range_distance,list):
-            self.loop_range_distance = [self.loop_range_distance]
+            self.loop_range_distance = [loop_range]
+        
+        if self.monitor_range not in self.loop_range_distance:
+            self.loop_range_distance.append(self.monitor_range)
+            
+        self.param['loop_range_distance'] = self.loop_range_distance
+        
+        
+        #if not isinstance(self.loop_range_distance,list):
+        #    self.loop_range_distance = [self.loop_range_distance]
 
         if not isinstance(self.top_cand,list):
             self.top_cand = [self.top_cand]
@@ -374,6 +381,8 @@ class PlaceRecognition():
         self.top_cand.append(one_percent)
         k_top_cand = max(self.top_cand)
 
+        
+            
         # COMPUTE RETRIEVAL
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
         if self.eval_protocol == 'relocalization':
