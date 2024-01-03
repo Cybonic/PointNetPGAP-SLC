@@ -9,23 +9,18 @@ from ..backbones import resnet
 from networks.utils import *
 
 class PointNetGeM(nn.Module):
-    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024):
+    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024,p=3):
         super(PointNetGeM, self).__init__()
 
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
-        self.head = GeM(outdim=output_dim, p=3, eps=1e-6)
+        self.head = GeM(outdim=output_dim, p=p, eps=1e-6)
 
     def forward(self, x):
         x = self.point_net(x)
         x = self.head(x)
         return x
-    
-    def get_backbone_params(self):
-        return self.point_net.parameters()
 
-    def get_classifier_params(self):
-        return self.head.parameters()
   
     def __str__(self):
         return "PointNetGeM"
@@ -56,12 +51,7 @@ class ResNet50GeM(nn.Module):
         x = x['out']
         x = self.head(x)
         return x
-    
-    def get_backbone_params(self):
-        return self.point_net.parameters()
 
-    def get_classifier_params(self):
-        return self.net_vlad.parameters()
   
     def __str__(self):
         return "ResNet50GeM"

@@ -5,6 +5,9 @@ full_cap = '--epoch 300'
 
 chkpt_root_B = '/home/deep/Dropbox/SHARE/orchards-uk/code/place_recognition_models/checkpoints'
 chkpt_root_A = '/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints'
+
+
+
 args = [f'--network PointNetVLAD  -e cross_validation/final@range1  --chkpt_root {chkpt_root_B}',
         #'--network PointNetORCHNet',
         #'--network ResNet50ORCHNet --modality bev'
