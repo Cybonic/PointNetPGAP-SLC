@@ -3,7 +3,7 @@ import os
 
 full_cap = '--epoch 80'
 args = [#'--network PointNetVLAD',
-        '--network spvcnnORCHNetMeanSOP',
+        '--network PointNetORCHNetSGMaxPoolingFC',
         #'--network LOGG3D',
         
         #'--network PointNetGeM',

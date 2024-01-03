@@ -63,16 +63,9 @@ class SOP(nn.Module):
         x = torch.reshape(x, (-1, dimFeat, dimFeat))
         if self.do_pe:
             x = x.double()
-            # u_, s_, vh_ = torch.linalg.svd(x)
-            # dist = torch.dist(x, u_ @ torch.diag_embed(s_) @ vh_)
-            # dist_same = torch.allclose(x, u_ @ torch.diag_embed(s_) @ vh_)
-            # s_alpha = torch.pow(s_, 0.5)
-            # x = u_ @ torch.diag_embed(s_alpha) @ vh_
-
+   
             # For pytorch versions < 1.9
             u_, s_, v_ = torch.svd(x)
-            # dist = torch.dist(x, u_ @ torch.diag_embed(s_) @  v_.transpose(-2, -1))
-            # dist_same = torch.allclose(x, u_ @ torch.diag_embed(s_) @  v_.transpose(-2, -1))
             s_alpha = torch.pow(s_, 0.5)
             x = u_ @ torch.diag_embed(s_alpha) @ v_.transpose(-2, -1)
 

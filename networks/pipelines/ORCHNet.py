@@ -14,6 +14,9 @@ from networks.aggregators import multihead
 import yaml
 import os
 
+def PointNetORCHNetSGMaxPoolingFC(**argv):
+  return ORCHNet('pointnet',aggregator='MultiHeadSGMaxPoolingFC',**argv)
+
 
 def spvcnnORCHNetMeanSOP(**argv):
   return ORCHNet('spvcnn',aggregator='MeanSOP',**argv)
