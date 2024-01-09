@@ -31,15 +31,36 @@ from utils.viz import myplot
 def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,record_gif=False,**argv):
     # Save Similarity map
 
+    
+
+    
+    
+    save_dir =''
+    if 'save_dir' in argv:
+        save_dir = argv['save_dir']
+        
+    file_name = f'experiment'
+    if 'gif_name' in argv:
+            file_name = argv['gif_name']
+    
+    save_steps_flag = False
+    save_step_dir = ''
+    save_step_itrs = []
+    
+    if 'save_step_itr' in argv and  isinstance(argv['save_step_itr'],list):
+        save_step_itrs = argv['save_step_itr']
+        save_step_dir = os.path.join(save_dir,file_name)
+        os.makedirs(save_step_dir,exist_ok=True)
+    
+    
     plot = myplot(delay = 0.001)
     plot.init_plot(poses[:,0],poses[:,1],c='k',s=10)
     plot.xlabel('m')
     plot.ylabel('m')
-
+                     
     if record_gif == True:
-        name = f'training_sim.gif'
-        if 'name' in argv:
-            name = argv['name']
+        # Build the name of the file
+        name = os.path.join(save_dir,file_name+'.gif') # Only add .gif here because the name is used below as name of a dir
         plot.record_gif(name)
 
     keys = list(predictions.keys())
@@ -50,7 +71,7 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
     true_positive = []
     wrong = []
     query_list = list(range(first_point,n_samples,20))
-    for query in tqdm.tqdm(query_list,total = len(query_list)):
+    for itr,query in tqdm.tqdm(enumerate(query_list),total = len(query_list)):
         
         c = np.array(['k']*(query+1)) # set to gray by default
         #c[:query] = ['k']*query
@@ -98,6 +119,11 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
         s[np_wrong] = 50
 
         plot.update_plot(poses[:query+1,0],poses[:query+1,1],color = c , offset= 1, zoom=-1,scale=s)
+        
+         # save png of parts of the plot
+        if itr in save_step_itrs:
+            plot.save_plot(os.path.join(save_step_dir,f'{itr}.png'))
+        
  
         
         
@@ -115,7 +141,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetORCHNet',
+        default='PointNetSPoC',
         choices=['PointNetSPoC',
                  'PointNetORCHNetMaxPooling',
                  'PointNetVLAD',
@@ -136,7 +162,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='cross_validation/finalMyModels-no_aug',
+        default='cross_validation/final@range1',
         help='Directory to get the trained model.'
     )
 
@@ -257,7 +283,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'orchards/sum22/extracted',
+        default = 'orchards/june23/extracted',
     )
 
     parser.add_argument(
@@ -419,7 +445,7 @@ if __name__ == '__main__':
     min_xy = np.min(xy,axis=0)
     xy -= min_xy
     # Save gif
-    save_dir = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower().replace('/',''),FLAGS.network.lower()])
+    file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower().replace('/','-'),FLAGS.network.lower(),f'top{topk}'])
     
 
     
@@ -428,9 +454,10 @@ if __name__ == '__main__':
     os.makedirs(root2save,exist_ok=True)
     print("Saving to: ",root2save)
     
-    file = os.path.join(root2save,save_dir+f'_top{topk}.gif')
+    #file =  
     
-    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=topk,record_gif=True,name=file)
+    save_itrs = list(range(1,len(predictions.keys()),10))
+    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=topk,record_gif=True,gif_name=file_name,save_dir = root2save,save_step_itr=save_itrs)
     
     
     

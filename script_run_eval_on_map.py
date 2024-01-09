@@ -6,7 +6,7 @@ full_cap = '--epoch 300'
 chkpt_root_A = '/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints'
 run = 'final@range1'
 
-local = f'-e cross_validation/{run}  --chkpt_root {chkpt_root_A}'
+local = f'-e cross_validation/final@range1  --chkpt_root {chkpt_root_A}'
 
 
 args = [#f'--network PointNetVLAD {local}',
@@ -31,10 +31,10 @@ density = ['10000']
 
 
 test_sequrnces = [
-        'orchards/sum22/extracted',
+        #'orchards/sum22/extracted',
         'orchards/june23/extracted',
-        'orchards/aut22/extracted',
-        'strawberry/june23/extracted'
+        #'orchards/aut22/extracted',
+        #'strawberry/june23/extracted'
 ]
 
 
