@@ -17,13 +17,14 @@ from PIL import Image
 
 from tqdm import tqdm
 import pickle
+from tools.viz_row_labels import load_row_bboxs
 
 def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
 
     
 
     mplot = myplot(delay=0.2)
-    mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'whitesmoke')
+    mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'k')
     mplot.xlabel('m'), mplot.ylabel('m')
         
     if record_gif == True:
@@ -71,48 +72,54 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/SHARE/DATASET')
+    parser.add_argument('--root', type=str, default='/home/deep/Dropbox/SHARE/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'uk',
+                                    default = 'GreenHouse',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "strawberry/june23",type = str)
+    parser.add_argument('--seq',default  = "e3/extracted",type = str)
     parser.add_argument('--plot_path',default  = True ,type = bool)
-    parser.add_argument('--record_gif',default  = False ,type = bool)
-    parser.add_argument('--rot_angle',default  = 0 ,type = int,
-                        help='rotation angle in degrees to rotate the path. the path is rotated at the goemtrical center, ' + 
-                        "positive values rotate anti-clockwise, negative values rotate clockwise")
+    parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
-    parser.add_argument('--debug_mode',default  = True ,type = bool, 
+    parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
-    parser.add_argument('--save_eval_data',default  = False ,type = bool,
+    parser.add_argument('--save_eval_data',default  = True ,type = bool,
                         help='save evaluation data to a pickle file')
     
     
     args = parser.parse_args()
 
-    data_dir = "extracted"
     root    = args.root
     dataset = args.dataset 
     seq     = args.seq
     plotting_flag = args.plot_path
     record_gif_flag = args.record_gif
-    rotation_angle = args.rot_angle
-
+    log = []
+    
     print("[INF] Dataset Name:    " + dataset)
     print("[INF] Sequence Name:   " + str(seq) )
     print("[INF] Plotting Flag:   " + str(plotting_flag))
     print("[INF] record gif Flag: " + str(record_gif_flag))
-    print("[INF] Rotation Angle:  " + str(rotation_angle))
-
-    ground_truth = {'pos_range': 10, # Loop Threshold [m]
-                    'num_pos': -1,
-                    'warmupitrs': 800, # Number of frames to ignore at the beguinning
-                    'roi': 700,
-                    'anchor_range': 0.5}
+    log.append("[INF] Dataset Name:    " + dataset)
+    log.append("[INF] Sequence Name:   " + str(seq) )
+    log.append("[INF] Plotting Flag:   " + str(plotting_flag))
+    log.append("[INF] record gif Flag: " + str(record_gif_flag))
+ 
+    ground_truth = {'pos_range': 2,
+                    'warmupitrs': 300, # Number of frames to ignore at the beguinning
+                    'roi': 200,
+                    'anchor_range': 0}
+    
+    
+    # log ground truth data 
+    log.append("[INF] Ground Truth Parameters: ")
+    log.append("[INF] Positive Range: " + str(ground_truth['pos_range']))
+    log.append("[INF] Warmup Iterations: " + str(ground_truth['warmupitrs']))
+    log.append("[INF] ROI: " + str(ground_truth['roi']))
+    log.append("[INF] Anchor Range: " + str(ground_truth['anchor_range']))
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
@@ -123,20 +130,23 @@ if __name__ == "__main__":
     root_dir = pc_config[device_name]
 
     print("[INF] Root directory: %s\n"% root_dir)
-
-    dir_path = os.path.join(root_dir,dataset,seq,data_dir)
+    log.append("[INF] Root directory: %s\n"% root_dir)
+    
+    dir_path = os.path.join(root_dir,dataset,seq)
     assert os.path.exists(dir_path), "Data directory does not exist:" + dir_path
     
     print("[INF] Loading data from directory: %s\n" % dir_path)
-
-    save_root_dir  = os.path.join(root_dir,dataset,seq,data_dir)
+    log.append("[INF] Loading data from directory: %s\n" % dir_path)
+    
+    save_root_dir  = os.path.join(root_dir,dataset,seq)
     if args.debug_mode:
-        save_root_dir = os.path.join("temp",dataset,seq,data_dir)
+        save_root_dir = os.path.join("temp",dataset,seq)
     
     os.makedirs(save_root_dir,exist_ok=True)
 
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
-
+    log.append("[INF] Saving data to directory: %s\n" % save_root_dir)
+    
     # Create Save Directory
     save_root_dir  = os.path.join(root_dir,dataset,seq,"eval")
     if args.debug_mode:
@@ -151,31 +161,16 @@ if __name__ == "__main__":
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
-    poses = load_positions(pose_file)
+    xy = load_positions(pose_file)
 
     print("[INF] Reading poses from: %s"% pose_file)
-    print("[INF] Number of poses: %d"% poses.shape[0])
-
+    print("[INF] Number of poses: %d"% xy.shape[0])
+    log.append("[INF] Reading poses from: %s"% pose_file)
+    log.append("[INF] Number of poses: %d"% xy.shape[0])
+    
     # Rotate poses to align with the ROI frame
    
-    # Load row ids
-    seq = seq.replace('/','_')
-    print("[INF] Loading row segments from: %s"% seq)
-    dataset_raws = row_segments.__dict__[seq]
-    
-    
-    # Load aline rotation
-    rotation_angle = dataset_raws['angle']
-    # Rotate poses to match the image frame
-    rotated_poses = rotate_poses(poses.copy(),rotation_angle) # Rotate 90 degrees to align with the image frame
-    xy = rotated_poses[:,:2]
-
-    xy_rotated = rotate_poses(rotated_poses.copy(),0)
-    min_y = np.min(xy_rotated[:,1])
-    xy_rotated[:,1] = xy_rotated[:,1] - min_y
-    
-    # Load row segments
-    rectangle_rois = np.array(dataset_raws['rows'])
+    rectangle_rois = load_row_bboxs(seq)
 
     anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
 
@@ -189,7 +184,13 @@ if __name__ == "__main__":
     print("[INF] Number of positives: " + str(len(positives)))
     print("[INF] Number of negatives: " + str(len(negatives)))
     print("="*30)
-
+    log.append("="*30)
+    log.append("[INF] Number of points: " + str(n_points))
+    log.append("[INF] Number of anchors: " + str(len(anchors)))
+    log.append("[INF] Number of positives: " + str(len(positives)))
+    log.append("[INF] Number of negatives: " + str(len(negatives)))
+    log.append("="*30)
+    
     # Generate Ground-truth Table
     if args.save_eval_data:
         
@@ -204,7 +205,8 @@ if __name__ == "__main__":
             }, f)
     
         print("[INF] saved ground truth at:" + file)
-
+        log.append("[INF] saved ground truth at:" + file)
+        
 
 
     if plotting_flag == True:
@@ -214,9 +216,9 @@ if __name__ == "__main__":
         
         flatten_pos = np.unique(np.array(flatten_pos))
         fig, ax = plt.subplots()
-        ax.scatter(xy_rotated[:,0],xy_rotated[:,1],s=20,c='black',label='path')
-        ax.scatter(xy_rotated[flatten_pos,0],xy_rotated[flatten_pos,1],s=30,c='green',label='positive')
-        ax.scatter(xy_rotated[anchors,0],xy_rotated[anchors,1],s=3,c='blue',label='anchor')
+        ax.scatter(xy[:,0],xy[:,1],s=1,c='black',label='path')
+        ax.scatter(xy[flatten_pos,0],xy[flatten_pos,1],s=1,c='green',label='positive')
+        ax.scatter(xy[anchors,0],xy[anchors,1],s=1,c='blue',label='anchor')
         ax.set_aspect('equal')
         plt.xlabel('m')
         plt.ylabel('m')
@@ -232,11 +234,12 @@ if __name__ == "__main__":
         
         print("[INF] Plotting path and ground truth")
         print("[INF] Saving plot to: %s"% file)
-
+        log.append("[INF] Plotting path and ground truth")
+        log.append("[INF] Saving plot to: %s"% file)
 
 
     if record_gif_flag:
-        n_points = poses.shape[0]
+        n_points = xy.shape[0]
         # Generate Ground-truth Table 
         # Rows: Anchors
         table = np.zeros((n_points,n_points))
@@ -251,8 +254,16 @@ if __name__ == "__main__":
                     frame_jumps= 100)
 
         print("[INF] Saving gif to: %s"% gif_file)
-
- 
+        log.append("[INF] Saving gif to: %s"% gif_file)
+        
+    # Save log file
+    log_file = os.path.join(save_root_dir,f'log_{positive_range_str}.txt')
+    log_tex = '\n'.join(log)
+    with open(log_file, 'w') as f:
+        f.write(log_tex)
+    print("[INF] Saving log to: %s"% log_file)  
+    
+        
 
 
     

@@ -45,7 +45,10 @@ class myplot():
     def add_to_plot(self,x,y,offset=20,color=[],zoom=10,scale = []):
         points = self.p.set_offsets()
 
-    def update_plot(self,x,y,offset=20,color=[],zoom=10,scale = []):
+    def save_plot(self,name):
+        self.fig.savefig(name)
+        
+    def update_plot(self,x,y,offset=20,color=[],zoom=10,scale = [],**argv):
         '''
         
         '''

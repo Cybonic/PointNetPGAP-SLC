@@ -30,7 +30,7 @@ def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
     
 
     mplot = myplot(delay=0.2)
-    mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'white')
+    mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'k')
     mplot.xlabel('m'), mplot.ylabel('m')
         
     if record_gif == True:
@@ -77,18 +77,18 @@ def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='None', help='path to the data directory')
+    parser.add_argument('--root', type=str, default='/home/deep/Dropbox/SHARE/DATASET', help='path to the data directory')
     parser.add_argument('--dataset',
                                     default = 'GreenHouse',
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "e3",type = str, 
+    parser.add_argument('--seq',default  = "e3/extracted",type = str, 
                         help='path to the data of the sequence')
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
-    parser.add_argument('--record_gif',default  = False ,type = bool)
-    parser.add_argument('--save_triplet_data',default  = False ,type = bool)
+    parser.add_argument('--record_gif',default  = True ,type = bool)
+    parser.add_argument('--save_triplet_data',default  = True ,type = bool)
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files are saved at temp/.../... ')
     
@@ -100,23 +100,37 @@ if __name__ == "__main__":
     plotting_flag = args.show_static_plot
     record_gif_flag = args.record_gif
     save_triplet_data = args.save_triplet_data
-
+    log = []
     ground_truth = {'pos_range':2, # Loop Threshold [m]
                     'neg_range':10,
                     'num_neg':20,
                     'num_pos':1,
                     'warmupitrs': 200, # Number of frames to ignore at the beguinning
                     'roi':100, # Region of interest [m]
-                    'anchor_range':5 # Range to search for the anchor
+                    'anchor_range':0.5 # Range to search for the anchor
                     }
+    
+    # log ground truth parameters
+    log.append("[INF] Ground Truth Parameters: ")
+    log.append("[INF] pos_range: " + str(ground_truth['pos_range']))
+    log.append("[INF] neg_range: " + str(ground_truth['neg_range']))
+    log.append("[INF] num_neg:   " + str(ground_truth['num_neg']))
+    log.append("[INF] num_pos:   " + str(ground_truth['num_pos']))
+    log.append("[INF] warmup:    " + str(ground_truth['warmupitrs']))
+    log.append("[INF] roi:       " + str(ground_truth['roi']))
+    log.append("[INF] anchor_range: " + str(ground_truth['anchor_range']))
+    
+    print("****************************************************\n")
     
     # LOAD DEFAULT SESSION PARAM
     session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
     print("[INF] Opening session config file: %s\n" % session_cfg_file)
+    log.append("[INF] Opening session config file: %s\n" % session_cfg_file)
     
     if root_dir == 'None':
         device_name = os.uname()[1] # Get the device name
         print("Device name: %s" % device_name)
+        log.append("Device name: %s" % device_name)
         pc_config_file = "sessions/pc_config.yaml" # Load the device config file
         assert os.path.exists(pc_config_file), "Device config file does not exist"
         
@@ -134,6 +148,18 @@ if __name__ == "__main__":
     print("[INF] save triplet: " + str(save_triplet_data))
     print("[INF] debug mode:   " + str(args.debug_mode))
     print("[INF] pose source:  " + str(args.pose_data_source))
+    
+    log.append("[INF] Session Config: ")
+    log.append("[INF] Root directory: %s "% root_dir) # pint all the session config equally spaced
+    log.append("[INF] Dataset:      " + dataset)
+    log.append("[INF] Sequence:     " + str(sequence) )
+    log.append("[INF] record gif:   " + str(record_gif_flag))
+    log.append("[INF] plot static:  " + str(plotting_flag))
+    log.append("[INF] save triplet: " + str(save_triplet_data))
+    log.append("[INF] debug mode:   " + str(args.debug_mode))
+    log.append("[INF] pose source:  " + str(args.pose_data_source))
+    
+    
     print("****************************************************\n")
     print("[INF] Ground Truth Parameters: ")
     print("[INF] pos_range: " + str(ground_truth['pos_range']))
@@ -145,28 +171,24 @@ if __name__ == "__main__":
     print("****************************************************\n")
     print("[INF] Root directory: %s\n"% root_dir)
 
-    dir_path = os.path.join(root_dir,dataset,sequence,"extracted")
+    dir_path = os.path.join(root_dir,dataset,sequence)
     assert os.path.exists(dir_path), "Data directory does not exist:" + dir_path
 
     print("[INF] Loading data from directory: %s\n" % dir_path)
-
+    log.append("[INF] Loading data from directory: %s\n" % dir_path)
+    
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
-    poses = load_positions(pose_file)
+    xy = load_positions(pose_file)
 
     print("[INF] Reading poses from: %s"% pose_file)
-    print("[INF] Number of poses: %d"% poses.shape[0])
+    log.append("[INF] Reading poses from: %s"% pose_file)
+    print("[INF] Number of poses: %d"% xy.shape[0])
+    log.append("[INF] Number of poses: %d"% xy.shape[0])
 
-    # Load row ids
-    seq = sequence.replace('/','_')
-    print("[INF] Loading row segments from: %s"% seq)
-    dataset_raws = row_segments.__dict__[seq]
-    # Load aline rotation
-    rotation_angle = dataset_raws['angle']
-    # Rotate poses to match the image frame
-    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
-    xy = rotated_poses[:,:2]
-    rectangle_rois = np.array(dataset_raws['rows'])
+    from viz_row_labels import load_row_bboxs
+    
+    rectangle_rois = load_row_bboxs(sequence)
     
     anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
 
@@ -184,7 +206,8 @@ if __name__ == "__main__":
     os.makedirs(save_root_dir,exist_ok=True)
 
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
-
+    log.append("[INF] Saving data to directory: %s\n" % save_root_dir)
+    
     file = os.path.join(save_root_dir,ground_truth_name +'.pkl')
     
     if save_triplet_data:
@@ -197,6 +220,7 @@ if __name__ == "__main__":
             }, f)
     
         print("[INF] saved ground truth at:" + file)
+        log.append("[INF] saved ground truth at:" + file)
 
 
     # Generate Ground-truth Table 
@@ -207,7 +231,7 @@ if __name__ == "__main__":
         table[anchor,negative] = -1
     
     print("[INF] Number of anchors: " + str(len(anchors)))
-
+    log.append("[INF] Number of anchors: " + str(len(anchors)))
     # Plot the ground truth
     gif_file = os.path.join(save_root_dir,ground_truth_name + '.gif')
 
@@ -218,5 +242,15 @@ if __name__ == "__main__":
                     frame_jumps=1)
         
         print("[INF] saved gif at:" + gif_file)
+        log.append("[INF] saved gif at:" + gif_file)
+    
+    
+    # save the log file
+    log_file = os.path.join(save_root_dir,ground_truth_name + '.log')
+
+    log_text = '\n'.join(log)
+    with open(log_file, 'w') as f:
+        f.write(log_text)
+    
 
 
