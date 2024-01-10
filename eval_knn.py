@@ -433,23 +433,49 @@ class PlaceRecognition():
         num_sample = len(loader)
         tbar = tqdm(range(num_sample), ncols=100)
 
+        # measure average elapsed time
+        
+        import time
+        
+        pframe_time_spans = []
+        pbatch_time_spans = []
         #self._reset_metrics()
         prediction_bag = {}
         for batch_idx in tbar:
+            
             input,inx = next(dataloader)
             input = input.to(self.device)
             #if isinstance(input,torchsparse.tensor.SparseTensor):
 
             #input = input.type(torch.cuda.FloatTensor)
+            start_time = time.time() 
             # Generate the Descriptor
             prediction = model(input)
             #prediction,feat = model(input)
+            end_time = time.time() 
+            elapsed_time = end_time - start_time  # Elapsed time in seconds per batch
+            pbatch_time_spans.append(elapsed_time)
+            #print(f'Elapsed time: {elapsed_time}')
+            #print("Batch size: %d, Elapsed time: %.3f" % (prediction.shape[0],elapsed_time))
+            time_elapsed_frame = elapsed_time/prediction.shape[0] # Elapsed time per frame
+            # print(f'Elapsed time per frame: {time_elapsed_frame}')
+            pframe_time_spans.append(time_elapsed_frame)
             assert prediction.isnan().any() == False
             if len(prediction.shape)<2:
                 prediction = prediction.unsqueeze(0)
             # Keep descriptors
             for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):
                 prediction_bag[int(i)] = d
+        
+        p_frame_average_time = np.mean(pframe_time_spans)
+        self.logger.warning(f'Average time per frame: {p_frame_average_time}')
+        
+        p_batch_average_time = np.mean(pbatch_time_spans)
+        self.logger.warning(f'Average time per batch: {p_batch_average_time}')
+        
+        
+        # Display number of model's parameters
+        self.logger.warning(f'Number of parameters: {sum(p.numel() for p in model.parameters())}')
         return(prediction_bag)
 
 

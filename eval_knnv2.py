@@ -208,13 +208,19 @@ if __name__ == '__main__':
         #default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
         default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
     )
-
+    parser.add_argument(
+        '--session',
+        type=str,
+        required=False,
+        default = "uk",
+    )
+    
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
 
-    session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
+    session_cfg_file = os.path.join('sessions', FLAGS.session.lower() + '.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
