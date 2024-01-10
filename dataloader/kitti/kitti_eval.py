@@ -49,7 +49,8 @@ class KITTIEval:
         #    self.row_labels = pickle.load(f)
         
         # Load aline rotation
-        ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
+        #ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
+        ground_truth_path = os.path.join(root,sequence,ground_truth_file)
         assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
 
          # load the numpy arrays from the file using pickle

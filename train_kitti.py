@@ -3,8 +3,8 @@ import os
 
 full_cap = '--epoch 80'
 args = [#'--network PointNetVLAD',
-        '--network PointNetSOP',
-        #'--network LOGG3D',
+        #'--network PointNetSOP',
+        '--network LOGG3D',
         
         #'--network PointNetGeM',
         #'--network PointNetMAC',
@@ -30,22 +30,23 @@ losses = ['LazyTripletLoss']
 density = ['10000']
 
 evaluation_type = "cross_validation"
-experiment = f'-e {evaluation_type}/final@range1'
+experiment = f'-e {evaluation_type}/iros24'
 
-resume  = '--resume best_model'
+resume  = '--resume none'
 
 test_sequrnces = [
-        'orchards/sum22/extracted',
-        'orchards/june23/extracted',
-        'orchards/aut22/extracted',
-        'strawberry/june23/extracted'
+        #'--val_set orchards/sum22/extracted --dataset uk',
+        #'--val_set  orchards/june23/extracted --dataset uk',
+        #'--val_set orchards/aut22/extracted --dataset uk',
+        #'--val_set strawberry/june23/extracted --dataset uk',
+        '--val_set e3/extracted --dataset GreenHouse'
 ]
 
 
 for seq in test_sequrnces:
         for arg in args:
         
-                test_seq = '--val_set ' + seq
+                test_seq =  seq
                 model_evaluation = f'--model_evaluation {evaluation_type}' 
                 func_arg = arg + ' ' + '--device cuda'+ ' ' + test_seq + ' ' +  experiment +  ' ' + full_cap + ' ' + model_evaluation + ' ' + resume
                 #print(func_arg)
