@@ -99,14 +99,14 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='greenhouse', # uk
+        default='uk', # uk
         help='Directory to get the trained model.'
     )
     parser.add_argument(
         '--device',
         type=str,
         required=False,
-        default='cpu',
+        default='cuda',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'greenhouse/e3/extracted',
+        default = 'orchards/june23/extracted',
     )
 
     parser.add_argument(
@@ -201,14 +201,8 @@ if __name__ == '__main__':
         '--model_evaluation',
         type=str,
         required=False,
-        default = "cross_validation",
+        default = "split",
         choices = ["cross_validation","split"]
-    )
-    parser.add_argument(
-        '--session',
-        type=str,
-        required=False,
-        default = "ukfrpt",
     )
 
     FLAGS, unparsed = parser.parse_known_args()
@@ -216,7 +210,7 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
 
-    session_cfg_file = os.path.join('sessions', FLAGS.session + '.yaml')
+    session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 

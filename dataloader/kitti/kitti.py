@@ -32,7 +32,7 @@ class cross_validation():
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
-        train_loader = KittiTriplet(root       = self.root,
+        train_loader = KittiTriplet( root       = self.root,
                                     dataset     = self.dataset,
                                     sequences   = sequence,
                                     triplet_file = triplet_files,

@@ -13,18 +13,6 @@ uk:
     height: 254
 
     
-greenhouse:
-  sensor: "ousterlaser"
-  BEV:
-    W: 256
-    H: 256
-  roi:
-      xmin: -50
-      xmax:  50
-      ymin: -50
-      ymax:  50
-      zmin: -2.73
-      zmax: 20
 
 
 ouster:

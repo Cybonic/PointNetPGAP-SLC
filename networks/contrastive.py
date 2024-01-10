@@ -155,7 +155,7 @@ class ModelWrapper(nn.Module):
             if pclt.shape[0]==1: # drop last
                 continue
 
-            pclt = pclt.type(torch.FloatTensor).to(self.device)
+            pclt = pclt.type(torch.cuda.FloatTensor)
             pred = self.model(pclt)
             #pred,feat = self.model(pclt)
             

@@ -114,15 +114,14 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
 def dataloader_handler(root_dir,network,dataset,session,**args):
 
-    assert dataset in ['kitti','orchard-uk','uk','GreenHouse','greenhouse'],'Dataset Name does not exist!'
+    assert dataset in ['kitti','orchard-uk','uk'],'Dataset Name does not exist!'
 
     sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
-    #sensor_pram = sensor_pram[dataset]
+    sensor_pram = sensor_pram[dataset]
 
 
     roi = None
     if 'roi' in args and args['roi'] > 0:
-        sensor_pram = sensor_pram[dataset]
         roi = sensor_pram['square_roi']
         print(f"\nROI: {args['roi']}\n")
         roi['xmin'] = -args['roi']
@@ -133,7 +132,6 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
     if network in ['ResNet50_ORCHNet','overlap_transformer',"ResNet50GeM"] or network.startswith("ResNet50"):
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
-            sensor_pram = sensor_pram[dataset]
             bev_pram = sensor_pram['bev']
             modality = BEVProjection(**bev_pram,square_roi=roi,aug_flag=session['aug'])
         elif session['modality'] == "spherical" or network != "overlap_transformer":

@@ -98,8 +98,7 @@ class kittidataset():
         self.point_cloud_files = []
         self.target_dir = []
 
-        #self.target_dir = os.path.join(root,dataset,sequence)
-        self.target_dir = os.path.join(root,sequence)
+        self.target_dir = os.path.join(root,dataset,sequence)
         assert os.path.isdir(self.target_dir),'target dataset does nor exist: ' + self.target_dir
 
         # Get pose file
