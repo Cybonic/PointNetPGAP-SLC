@@ -63,40 +63,6 @@ class Trainer(BaseTrainer):
                                                 logdir =  run_name['experiment'],
                                                 monitor_range = monitor_range
                                                 )
-     
-        
-
-    def _reset_metrics(self):
-        # Reset all evaluation metrics 
-        #self.train_metrics.reset()
-        #self.val_metrics.reset()
-        pass 
-
-    def _send_to_device(self,input):
-        # Send data structure to GPU 
-        output = []
-        if isinstance(input,list):
-            for item in input:
-                output_dict = {}
-                if isinstance(item,dict):
-                    for k,v in item.items():
-                        if isinstance(v,list):
-                            continue
-                        value = v.to(self.device)
-                        output_dict[k]=value
-                    output.append(output_dict)
-                else:
-                    output.append(item)
-
-                       
-        elif isinstance(input,dict):
-            output = {}
-            for k,v in input.items():
-                value = v.to(self.device)
-                output[k]=value
-        else:
-            output = input.to(self.device)
-        return output
 
 # ===================================================================================================================
 # 
@@ -124,7 +90,6 @@ class Trainer(BaseTrainer):
         for batch_idx in tbar:
             
             input = next(dataloader)
-            #input_tonsor = self._send_to_device(input)
                     
             batch_data ,info= self.model(input)
             
@@ -137,17 +102,18 @@ class Trainer(BaseTrainer):
             # Accumulate error
             epoch_loss += batch_data.detach().cpu().item()
 
+            # Update progress bar description
             tbar.set_description('T ({}) | Loss {:.10f}'.format(epoch,epoch_loss/(batch_idx+1)))
             tbar.update()
 
+            # Backward and optimize
             if batch_idx % batch_size == 0 and batch_idx > 0:
                 # Update model every batch_size iteration
                 self.mean_grad(batch_size)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 
-            
-
+        # Update model every batch_size iteration
         epoch_perfm = {}
         for key,value in epoch_loss_list.items():
             epoch_perfm[key] = np.mean(value)
@@ -167,17 +133,17 @@ class Trainer(BaseTrainer):
         if loop_range is None or isinstance(loop_range,int):
             loop_range = [loop_range]
         
+        # Evaluate the model
         overall_scores = self.eval_approach.run(loop_range=loop_range)
 
         max_cand = self.top_cand_retrieval[-1]
+        
         # Post on tensorboard
-        #recall_scores = overall_scores['recall']
         for range,scores in overall_scores.items():
             for score,top in zip(scores['recall'],['1','1%']):
                 self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
         
         # For model comparison use the first range top 1 recall
-        # 10
         output = {'recall':overall_scores[self.monitor_range]['recall'][0]}
         return output,[]
 
