@@ -8,7 +8,6 @@ os.environ['NUMEXPR_NUM_THREADS'] = '16'
 import torch 
 from tqdm import tqdm
 import numpy as np
-from networks import contrastive
 from utils.eval import eval_row_place,eval_row_relocalization
 import logging
 import pandas as pd
@@ -354,6 +353,7 @@ class PlaceRecognition():
 
 
     def run(self,loop_range=10):
+        
         self.loop_range_distance = loop_range
         if not isinstance(self.loop_range_distance,list):
             self.loop_range_distance = [loop_range]
@@ -363,10 +363,6 @@ class PlaceRecognition():
             
         self.param['loop_range_distance'] = self.loop_range_distance
         
-        
-        #if not isinstance(self.loop_range_distance,list):
-        #    self.loop_range_distance = [self.loop_range_distance]
-
         if not isinstance(self.top_cand,list):
             self.top_cand = [self.top_cand]
         
@@ -479,187 +475,3 @@ class PlaceRecognition():
         return(prediction_bag)
 
 
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser("./infer.py")
-
-    parser.add_argument(
-        '--network', '-m',
-        type=str,
-        required=False,
-        default='PointNetVLAD',
-        help='Directory to get the trained model.'
-    )
-    
-    parser.add_argument(
-        '--experiment', '-e',
-        type=str,
-        required=False,
-        default='remove',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--cfg', '-f',
-        type=str,
-        required=False,
-        default='sensor-cfg',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--resume', '-p',
-        type=str,
-        required=False,
-        default='None',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--memory',
-        type=str,
-        required=False,
-        default='Disk',
-        choices=['Disk','RAM'],
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--debug', '-b',
-        type=bool,
-        required=False,
-        default=False,
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--plot',
-        type=int,
-        required=False,
-        default=1,
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--modality',
-        type=str,
-        required=False,
-        default='pcl',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        required=False,
-        default='uk',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--sequence',
-        type=str,
-        required=False,
-        default='[orchards/june23/extracted]',
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--device',
-        type=str,
-        required=False,
-        default='cuda',
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--batch_size',
-        type=int,
-        required=False,
-        default=10,
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--max_points',
-        type=int,
-        required=False,
-        default = 500,
-        help='sampling points.'
-    )
-    parser.add_argument(
-        '--ground_truth_file',
-        type=str,
-        required=False,
-        default = "ground_truth_ar1m_nr10m_pr2m.pkl",
-        help=' ground truth file.'
-    )
-
-    FLAGS, unparsed = parser.parse_known_args()
-
-    ###################################################################### 
-    
-     # The development has been made on different PC, each has some custom settings
-    # e.g the root path to the dataset;
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
-    root_dir = pc_config[device_name]
-
-    # LOAD DEFAULT SESSION PARAM
-    session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
-    print("Opening session config file: %s" % session_cfg_file)
-    SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
-
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
-    root_dir = pc_config[device_name]
-
-
-    print("----------")
-    print("INTERFACE:")
-    print("Root: ", root_dir)
-    print("Memory: ", FLAGS.memory)
-    print("Model:  ", FLAGS.network)
-    print("Debug:  ", FLAGS.debug)
-    print("Resume: ", FLAGS.resume)
-    print(f'Device: {FLAGS.device}')
-    print(f'batch size: {FLAGS.batch_size}')
-    print("----------\n")
-    ###################################################################### 
-
-    # DATALOADER
-    SESSION['max_points']= FLAGS.max_points
-    SESSION['retrieval']['top_cand'] = list(range(1,25,1))
-    SESSION['val_loader']['ground_truth_file'] = FLAGS.ground_truth_file
-
-    # Build the model and the loader
-    model  = model_handler(FLAGS.network, num_points=SESSION['max_points'],output_dim=256)
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION)
-
-    logger = logging.getLogger("Knn Eval")
-
-    pl = PlaceRecognition(model, # Model
-                         loader.get_val_loader(), # Get the Test loader
-                        25, # Max retrieval Candidates
-                        600, # Warmup
-                        'L2', # Similarity Metric
-                        logger, # Logger
-                        device  = FLAGS.device # Device
-                        ) # ,windows,eval_metric,device
-    
-    # Load the descriptors if they exist
-    pl.load_descriptors('temp')
-    # Run place recognition evaluation
-    pl.run()
-    
-    # Save the results
-    pl.save_descriptors('temp')
-    pl.save_predictions_cv('temp')
-    pl.save_results_cv('temp')
-
-    
-
-    
-
- 
-
-  
-  
