@@ -26,18 +26,6 @@ class MAC(nn.Module):
         return _l2norm(self.fc(x))
 
 
-class SPoC(nn.Module):
-    def __init__(self, outdim=256,**argv):
-        super().__init__()
-        self.fc = nn.LazyLinear(outdim)
-
-    def forward(self, x):
-        # Input (batch_size, n_features, n_feature_dims)
-        x = x.view(x.shape[0],x.shape[1],-1)
-        x = self.fc(torch.mean(x, dim=-1, keepdim=False)) # Return (batch_size, descriptor_dim) tensor
-        return _l2norm(x)
-
-
 class GeM(nn.Module):
     def __init__(self, outdim=256, p=3, eps=1e-6):
         super(GeM, self).__init__()
