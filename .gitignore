@@ -19,5 +19,6 @@ Worklog.md
 *.ipynb
 *.sh
 *.txt
-*.log 
+*.log
+*.pcd
 

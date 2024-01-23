@@ -60,7 +60,7 @@ train_loader:
             'orchards/sum22/extracted',
             'orchards/june23/extracted',
             'orchards/aut22/extracted',
-            #'strawberry/june23/extracted'
+            'strawberry/june23/extracted'
             ]
 
   fraction: 0.3 
@@ -104,7 +104,7 @@ trainer:
   monitor: "max recall" # [off, max mIoU]
   val_per_epochs: 1
   eval_metric: 'L2'
-  results_dir: "/media/tiago/BIG/Orchards/temp/"
+  results_dir: ""
   early_stop: 50 #epochs 
 
 
