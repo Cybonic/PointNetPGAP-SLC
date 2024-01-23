@@ -8,12 +8,10 @@ from dataloader.kitti.kitti import cross_validation,split
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
 from networks.pipelines.LOGG3D import LOGG3D
-from networks.pipelines import ORCHNet
 from networks.pipelines.GeMNet import PointNetGeM,ResNet50GeM
 from networks.pipelines.overlap_transformer import featureExtracter
-from networks.pipelines.SPoCNet import PointNetSPoC,ResNet50SPoC
-from networks.pipelines.MACNet import PointNetMAC,ResNet50MAC 
-from networks.pipelines.PointNetSOP import PointNetSOP
+from networks.pipelines.MACNet import PointNetMAC 
+from networks.pipelines.PointNetGAP import PointNetGAP
 import yaml
 
 from utils import loss as losses
@@ -61,24 +59,16 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name == 'LOGG3D':
         pipeline = LOGG3D(output_dim=output_dim)
-    elif pipeline_name == 'PointNetSOP':
-        pipeline = PointNetSOP(output_dim=output_dim, num_points = num_points, feat_dim = 16)
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif "ORCHNet" in pipeline_name:
-        pipeline = ORCHNet.__dict__[pipeline_name](output_dim=output_dim, num_points=num_points,feat_dim = feat_dim)
     elif pipeline_name == "PointNetGeM":
         pipeline = PointNetGeM(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "ResNet50GeM":    
         pipeline = ResNet50GeM(output_dim=output_dim,feat_dim = 1024)
-    elif pipeline_name == "PointNetSPoC":
-        pipeline = PointNetSPoC(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "ResNet50SPoC":    
-        pipeline = ResNet50SPoC(output_dim=output_dim,feat_dim = 1024)
+    elif pipeline_name == "PointNetGAP":
+        pipeline = PointNetGAP(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "PointNetMAC":
         pipeline = PointNetMAC(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "ResNet50MAC":
-        pipeline = ResNet50MAC(output_dim=output_dim,feat_dim = 1024)
     elif pipeline_name == 'overlap_transformer':
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
@@ -114,8 +104,6 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
 def dataloader_handler(root_dir,network,dataset,session,**args):
 
-    assert dataset in ['kitti','orchard-uk','uk'],'Dataset Name does not exist!'
-
     sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
     sensor_pram = sensor_pram[dataset]
 
@@ -129,7 +117,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         roi['ymin'] = -args['roi']
         roi['ymax'] = args['roi']
 
-    if network in ['ResNet50_ORCHNet','overlap_transformer',"ResNet50GeM"] or network.startswith("ResNet50"):
+    if network in ['overlap_transformer'] or network.startswith("ResNet50"):
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
             bev_pram = sensor_pram['bev']
@@ -144,12 +132,14 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         modality = SparseLaserScan(voxel_size=0.05,max_points=num_points,
                                    aug_flag=session['aug'])
     
-    elif network in ['PointNetVLAD','PointNet_ORCHNet',"PointNetGeM"] or network.startswith("PointNet"):
+    elif network in ['PointNetVLAD',"PointNetGeM"] or network.startswith("PointNet"):
         # Get point cloud based modality
         num_points = session['max_points']
         output_dim=256
         modality = Scan(max_points=num_points,
-                        aug_flag=session['aug'],square_roi=roi,pcl_norm = False)
+                        aug_flag=session['aug'],
+                        square_roi=roi,
+                        pcl_norm = False)
     else:
         raise NotImplementedError("Modality not implemented!")
 
@@ -185,17 +175,3 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
         raise NotImplementedError("Model Evaluation not implemented!")
 
     return loader
-
-
-
-if __name__=="__main__":
-    import yaml,os
-    
-    dataset = 'kitti'
-    session_cfg_file = os.path.join('sessions', dataset.lower() + '.yaml')
-    SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
-    Model,dataloader = pipeline('LOGG3D','kitti',SESSION)
-    print(Model)
-    print(dataloader)
-    
-    #assert str(Model)=="LO"

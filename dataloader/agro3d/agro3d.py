@@ -1,11 +1,10 @@
 
 
-from dataloader.kitti.kitti_eval import KITTIEval
-from dataloader.kitti.kitti_triplet import KittiTriplet
+from dataloader.agro3d.eval import KITTIEval
+from dataloader.agro3d.triplet import KittiTriplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
 from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np
-import torch
 
 class cross_validation():
     def __init__(self,**kwargs):
@@ -67,11 +66,11 @@ class cross_validation():
         
         return trainloader
     
-    def get_test_loader(self):
+    def get_val_loader(self):
         raise NotImplementedError
     
     
-    def get_val_loader(self):
+    def get_test_loader(self):
         sequence  = self.val_cfg['sequence']
         ground_truth_files = self.val_cfg['ground_truth_file']
         print(self.modality)
@@ -99,7 +98,6 @@ class cross_validation():
     
     def __str__(self):
         return "CROSS_VALIDATION"
-		#return  1-np.array(self.label_disto)
 
 
 

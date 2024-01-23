@@ -34,24 +34,12 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetSOP',
-        choices=['PointNetSOP',
-                'spvcnnORCHNetSPoC',
-                'PointNetORCHNetSGMaxPoolingFC',
-                'spvcnnORCHNetMeanSOP',
-                'PointNetORCHNetVLADSPoCLearned',
-                'PointNetORCHNetVLADSPoCMaxPooling',
+        default='PointNetGAP',
+        choices=['PointNetGAP',
                 'PointNetVLAD',
                  'LOGG3D',
-                 'PointNetORCHNetMaxPooling',
-                 'PointNetORCHNet',
-                 'ResNet50ORCHNet',
-                 'ResNet50GeM',
                  'PointNetGeM',
-                 'ResNet50MAC',
                  'PointNetMAC',
-                 'ResNet50SPoC',
-                 'PointNetSPoC',
                  'overlap_transformer'],
         help='Directory to get the trained model.'
     )
@@ -122,7 +110,7 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default = 'LazyTripletLoss',
-        choices=['LazyTripletLoss','LazyQuadrupletLoss','PositiveLoss'],
+        choices=['LazyTripletLoss','LazyQuadrupletLoss'],
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -315,9 +303,7 @@ if __name__ == '__main__':
     
         # Generate descriptors, predictions and performance for the best weights
         trainer.eval_approach.load_pretrained_model(best_model_filename)
-        #loop_range = [1,5,10,15,20,500]
         trainer.eval_approach.run(loop_range=loop_range)
-
         trainer.eval_approach.save_params()
         trainer.eval_approach.save_descriptors()
         trainer.eval_approach.save_predictions_cv()
