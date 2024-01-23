@@ -313,7 +313,7 @@ if __name__ == '__main__':
     trainer = Trainer(
             model        = model,
             train_loader = None,#loader.get_train_loader(),
-            val_loader   = loader.get_val_loader(),
+            test_loader   = loader.get_test_loader(),
             resume = FLAGS.resume,
             config = SESSION,
             device = FLAGS.device,

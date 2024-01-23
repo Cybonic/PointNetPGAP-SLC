@@ -220,7 +220,6 @@ if __name__ == '__main__':
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
-    
     SESSION['monitor_range'] = FLAGS.loop_range
 
 
@@ -274,7 +273,6 @@ if __name__ == '__main__':
                             modelwrapper = SESSION['modelwrapper']
                             )
 
-    
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
 
     run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
@@ -285,7 +283,7 @@ if __name__ == '__main__':
     trainer = Trainer(
             model        = model_,
             train_loader = loader.get_train_loader(),
-            val_loader   = loader.get_val_loader(),
+            test_loader   = loader.get_test_loader(),
             resume = FLAGS.resume,
             config = SESSION,
             device = FLAGS.device,

@@ -15,7 +15,7 @@ import logging
 class Trainer(BaseTrainer):
     def __init__(self,  model,
                         train_loader,
-                        val_loader,
+                        test_loader,
                         resume,
                         config,
                         device = 'cpu',
@@ -32,8 +32,8 @@ class Trainer(BaseTrainer):
 
         self.trainer_cfg    = config
         self.train_loader   = train_loader
-        self.val_loader     = val_loader
-        self.test_loader    = None
+        self.test_loader     = test_loader
+        self.val_loader    = None
         self.device         = device
         self.model          = model.to(self.device)
         self.hyper_log      = config
@@ -53,7 +53,7 @@ class Trainer(BaseTrainer):
         window = 600 # Avoid the nearby frames
         self.monitor_range = monitor_range
         self.eval_approach = PlaceRecognition(self.model ,
-                                                self.val_loader,
+                                                self.test_loader,
                                                 self.top_cand_retrieval,
                                                 window,
                                                 self.loss_dist,

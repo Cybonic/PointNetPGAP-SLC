@@ -13,14 +13,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory and add it to the Python path
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
-from dataloader.kitti.kitti_dataset import kittidataset
+from dataloader.agro3d.agro3d_dataset import agro3d_dataset
 
 import pickle
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 
-class KITTIEval:
+class AGRO3DEval:
     def __init__(self,  root, 
                         dataset,
                         sequence, 
@@ -36,7 +36,7 @@ class KITTIEval:
         #self.num_samples = self.num_samples
         self.sequence = sequence
         self.device   = device
-        kitti_struct = kittidataset(root,dataset, sequence)
+        kitti_struct = agro3d_dataset(root,dataset, sequence)
             
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()

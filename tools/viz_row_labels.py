@@ -147,7 +147,7 @@ if __name__ == "__main__":
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
 
     # Loading DATA
-    from dataloader.kitti.kitti_dataset import load_positions
+    from dataloader.kitti.dataset import load_positions
    
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"

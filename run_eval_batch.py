@@ -42,4 +42,4 @@ for seq in test_sequrnces:
                 test_seq = '--val_set ' + seq
                 func_arg = arg + ' ' +test_seq  #+ ' ' +  experiment +  ' ' + full_cap
                 #print(func_arg)
-                os.system('python3 eval_knnv2.py ' + func_arg)
+                os.system('python3 eval_knn.py ' + func_arg)

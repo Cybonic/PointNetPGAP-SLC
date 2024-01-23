@@ -155,7 +155,7 @@ if __name__ == "__main__":
     os.makedirs(save_root_dir,exist_ok=True)
 
     # Loading DATA
-    from dataloader.kitti.kitti_dataset import load_positions
+    from dataloader.kitti.dataset import load_positions
     from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
     from dataloader import row_segments
     

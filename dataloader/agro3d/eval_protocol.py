@@ -1,7 +1,7 @@
 
 
-from dataloader.agro3d.eval import KITTIEval
-from dataloader.agro3d.triplet import KittiTriplet
+from dataloader.agro3d.eval import AGRO3DEval
+from dataloader.agro3d.triplet import AGRO3DTriplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
 from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np
@@ -31,7 +31,7 @@ class cross_validation():
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
-        train_loader = KittiTriplet( root       = self.root,
+        train_loader = AGRO3DTriplet( root       = self.root,
                                     dataset     = self.dataset,
                                     sequences   = sequence,
                                     triplet_file = triplet_files,
@@ -80,7 +80,7 @@ class cross_validation():
         elif "sparse" in str(self.modality).lower() :
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
-        val_loader = KITTIEval( root = self.root,
+        test_loader = AGRO3DEval( root = self.root,
                                 dataset = self.dataset,
                                 sequence = sequence[0],
                                 modality = self.modality,
@@ -88,13 +88,13 @@ class cross_validation():
                                 ground_truth_file = ground_truth_files
                                 )
 
-        valloader  = DataLoader(val_loader,
+        testloader  = DataLoader(test_loader,
                                 batch_size = self.val_cfg['batch_size'],
                                 num_workers= 0,
                                 pin_memory=False,
                                 collate_fn = self.collation_fn
                                 )
-        return valloader
+        return testloader
     
     def __str__(self):
         return "CROSS_VALIDATION"
@@ -130,7 +130,7 @@ class split():
         #max_points = self.max_points
         print(self.modality)
         
-        self.train_set = KittiTriplet( root = self.root,
+        self.train_set = AGRO3DTriplet( root = self.root,
                                     dataset     = self.dataset,
                                     sequences   = sequence,
                                     triplet_file = triplet_files,
@@ -144,7 +144,7 @@ class split():
         sequence  = self.val_cfg['sequence']
         ground_truth_files = self.val_cfg['ground_truth_file']
 
-        self.val_set = KITTIEval(   root     = self.root,
+        self.test_set = AGRO3DEval(   root     = self.root,
                                     dataset  = self.dataset,
                                     sequence = sequence[0],
                                     modality = self.modality,
@@ -158,13 +158,15 @@ class split():
         self.split_val_index = int(np.floor(self.split_ratio * num_anchors))
         self.train_indices, self.val_indices = indices[:self.split_val_index], indices[self.split_val_index:]
         
-        self.val_set.load_split(self.val_indices)   
+        self.test_set.load_split(self.val_indices)   
         self.train_set.load_split(self.train_indices)
 
         
     def get_train_loader(self):
+        
         if str(self.modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("torch_tuple",voxel_size = 0.05, num_points=10000)
+        
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
@@ -178,21 +180,21 @@ class split():
                                     )
         return trainloader
     
-    def get_val_loader(self):
+    def get_test_loader(self):
          
         if str(self.modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
         elif "sparse" in str(self.modality).lower() :
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
-        valloader  = DataLoader(self.val_set,
+        testloader  = DataLoader(self.test_set,
                                 batch_size = self.val_cfg['batch_size'],
                                 num_workers= 0,
                                 pin_memory=False,
                                 collate_fn = self.collation_fn,
                                 #sampler= SubsetRandomSampler(self.val_indices)
                                 )
-        return valloader
+        return testloader
     
     def __str__(self):
         return "SPLIT"

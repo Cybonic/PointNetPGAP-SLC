@@ -32,7 +32,6 @@ class PlaceRecognition():
                     window,
                     eval_metric,
                     logger,
-                    #loop_range_distance = 10,
                     save_deptrs=True,
                     device= 'cpu',
                     eval_protocol = 'place',
@@ -41,9 +40,10 @@ class PlaceRecognition():
 
         self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
-        #self.loop_range_distance = loop_range_distance
         self.eval_metric = eval_metric
         self.logger = logger
+        
+        
         if device in ['gpu','cuda']:
             device, availble_gpus = get_available_devices(1,logger)
         
@@ -61,7 +61,8 @@ class PlaceRecognition():
 
 
         self.dataset_name = str(loader.dataset)
-        #self.database = loader.dataset.get_idx_universe()
+
+        # Get the ground truth
         self.anchors  = loader.dataset.get_anchor_idx()
         table = loader.dataset.table
         self.poses = loader.dataset.get_pose()
@@ -80,7 +81,6 @@ class PlaceRecognition():
         self.param['top_cand'] = top_cand
         self.param['window'] = window
         self.param['eval_metric'] = eval_metric
-        #self.param['loop_range_distance'] = loop_range_distance
         self.param['save_deptrs'] = save_deptrs
         self.param['device'] = device
         self.param['dataset_name'] = self.dataset_name

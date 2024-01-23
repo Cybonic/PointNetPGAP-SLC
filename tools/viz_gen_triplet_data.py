@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 from utils.viz import myplot
 
 from dataloader.utils import rotate_poses,gen_gt_constrained_by_rows
-from dataloader.kitti.kitti_dataset import load_positions
+from dataloader.agro3d.agro3d_dataset import load_positions
 from dataloader import row_segments
 
 def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):

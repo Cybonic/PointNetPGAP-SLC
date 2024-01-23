@@ -6,11 +6,11 @@ sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 import os
 import numpy as np
 from dataloader.utils import gen_ground_truth
-from dataloader.kitti.kitti_dataset import kittidataset
+from dataloader.agro3d.agro3d_dataset import agro3d_dataset
 from tqdm import tqdm
 import pickle
 
-class KittiTriplet():
+class AGRO3DTriplet():
     def __init__(self,
                  root,
                  dataset,
@@ -41,7 +41,7 @@ class KittiTriplet():
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
         for seq in sequences:
-            kitti_struct = kittidataset(root, dataset, seq)
+            kitti_struct = agro3d_dataset(root, dataset, seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
             pose = kitti_struct._get_pose_()

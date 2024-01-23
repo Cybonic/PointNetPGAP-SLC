@@ -90,7 +90,7 @@ def load_positions(file):
     return poses
 
 
-class kittidataset():
+class agro3d_dataset():
     
     def __init__(self,root,dataset,sequence,position_file="positions.txt",verbose=False):
         # assert isinstance(sequences,list)

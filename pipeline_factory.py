@@ -3,7 +3,7 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
-from dataloader.kitti.kitti import cross_validation,split
+from dataloader.agro3d.eval_protocol import cross_validation,split
 
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
@@ -20,10 +20,7 @@ from networks import contrastive
 # ==================================================================================================
 MODELS = ['LOGG3D',
           'PointNetVLAD',
-          'ORCHNet_PointNet',
-          'ORCHNet_ResNet50',
-          'overlap_transformer',
-          'ORCHNet']
+          'overlap_transformer']
 
 # ==================================================================================================
 # ======================================== PIPELINE FACTORY ========================================
@@ -63,8 +60,6 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "PointNetGeM":
         pipeline = PointNetGeM(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "ResNet50GeM":    
-        pipeline = ResNet50GeM(output_dim=output_dim,feat_dim = 1024)
     elif pipeline_name == "PointNetGAP":
         pipeline = PointNetGAP(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == "PointNetMAC":
