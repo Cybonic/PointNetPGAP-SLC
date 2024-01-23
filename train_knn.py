@@ -9,12 +9,6 @@
 # https://jbencook.com/cross-entropy-loss-in-pytorch/
 
 
-'''
-
-Version: 3.1 
- - pretrained model is automatically loaded based on the model and session names 
- 
-'''
 import argparse
 import yaml
 import os
