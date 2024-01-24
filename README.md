@@ -12,10 +12,12 @@ Create conda environment with python:
 conda create -n pr_env python=3.9.4
 conda activate pr_env
 ```
+
 Install Conda 11.7.0
 ```
 conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit
 ```
+
 Install Pytorch 2.0.1
 ```
 conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia
@@ -26,9 +28,7 @@ Testing installation
 python "import torch; print("torch.cuda.is_available())"
 ```
 
-
-```
-### Install sparse
+Install sparse
 ```
 pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0
 ```
