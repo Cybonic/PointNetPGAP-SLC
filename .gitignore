@@ -13,7 +13,6 @@ data/*
 *.torch
 *.csv
 *.data
-*.png
 *.bin
 Worklog.md
 *.ipynb
