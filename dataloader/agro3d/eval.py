@@ -22,13 +22,12 @@ PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 class AGRO3DEval:
     def __init__(self,  root, 
-                        #dataset,
                         sequence, 
                         ground_truth_file,
                         modality = None ,
-                        memory= "DISK", 
-                        debug = False,
-                        device='cpu'):
+                        memory = "DISK", 
+                        debug  = False,
+                        device ='cpu'):
         
         assert memory in ["RAM", "DISK"]
         self.memory   = memory 
@@ -42,11 +41,6 @@ class AGRO3DEval:
         self.poses = kitti_struct._get_pose_()
         self.row_labels = kitti_struct._get_row_labels()
         
-
-        #row_label_file = os.path.join(root,dataset,sequence,'point_row_labels.pkl')
-        #assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
-        #with open(row_label_file, 'rb') as f:
-        #    self.row_labels = pickle.load(f)
         
         # Load aline rotation
         ground_truth_path = os.path.join(root,sequence,ground_truth_file)

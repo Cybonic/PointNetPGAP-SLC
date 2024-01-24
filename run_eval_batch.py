@@ -5,7 +5,7 @@ import os
 
 root = "/home/deep/workspace/orchnet/v2"
 
-chkpt = os.path.join(root,'checkpoints/cross_validation')
+chkpt = os.path.join(root,'checkpoints')
 dataset = os.path.join(root,'agro3d-rc')
 
 

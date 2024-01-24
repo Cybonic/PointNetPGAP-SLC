@@ -1,5 +1,4 @@
 import os, json, math, logging, sys, datetime
-import numpy
 import torch
 from torch.utils import tensorboard
 from utils import helpers
