@@ -1,5 +1,8 @@
+# PointNetGAP: lightweight 3D LiDAR-based place recognition for mobile robot navigation on row crops
 
-## Installation 
+
+
+### Installation Guide
 Set up environment
 - python 3.9.4
 - Cuda 11.7
