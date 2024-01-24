@@ -8,6 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
 
+from dataloader.agro3d.agro3d_dataset import load_positions
 from utils.viz import myplot
 from dataloader.utils import extract_points_in_rectangle_roi
 import yaml
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
 
     # Loading DATA
-    from dataloader.kitti.dataset import load_positions
+    
    
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"

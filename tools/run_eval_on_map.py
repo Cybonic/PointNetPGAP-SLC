@@ -31,10 +31,6 @@ from utils.viz import myplot
 def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,record_gif=False,**argv):
     # Save Similarity map
 
-    
-
-    
-    
     save_dir =''
     if 'save_dir' in argv:
         save_dir = argv['save_dir']

@@ -7,21 +7,22 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory and add it to the Python path
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
+    # Loading DATA
+from dataloader.agro3d.agro3d_dataset import load_positions
+from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
+from dataloader import row_segments
+    
+    
 
 from utils.viz import myplot
 import yaml
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from PIL import Image
-
 from tqdm import tqdm
 import pickle
 from tools.viz_row_labels import load_row_bboxs
 
 def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
-
-    
 
     mplot = myplot(delay=0.2)
     mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'k')
@@ -154,11 +155,7 @@ if __name__ == "__main__":
     
     os.makedirs(save_root_dir,exist_ok=True)
 
-    # Loading DATA
-    from dataloader.kitti.dataset import load_positions
-    from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
-    from dataloader import row_segments
-    
+
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
     xy = load_positions(pose_file)
