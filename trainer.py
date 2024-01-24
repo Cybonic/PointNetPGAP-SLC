@@ -81,7 +81,7 @@ class Trainer(BaseTrainer):
         dataloader = iter(self.train_loader)
         tbar = tqdm(range(len(self.train_loader)), ncols=80)
 
-        self._reset_metrics()
+        #self._reset_metrics()
         epoch_loss_list = {}
         epoch_loss = 0
         

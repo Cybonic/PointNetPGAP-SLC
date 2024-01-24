@@ -57,10 +57,9 @@ ground_truth:
 train_loader:
   triplet_file: 'triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl'
   sequence: [
-            'orchards/sum22/extracted',
-            'orchards/june23/extracted',
-            'orchards/aut22/extracted',
-            'strawberry/june23/extracted'
+            'OJ22',
+            'OJ23',
+            'ON22',
             ]
 
   fraction: 0.3 
@@ -68,13 +67,11 @@ train_loader:
   shuffle: True
   num_pos: 1
   num_neg: 20
-
-  #rotation: [180,-45,-45]
   
 val_loader:
   ground_truth_file: "eval/ground_truth_loop_range_10m.pkl"
   dataset: ''
-  sequence: ['strawberry/june23/extracted']
+  sequence: ['SJ23']
   batch_size: 1 #50         # batch size
   workers:  0            # number of threads to get data
   shuffle: False

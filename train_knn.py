@@ -14,12 +14,11 @@ import yaml
 import os
 import torch 
 
-#from networks.orchnet import *
 from trainer import Trainer
-
 
 from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
+
 
 def force_cudnn_initialization():
     s = 32
@@ -30,6 +29,15 @@ def force_cudnn_initialization():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
 
+    parser.add_argument(
+        '--dataset_root',
+        type=str,
+        required=False,
+        default='',
+        help='Directory to get the trained model.'
+    )
+    
+    
     parser.add_argument(
         '--network', '-m',
         type=str,
@@ -55,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--resume', '-r',
         type=str,
-        choices=['none', 'best_model'],
+        #choices=['none', 'best_model'],
         required=False,
         default='None',
         help='Directory to get the trained model.'
@@ -75,13 +83,6 @@ if __name__ == '__main__':
         type=int,
         required=False,
         default=2,
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        required=False,
-        default='uk', # uk
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -170,7 +171,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'orchards/june23/extracted',
+        default = 'OJ23',
     )
 
     parser.add_argument(
@@ -183,7 +184,7 @@ if __name__ == '__main__':
         '--model_evaluation',
         type=str,
         required=False,
-        default = "split",
+        default = "cross_validation",
         choices = ["cross_validation","split"]
     )
 
@@ -192,7 +193,7 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
 
-    session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
+    session_cfg_file = os.path.join('sessions','uk.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
@@ -258,10 +259,8 @@ if __name__ == '__main__':
     # The development has been made on different PCs, each has some custom settings
     # e.g the root path to the dataset;
 
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
 
-    root_dir = pc_config[device_name]
+    root_dir = FLAGS.dataset_root #pc_config[device_name]
     
     # Build the model and the loader
     model_ = model_handler(FLAGS.network,
@@ -273,23 +272,22 @@ if __name__ == '__main__':
                             modelwrapper = SESSION['modelwrapper']
                             )
 
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
+    loader = dataloader_handler(root_dir,FLAGS.network,SESSION, roi = FLAGS.roi)
 
     run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
-                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
+                'experiment':FLAGS.experiment, 
                 'model': str(model_)
             }
 
     trainer = Trainer(
-            model        = model_,
-            train_loader = loader.get_train_loader(),
+            model         = model_,
+            train_loader  = loader.get_train_loader(),
             test_loader   = loader.get_test_loader(),
             resume = FLAGS.resume,
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
-            train_epoch_zero = False,
-            debug = False,
+            train_epoch_zero = True,
             monitor_range = SESSION['monitor_range']
             )
     

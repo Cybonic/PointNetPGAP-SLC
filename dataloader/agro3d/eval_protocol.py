@@ -110,7 +110,7 @@ class split():
 
         self.kwargs = kwargs
         self.root =  kwargs.pop('root')
-        self.dataset = kwargs.pop('dataset')
+        #self.dataset = kwargs.pop('dataset')
         self.val_cfg   = kwargs.pop('val_loader')
         self.train_cfg = kwargs['train_loader']
         self.modality  = kwargs['modality']

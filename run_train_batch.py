@@ -2,47 +2,44 @@
 import os
 
 full_cap = '--epoch 80'
-args = [#'--network PointNetVLAD',
-        '--network PointNetSOP',
-        #'--network LOGG3D',
-        
-        #'--network PointNetGeM',
-        #'--network PointNetMAC',
-        #'--network PointNetSPoC',
-        #'--network overlap_transformer --modality bev',
+root = "/home/deep/workspace/orchnet/v2"
 
-        #'--network PointNetORCHNet',
-        #'--network ResNet50ORCHNet --modality bev'
-        #'--network ResNet50ORCHNetMaxPooling --modality bev',
-        #'--network ResNet50GeM --modality bev',
-        #' --network overlap_transformer',
+chkpt = os.path.join(root,'checkpoints')
+dataset = os.path.join(root,'agro3d-rc')
+
+
+models = ['PointNetGAP',
+          #'PointNetVLAD',
+          #'PointNetGeM',
+          #'PointNetMAC',
+          #'overlap_transformer --modality bev',
+          #'LOGG3D'
 ]
 
-#losses = ['PositiveLoss','LazyTripletLoss','LazyQuadrupletLoss']
-#losses = ['LazyTripletLoss','LazyQuadrupletLoss']
-losses = ['LazyTripletLoss']
+losses     = ['LazyTripletLoss']
+density    = ['10000']
+experiment = "publishingtest"
 
-#density = ['500','1000','5000','10000','20000','30000']
-density = ['10000']
-
-evaluation_type = "cross_validation"
-experiment = f'-e {evaluation_type}/final@range1'
-
-resume  = '--resume best_model'
-
-test_sequrnces = [
-        'orchards/sum22/extracted',
-        'orchards/june23/extracted',
-        'orchards/aut22/extracted',
-        'strawberry/june23/extracted'
+test_sequences = [
+        'OJ22',
+        'OJ23',
+        'ON22',
+        'SJ23'
 ]
 
 
-for seq in test_sequrnces:
-        for arg in args:
-        
-                test_seq = '--val_set ' + seq
-                model_evaluation = f'--model_evaluation {evaluation_type}' 
-                func_arg = arg + ' ' + '--device cuda'+ ' ' + test_seq + ' ' +  experiment +  ' ' + full_cap + ' ' + model_evaluation + ' ' + resume
-                #print(func_arg)
-                os.system('python3 train_knn.py ' + func_arg)
+for seq in test_sequences:
+        for model in models:
+                resume = os.path.join(chkpt,seq,model+'.pth')
+                
+                func_arg = [f'--val_set {seq}',
+                            f'-e {experiment}',
+                            f'--chkpt_root {chkpt}',
+                            f'--network {model}',
+                            f'--resume {resume}',
+                            f'--dataset_root {dataset}',
+                            f'{full_cap}'
+                ]
+                
+                func_arg_str = ' '.join(func_arg)
+                os.system('python3 train_knn.py ' + func_arg_str)
