@@ -13,7 +13,6 @@ import pickle
 class AGRO3DTriplet():
     def __init__(self,
                  root,
-                 dataset,
                  sequences,
                  triplet_file,
                  modality = None,
@@ -41,7 +40,7 @@ class AGRO3DTriplet():
         #self.ground_truth_mode = argv['ground_truth']
         assert isinstance(sequences,list)
         for seq in sequences:
-            kitti_struct = agro3d_dataset(root, dataset, seq)
+            kitti_struct = agro3d_dataset(root, seq)
             
             files,name = kitti_struct._get_point_cloud_file_()
             pose = kitti_struct._get_pose_()
@@ -52,7 +51,7 @@ class AGRO3DTriplet():
             self.plc_names.extend(name)
             self.poses.extend(pose)
 
-            triplet_path = os.path.join(root,dataset,seq,triplet_file)
+            triplet_path = os.path.join(root,seq,triplet_file)
             assert os.path.isfile(triplet_path), "Triplet file does not exist " + triplet_path
             
              # load the numpy arrays from the file using pickle

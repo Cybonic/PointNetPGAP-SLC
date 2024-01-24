@@ -19,8 +19,6 @@ def is_label(filename):
   return any(filename.endswith(ext) for ext in EXTENSIONS_LABEL)
 
 
-
-
 def load_gps_to_RAM(file:str,local_frame=False)->np.ndarray:
     """ Loading the gps file to RAM.
     The gps file as the default structure of KITTI gps.txt file:
@@ -47,6 +45,7 @@ def load_gps_to_RAM(file:str,local_frame=False)->np.ndarray:
 
     pose_array = np.array(pose_array)
     return(pose_array)
+
 
 
 def load_pose_to_RAM(file:str)->np.ndarray: 
@@ -92,13 +91,13 @@ def load_positions(file):
 
 class agro3d_dataset():
     
-    def __init__(self,root,dataset,sequence,position_file="positions.txt",verbose=False):
+    def __init__(self,root,sequence,position_file="positions.txt",verbose=False):
         # assert isinstance(sequences,list)
         self.pose = []
         self.point_cloud_files = []
         self.target_dir = []
 
-        self.target_dir = os.path.join(root,dataset,sequence)
+        self.target_dir = os.path.join(root,sequence)
         assert os.path.isdir(self.target_dir),'target dataset does nor exist: ' + self.target_dir
 
         # Get pose file

@@ -19,17 +19,17 @@ memory: "DISK"
 modality: "bev"
 
 cross_validation: 
-            'orchards/sum22/extracted': ['orchards/june23/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
-            'orchards/june23/extracted': ['orchards/sum22/extracted','orchards/aut22/extracted','strawberry/june23/extracted']
-            'orchards/aut22/extracted': ['orchards/sum22/extracted','orchards/june23/extracted','strawberry/june23/extracted']
-            'strawberry/june23/extracted': ['orchards/sum22/extracted','orchards/june23/extracted','orchards/aut22/extracted']
+            'OJ22': ['OJ23','ON22','SJ23']
+            'OJ23': ['OJ22','ON22','SJ23']
+            'ON22': ['OJ22','OJ23','SJ23']
+            'SJ23': ['OJ22','OJ23','ON22']
 
 split:
   split_ratio: 0.95
-  sequences: ['orchards/sum22/extracted',
-              'orchards/june23/extracted',
-              'orchards/aut22/extracted',
-              'strawberry/june23/extracted'] 
+  sequences: ['OJ22',
+              'OJ23',
+              'ON22',
+              'SJ23'] 
 
 row_label_file: "point_row_labels.pkl"
 # Ground-truth parameters

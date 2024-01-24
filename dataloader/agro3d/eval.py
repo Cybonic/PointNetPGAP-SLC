@@ -22,7 +22,7 @@ PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
 class AGRO3DEval:
     def __init__(self,  root, 
-                        dataset,
+                        #dataset,
                         sequence, 
                         ground_truth_file,
                         modality = None ,
@@ -36,7 +36,7 @@ class AGRO3DEval:
         #self.num_samples = self.num_samples
         self.sequence = sequence
         self.device   = device
-        kitti_struct = agro3d_dataset(root,dataset, sequence)
+        kitti_struct = agro3d_dataset(root, sequence)
             
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()
@@ -49,7 +49,7 @@ class AGRO3DEval:
         #    self.row_labels = pickle.load(f)
         
         # Load aline rotation
-        ground_truth_path = os.path.join(root,dataset,sequence,ground_truth_file)
+        ground_truth_path = os.path.join(root,sequence,ground_truth_file)
         assert os.path.isfile(ground_truth_path), "Ground truth file does not exist " + ground_truth_path
 
          # load the numpy arrays from the file using pickle

@@ -1,44 +1,48 @@
 
 import os
 
-full_cap = '--epoch 300'
-
-chkpt_root_A = '/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints'
-run = 'final@range1'
-
-local = f'-e cross_validation/{run}  --chkpt_root {chkpt_root_A}'
 
 
-args = [f'--network PointNetVLAD {local}',
-        #f'--network PointNetORCHNetVLADSPoCLearned {local}',
-        #f'--network PointNetORCHNetVLADSPoCMaxPooling {local}',
-        #f'--network PointNetORCHNet {local}',
-        #f'--network PointNetGeM {local}',
-        #f'--network PointNetMAC  {local}',
-        #f'--network PointNetSPoC {local}',
-        #f'--network overlap_transformer  {local}  --modality bev',
-        #f'--network LOGG3D {local}',
+root = "/home/deep/workspace/orchnet/v2"
+
+chkpt = os.path.join(root,'checkpoints/cross_validation')
+dataset = os.path.join(root,'agro3d-rc')
+
+
+models = ['PointNetVLAD',
+        #f'--network PointNetGeM',
+        #f'--network PointNetMAC',
+        #f'--network PointNetSPoC',
+        #f'--network overlap_transformer --modality bev',
+        #f'--network LOGG3D',
 ]
 
-#losses = ['PositiveLoss','LazyTripletLoss','LazyQuadrupletLoss']
-#losses = ['LazyTripletLoss','LazyQuadrupletLoss']
 losses = ['LazyTripletLoss']
 
-density = ['10000']
-#experiment = f'-e cross_validation/finalMyModels-no_aug'
+density    = ['10000']
+experiment = "publishingtest"
 
-
-test_sequrnces = [
-        'orchards/sum22/extracted',
-        'orchards/june23/extracted',
-        'orchards/aut22/extracted',
-        'strawberry/june23/extracted'
+test_sequences = [
+        'OJ22',
+        'OJ23',
+        'ON22',
+        'SJ23'
 ]
 
 
-for seq in test_sequrnces:
-        for arg in args:
-                test_seq = '--val_set ' + seq
-                func_arg = arg + ' ' +test_seq  #+ ' ' +  experiment +  ' ' + full_cap
+for seq in test_sequences:
+        for model in models:
+                resume = os.path.join(chkpt,seq,model+'.pth')
+                
+                func_arg = [f'--val_set {seq}',
+                            f'-e {experiment}',
+                            f'--chkpt_root {chkpt}',
+                            f'--network {model}',
+                            f'--resume {resume}',
+                            f'--dataset_root {dataset}',
+                ]
+                
+                func_arg_str = ' '.join(func_arg)
+                            
                 #print(func_arg)
-                os.system('python3 eval_knn.py ' + func_arg)
+                os.system('python3 eval_knn.py ' + func_arg_str)

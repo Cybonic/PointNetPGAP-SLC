@@ -36,26 +36,24 @@ def force_cudnn_initialization():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
 
+    parser.add_argument(
+        '--dataset_root',
+        type=str,
+        required=False,
+        default='',
+        help='Directory to get the trained model.'
+    )
     
     parser.add_argument(
         '--network', '-m',
         type=str,
         required=False,
         default='PointNetVLAD',
-        choices=['PointNetORCHNetMaxPooling',
-                'PointNetORCHNetVLADSPoCLearned',
-                'PointNetORCHNetVLADSPoCMaxPooling',   
-                'PointNetORCHNet',
+        choices=[
                  'PointNetVLAD',
                  'LOGG3D',
-                 'PointNetORCHNet',
-                 'ResNet50ORCHNet',
-                 'ResNet50GeM',
                  'PointNetGeM',
-                 'ResNet50MAC',
                  'PointNetMAC',
-                 'ResNet50SPoC',
-                 'PointNetSPoC',
                  'overlap_transformer'],
         help='Directory to get the trained model.'
     )
@@ -90,13 +88,6 @@ if __name__ == '__main__':
         type=int,
         required=False,
         default=2,
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        required=False,
-        default='uk', # uk
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -167,6 +158,7 @@ if __name__ == '__main__':
         default = True,
         help='sampling points.'
     )
+    
     parser.add_argument(
         '--val_set',
         type=str,
@@ -268,10 +260,10 @@ if __name__ == '__main__':
 
     # The development has been made on different PCs, each has some custom settings
     # e.g the root path to the dataset;
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    #device_name = os.uname()[1]
+    #pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
 
-    root_dir = pc_config[device_name]
+    root_dir = FLAGS.dataset_root
     
     # Build the model and the loader
     model = model_handler(FLAGS.network,
@@ -288,14 +280,14 @@ if __name__ == '__main__':
     print("*"*30)
 
 
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
+    loader = dataloader_handler(root_dir,FLAGS.network,SESSION, roi = FLAGS.roi)
 
     # Hack
     # add dataset name at the begining
     dataset_name = '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/'))
-    dataset_name = FLAGS.dataset + '-' + dataset_name
+    #dataset_name = FLAGS.dataset + '-' + dataset_name
     run_name = {'dataset': dataset_name,
-                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
+                'experiment':FLAGS.experiment,
                 'model': str(model)
             }
 

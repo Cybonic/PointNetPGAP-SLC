@@ -98,15 +98,11 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 # ======================================== DATALOADER FACTORY ======================================
 # ==================================================================================================
 
-def dataloader_handler(root_dir,network,dataset,session,**args):
-
-    sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
-    sensor_pram = sensor_pram[dataset]
+def dataloader_handler(root_dir,network,session,**args):
 
 
     roi = None
     if 'roi' in args and args['roi'] > 0:
-        roi = sensor_pram['square_roi']
         print(f"\nROI: {args['roi']}\n")
         roi['xmin'] = -args['roi']
         roi['xmax'] = args['roi']
@@ -116,8 +112,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
     if network in ['overlap_transformer'] or network.startswith("ResNet50"):
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
-            bev_pram = sensor_pram['bev']
-            modality = BEVProjection(**bev_pram,square_roi=roi,aug_flag=session['aug'])
+            modality = BEVProjection(width=256,height=256,square_roi=roi,aug_flag=session['aug'])
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256,square_roi=roi,aug_flag=session['aug'])
             
@@ -139,8 +134,6 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
     else:
         raise NotImplementedError("Modality not implemented!")
 
-    dataset = dataset.lower()
-
     # Select experiment type by default is cross_validation
     model_evaluation = "cross_validation" # Default
 
@@ -151,7 +144,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
 
     if model_evaluation == "cross_validation":
         loader = cross_validation( root = root_dir,
-                                    dataset = dataset,
+                                    #dataset = dataset,
                                     modality = modality,
                                     memory   = session['memory'],
                                     train_loader  = session['train_loader'],
@@ -160,7 +153,7 @@ def dataloader_handler(root_dir,network,dataset,session,**args):
                                     )
     elif model_evaluation == "split":
         loader = split( root = root_dir,
-                                    dataset = dataset,
+                                    #dataset = dataset,
                                     modality = modality,
                                     memory   = session['memory'],
                                     train_loader  = session['train_loader'],

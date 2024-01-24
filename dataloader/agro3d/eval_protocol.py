@@ -11,7 +11,7 @@ class cross_validation():
 
         self.kwargs = kwargs
         self.root =  kwargs.pop('root')
-        self.dataset = kwargs.pop('dataset')
+        #self.dataset = kwargs.pop('dataset')
         self.val_cfg   = kwargs.pop('val_loader')
         self.train_cfg = kwargs['train_loader']
         self.modality  = kwargs['modality']
@@ -32,11 +32,9 @@ class cross_validation():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
         train_loader = AGRO3DTriplet( root       = self.root,
-                                    dataset     = self.dataset,
                                     sequences   = sequence,
                                     triplet_file = triplet_files,
                                     modality = self.modality,
-                                    #ground_truth = self.train_cfg['ground_truth'],
                                     memory= self.memory
                                                 )
         
@@ -81,7 +79,6 @@ class cross_validation():
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         test_loader = AGRO3DEval( root = self.root,
-                                dataset = self.dataset,
                                 sequence = sequence[0],
                                 modality = self.modality,
                                 memory= self.memory,
