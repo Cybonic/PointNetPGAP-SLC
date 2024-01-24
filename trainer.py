@@ -16,12 +16,11 @@ class Trainer(BaseTrainer):
     def __init__(self,  model,
                         train_loader,
                         test_loader,
-                        resume,
                         config,
+                        resume = None,
                         device = 'cpu',
                         run_name = 'default',
                         train_epoch_zero = True,
-                        debug = False,
                         monitor_range = 1, # The range to monitor the performance (meters)
                         eval_protocol='place'
                         

@@ -72,7 +72,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='None',
+        default='cross_validation/ON22/PointNetVLAD.pth',
         help='Directory to get the trained model.'
     )
 
@@ -113,21 +113,7 @@ if __name__ == '__main__':
         default=20,
         help='Directory to get the trained model.'
     )
-    parser.add_argument(
-        '--mini_batch_size',
-        type=int,
-        required=False,
-        default=20000, #  Max size (based on the negatives)
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--loss',
-        type=str,
-        required=False,
-        default = 'LazyTripletLoss',
-        choices=['LazyTripletLoss','LazyQuadrupletLoss','PositiveLoss'],
-        help='Directory to get the trained model.'
-    )
+    
     parser.add_argument(
         '--max_points',
         type=int,
@@ -185,7 +171,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'strawberry/june23/extracted',
+        default = 'orchards/aut22/extracted',
     )
 
     parser.add_argument(
@@ -206,7 +192,7 @@ if __name__ == '__main__':
         type=str,
         required=False,
         #default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
-        default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
+        default = "/home/deep/workspace/orchnet/v2/paper_checkpoints"
     )
     parser.add_argument(
         '--session',
@@ -305,16 +291,22 @@ if __name__ == '__main__':
 
     loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
 
-    run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
+    # Hack
+    # add dataset name at the begining
+    
+    
+    dataset_name = '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/'))
+    dataset_name = FLAGS.dataset + '-' + dataset_name
+    run_name = {'dataset': dataset_name,
                 'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
                 'model': str(model)
             }
 
     trainer = Trainer(
             model        = model,
-            train_loader = None,#loader.get_train_loader(),
+            train_loader = None,
             test_loader   = loader.get_test_loader(),
-            resume = FLAGS.resume,
+            resume = None,
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
@@ -324,13 +316,11 @@ if __name__ == '__main__':
     
     loop_range = list(range(0,120,1))
     
-    best_model_filename = trainer.save_best_model_filename 
+    best_model_filename = os.path.join(FLAGS.chkpt_root,FLAGS.resume) 
     # Generate descriptors, predictions and performance for the best weights
     print(f'\nLoading best model: {best_model_filename}\n')
     trainer.eval_approach.load_pretrained_model(best_model_filename)
-    #loop_range = [1,5,10,15,20,500]
-    #os.makedirs(save_to,exist_ok=True)
-    #trainer.eval_approach.load_descriptors(load_from)
+
     trainer.eval_approach.run(loop_range=loop_range)
     
     save_to = "saved_model_data/final@range1"

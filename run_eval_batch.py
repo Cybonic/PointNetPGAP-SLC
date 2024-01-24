@@ -24,7 +24,6 @@ args = [f'--network PointNetVLAD {local}',
 #losses = ['LazyTripletLoss','LazyQuadrupletLoss']
 losses = ['LazyTripletLoss']
 
-#density = ['500','1000','5000','10000','20000','30000']
 density = ['10000']
 #experiment = f'-e cross_validation/finalMyModels-no_aug'
 
