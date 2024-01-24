@@ -1,5 +1,15 @@
-# PointNetGAP: lightweight 3D LiDAR-based place recognition for mobile robot navigation on row crops
+# PointNetGAP: A lightweight 3D LiDAR-based place recognition for mobile robot navigation on row crops
+### T. Barros, L. Garrote, P. Conde, M.J. Coombes, C. Liu, C. Premebida, U.J. Nunes
 
+### PointNetGAP  Pipeline
+![Figure](fig/pipeline.png)
+
+
+
+
+
+### Triplet Training
+![Figure](fig/triplet.png)
 
 
 ### Installation Guide
@@ -46,8 +56,11 @@ pip install -r requirements.txt
 
 ## Agro3D-RC dataset 
 
+![Figure](fig/agro3d-rc.png)
 
-Pre-processed: 
+
+### Segments
+
 
 Download Dataset: 
 
