@@ -19,6 +19,8 @@ def read_poses(file):
 
 
 if __name__ == "__main__":
+    
+    
     target_dir = "/home/beast/Dropbox/SHARE/DATASET/uk/strawberry/june23/extracted"
     assert os.path.exists(target_dir)
     file = os.path.join(target_dir,"positions.txt")

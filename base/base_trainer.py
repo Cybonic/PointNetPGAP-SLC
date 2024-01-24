@@ -1,8 +1,7 @@
-import os, json, math, logging, sys, datetime
+import os, json, math, logging, datetime
 import torch
 from torch.utils import tensorboard
 from utils import helpers
-from utils import logger
 #import utils.lr_scheduler
 import torch.optim.lr_scheduler as lr_scheduler
 import GPUtil

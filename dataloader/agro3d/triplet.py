@@ -5,7 +5,6 @@ sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 
 import os
 import numpy as np
-from dataloader.utils import gen_ground_truth
 from dataloader.agro3d.agro3d_dataset import agro3d_dataset
 from tqdm import tqdm
 import pickle

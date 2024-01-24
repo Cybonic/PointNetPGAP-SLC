@@ -3,8 +3,6 @@ from torchsparse.utils.quantize import sparse_quantize
 from torchsparse.utils.collate import sparse_collate
 from torchsparse import SparseTensor
 from .laserscan import LaserScan
-import torch
-
 
 def numpy_to_sparse(points,voxel_size,n_points=None):
     # get rounded coordinates

@@ -14,7 +14,6 @@ import torch.nn as nn
 from networks.aggregators.NetVLAD import NetVLADLoupe
 import torch.nn.functional as F
 
-import yaml
 import numpy as np
 
 """

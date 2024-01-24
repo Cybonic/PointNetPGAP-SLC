@@ -5,7 +5,6 @@ import torch.nn as nn
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from networks.aggregators.NetVLAD import *
 from networks.backbones.pointnet import *
-import yaml
 
 class PointNetVLAD(nn.Module):
     def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024):

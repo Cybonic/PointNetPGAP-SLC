@@ -2,9 +2,6 @@
 import os,sys
 from tqdm import tqdm
 import torchvision.transforms as Tr
-from dataloader.utils import extract_points_in_rectangle_roi
-from dataloader.utils import rotate_poses
-from dataloader import row_segments
 
 import numpy as np
 

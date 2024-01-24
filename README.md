@@ -19,7 +19,7 @@ conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit
 ## Install Pytorch 2.0.1
 ```
 conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia
-# pip install torch torchvision torchaudio
+
 import torch
 pu  h
 ```
@@ -28,34 +28,15 @@ pu  h
 pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0
 ```
 
+## Install other dependencies 
+
+pip install -r requirements.txt
+
+
+
+
 # DATASET
 
-# Data Visualization:
-
-## Meaning of the files:
- - gps.txt: [lat lon alt] This file containes lat lon alt  coordinates mapped to utm, the first data point is the origin of the reference. The values are seperated by a space;
- - raw_gps.txt: [lat lon alt] file containes lat lon alt coordinates in original GNSS coordinate frame, can be used to generate kml file;
-
-## Modality synchronization 
-Synchronization was obtained by retrieving the neareast neigbhor timestamp between a query modality and second modality. All modalities were synchronized to the point cloud timestamps. 
-Note: In same cases where there are more data points in the query than in the reference modality, duplications of data may occure.
-E.g.: when there are more point clouds than GPS measurements, the same position can be atributed to different point clouds. 
-
-orchards/sum22/extracted/ 
- path: gps.txt
- sync data points: 4361
-
-orchards/aut22/extracted/
- path file: gps.txt
- sync data points: 7974
-
-orchards/june23/extracted/
- path file: gps.txt
- sync data points 7229
-
-Strawberry/june23/extracted/
- path file: gps.txt
- sync data points 6389
 
 # Triplet Ground Truth: 
 
