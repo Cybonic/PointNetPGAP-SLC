@@ -33,7 +33,8 @@ class BaseTrainer:
             from utils.utils import get_available_devices
             self.device, availble_gpus = get_available_devices(self.config['n_gpu'])
             #self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
-        self.model.model.to(self.device)
+        # self.model.model.to(self.device)
+        self.model.to(self.device)
 
         # CONFIGS
         cfg_trainer = self.config['trainer']

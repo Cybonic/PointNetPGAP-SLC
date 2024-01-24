@@ -214,7 +214,7 @@ if __name__ == '__main__':
     SESSION['trainer']['save_dir'] =  FLAGS.chkpt_root
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
-    SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
+    SESSION['modelwrapper']['minibatch_size']  = None
     SESSION['modelwrapper']['feat_dim']  = FLAGS.feat_dim
     
     # Define evaluation mode: cross_validation or split
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
     SESSION['trainer']['epochs'] =  FLAGS.epoch
-    SESSION['loss']['type'] = FLAGS.loss
+    SESSION['loss']['type'] = None
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
     
@@ -249,7 +249,6 @@ if __name__ == '__main__':
     print("\n========== MODEL =========")
     print("Backbone : ", FLAGS.network)
     print("Resume: ",  FLAGS.resume )
-    print("Loss: ",FLAGS.loss)
     print("MiniBatch Size: ", str(SESSION['modelwrapper']['minibatch_size']))
     print("\n==========================")
     print(f'Memory: {FLAGS.memory}')
@@ -280,7 +279,7 @@ if __name__ == '__main__':
                             output_dim=256,
                             feat_dim=FLAGS.feat_dim,
                             device = FLAGS.device,
-                            loss = SESSION['loss'], # Loss is required to build the model name correctly (change this in the future)
+                            loss = None, # Loss is required to build the model name correctly (change this in the future)
                             modelwrapper = SESSION['modelwrapper']
                             )
 
@@ -293,8 +292,6 @@ if __name__ == '__main__':
 
     # Hack
     # add dataset name at the begining
-    
-    
     dataset_name = '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/'))
     dataset_name = FLAGS.dataset + '-' + dataset_name
     run_name = {'dataset': dataset_name,
@@ -311,12 +308,12 @@ if __name__ == '__main__':
             device = FLAGS.device,
             run_name = run_name,
             train_epoch_zero = False,
-            debug = False
             )
     
     loop_range = list(range(0,120,1))
     
     best_model_filename = os.path.join(FLAGS.chkpt_root,FLAGS.resume) 
+    
     # Generate descriptors, predictions and performance for the best weights
     print(f'\nLoading best model: {best_model_filename}\n')
     trainer.eval_approach.load_pretrained_model(best_model_filename)

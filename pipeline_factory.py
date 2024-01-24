@@ -71,11 +71,12 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         raise NotImplementedError("Network not implemented!")
 
     loss = None
-    if 'loss' in argv:
+    
+    if argv['loss'] !=  None:
         loss_type  = argv['loss']['type']
         loss_param = argv['loss']['args']
 
-        loss = losses.__dict__[loss_type](**loss_param,device = device)
+        loss = losses.__dict__[loss_type](**loss_param, device = device)
 
     print("*"*30)
     print(f'Loss: {loss}')
@@ -86,7 +87,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['modelwrapper'])
     else:
         model = contrastive.ModelWrapper(pipeline,loss =loss,device = device, **argv['modelwrapper'])
-
+        
     print("*"*30)
     print("Model: %s" %(str(model)))
     print("*"*30)

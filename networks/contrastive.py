@@ -95,7 +95,8 @@ class ModelWrapper(nn.Module):
                         ):
                         
         super(ModelWrapper,self).__init__()
-        assert minibatch_size>= 3, 'Minibatch size too small'
+        
+        # assert minibatch_size>= 3 or minibatch_size == None, 'Minibatch size too small'
         
         self.loss = loss
         self.minibatch_size = minibatch_size
