@@ -25,7 +25,7 @@ conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=
 
 Testing installation
 ```
-python "import torch; print("torch.cuda.is_available())"
+# python -c "import torch; print("torch.cuda.is_available())"
 ```
 
 Install sparse
@@ -33,20 +33,25 @@ Install sparse
 pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0
 ```
 
-### Install other dependencies 
-
+Install other dependencies 
 ```
 pip install -r requirements.txt
 ```
 
 
-
-
-
 # DATASET
 
+## Agro3D-RC dataset 
 
-# Triplet Ground Truth: 
+
+Pre-processed: 
+
+Download Dataset: 
+
+
+Download Pre-trained Model
+
+### Triplet Ground Truth: 
 
 Pre-generated triplet files: 
 A loop exists (ie anchor-positive pair) whenever  two samples from different revisits are whithin a range of 2 meters;   
