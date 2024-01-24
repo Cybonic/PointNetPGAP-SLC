@@ -6,8 +6,6 @@
 
 
 
-
-
 ### Triplet Training
 ![Figure](fig/triplet.png)
 
@@ -52,14 +50,14 @@ pip install -r requirements.txt
 ```
 
 
-# DATASET
+## DATASET
 
-## Agro3D-RC dataset 
+### Agro3D-RC dataset 
 
 ![Figure](fig/agro3d-rc.png)
 
 
-### Segments
+#### Segments
 
 
 Download Dataset: 
