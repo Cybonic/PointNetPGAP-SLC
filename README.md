@@ -52,9 +52,9 @@ pip install -r requirements.txt
 
 ## DATASET
 
-### Agro3D-RC dataset 
+### HORTO-3DLM dataset 
 
-![Figure](fig/agro3d-rc.png)
+![Figure](fig/horto-3dlm.png)
 
 
 #### Segments
