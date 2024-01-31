@@ -27,19 +27,28 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 
 
 
+
 # HORTO-3DLM Dataset
 
-The HORTO-3DLM dataset
+The HORTO-3DLM dataset comprises four sequences OJ22, OJ23, ON22, and SJ23;  Three sequences from orchards, namely from apples and cherries; and one sequence from strawberries;
 
+
+### 3D Maps 
 [Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
 
 
 ![Figure](fig/horto-3dlm.png)
 
+
 ### Segments and loop ground truth
 ![Figure](fig/segments.png)
 
-## Set-up
+
+
+# Training 
+
+
+# Evaluation
 
 
 [Download Pre-Trained models here](
