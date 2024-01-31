@@ -14,7 +14,7 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 2. Activate conda environment
 ```  conda activate pr_env ```
 
-3. Install Conda 11.7.0 ``` conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit    ```
+3. Install cuda 11.7.0 ``` conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit    ```
 
 4. Install Pytorch 2.0.1 ``` conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia ```
 
