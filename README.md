@@ -1,66 +1,45 @@
-# PointNetGAP: A lightweight 3D LiDAR-based place recognition for mobile robot navigation on row crops
-### T. Barros, L. Garrote, P. Conde, M.J. Coombes, C. Liu, C. Premebida, U.J. Nunes
+# PointNetGAP: A lightweight 3D LiDAR-based place recognition for mobile robot navigation in horticulture
 
-### PointNetGAP  Pipeline
+### Authors:  T. Barros, L. Garrote, P. Conde, M.J. Coombes, C. Liu, C. Premebida, U.J. Nunes
+
 ![Figure](fig/pipeline.png)
 
+# Installation
+
+You can install PointNetGAP locally in your machine.  We provide an complete installation guide for conda.
 
 
-### Triplet Training
-![Figure](fig/triplet.png)
+1. Create conda environment with python: ``` conda create -n pr_env python=3.9.4 ```
+
+2. Activate conda environment
+```  conda activate pr_env ```
+
+3. Install Conda 11.7.0 ``` conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit    ```
+
+4. Install Pytorch 2.0.1 ``` conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia ```
+
+5. Testing installation ``` .... ```
+
+6. Install sparse ``` pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0 ```
+
+7. Install other dependencies  ``` pip install -r requirements.txt```
 
 
-### Installation Guide
-Set up environment
-- python 3.9.4
-- Cuda 11.7
-- pytorch 2.0.1
-- open3d
-- torchpack
-
-Create conda environment with python:
-```
-conda create -n pr_env python=3.9.4
-conda activate pr_env
-```
-
-Install Conda 11.7.0
-```
-conda install -c "nvidia/label/cuda-11.7.0" cuda-toolkit
-```
-
-Install Pytorch 2.0.1
-```
-conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia
-```
-
-Testing installation
-```
-# python -c "import torch; print("torch.cuda.is_available())"
-```
-
-Install sparse
-```
-pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0
-```
-
-Install other dependencies 
-```
-pip install -r requirements.txt
-```
 
 
-## DATASET
+# HORTO-3DLM Dataset
 
-### HORTO-3DLM dataset 
+The HORTO-3DLM dataset
+
+[Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
+
 
 ![Figure](fig/horto-3dlm.png)
 
 ### Segments and loop ground truth
 ![Figure](fig/segments.png)
 
-
-[Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
+## Set-up
 
 
 [Download Pre-Trained models here](
