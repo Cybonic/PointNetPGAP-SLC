@@ -56,19 +56,22 @@ pip install -r requirements.txt
 
 ![Figure](fig/horto-3dlm.png)
 
-
-#### Segments
-
-
-Download Dataset: 
+### Segments and loop ground truth
+![Figure](fig/segments.png)
 
 
-Download Pre-trained Model
+[Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
+
+
+[Download Pre-Trained models here](
+https://nas-greenbotics.isr.uc.pt/drive/d/f/x4ej2UQyCu1pJzyOPXxHfDZXD2W9gOqh)
+
 
 ### Triplet Ground Truth: 
 
 Pre-generated triplet files: 
-A loop exists (ie anchor-positive pair) whenever  two samples from different revisits are whithin a range of 2 meters;   
+A loop exists (ie anchor-positive pair) whenever  two samples from different revisits are within a range of 2 meters;
+
 For each anchor, exists: 
  - 1 positive, nearest neigbor within a range of 2 meters,
  - 20 negatives, selected from outside a range of 10 meters,
