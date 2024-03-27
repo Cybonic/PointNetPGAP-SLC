@@ -1,0 +1,77 @@
+
+
+experim_name: 'default'
+################################################################################
+# training parameters
+################################################################################
+pretrained_root: 'checkpoints'
+n_gpu: 1
+
+retrieval:
+  top_cand: [1,5,25]
+  range_thres: 6
+
+max_points: 10000 # Maximum number of points to be used in the network
+aug: False # Augment data with rotations 
+
+base_dir: "uk"
+memory: "DISK"
+
+
+# Dataset parameters
+row_label_file: "point_row_labels.pkl"
+# Ground-truth parameters
+
+
+# Dataset parameters
+train_loader:
+  triplet_file: 'triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl'
+  fraction: 0.3 
+  batch_size: 1       # batch size
+  shuffle: True
+  num_pos: 1
+  num_neg: 20
+  augmentation: False
+
+  #rotation: [180,-45,-45]
+  
+val_loader:
+  ground_truth_file: "eval/ground_truth_loop_range_10m.pkl"
+  batch_size: 1 #50      # batch size
+  workers:  0            # number of threads to get data
+  shuffle: False
+  loop_range: 10 # Loop Threshold [m]
+  augmentation: False
+
+
+
+
+trainer:
+  iter_per_epoch: 1
+  epochs: 50
+  report_val: 1      # every x epochs, report validation set
+  save_period: 1
+  log_dir: "saved/"
+  save_dir: "checkpoints/"
+  monitor: "max recall" # [off, max mIoU]
+  val_per_epochs: 1
+  eval_metric: 'L2'
+  early_stop: 50 #epochs 
+  minibatch_size: 10
+
+
+optimizer:
+  type: "AdamW" #[RMSprop,Adam,SGD]
+  args:
+    lr: 0.0001
+    weight_decay: 0.00000005
+  lr_scheduler: "ReduceLROnPlateau"
+
+loss:
+  type: 'TripletLoss'
+  args:
+    margin: 0.5
+    metric: 'L2' # [L2,Hinge,cosine,kl_divergence]
+    reduction: 'mean'
+
+

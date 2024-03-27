@@ -70,11 +70,17 @@ class BEVProjection(LaserScan):
   
   def load(self,file):
     self.open_scan(file)
-    filtered_points,filtered_remissions = self.get_points()
-    return get_bev_proj(filtered_points,filtered_remissions,self.width,self.height)
+    return self.get_points()
+     
   
-  def __call__(self,file):
-    image = self.load(file)
+  def __call__(self,file,set_augmentation=False,**argv):
+    points,remissions  = self.load(file)
+    
+    if set_augmentation:
+        points = self.set_augmentation(points)
+        
+    image = get_bev_proj(points,remissions,self.width,self.height)
+    
     values = list(image.values())
     image = np.concatenate(values,axis=-1)
     return self.to_tensor(image)
@@ -291,7 +297,7 @@ def get_spherical_proj(points,remissions,fov_up,fov_down,Width,Height,max_rem,ma
 
 
 
-def range_projection(current_vertex, intensity,fov_up=3.0, fov_down=-25.0, proj_H=64, proj_W=900, max_range=50):
+def range_projection(current_vertex, intensity, fov_up=3.0, fov_down=-25.0, proj_H=64, proj_W=900, max_range=50):
   """ Project a pointcloud into a spherical projection, range image.
       Args:
         current_vertex: raw point clouds

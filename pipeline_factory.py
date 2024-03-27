@@ -3,25 +3,20 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
-from dataloader.agro3d.eval_protocol import cross_validation,split
+from dataloader.horto3dlm.loader import cross_validation
 
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
-from networks.pipelines.LOGG3D import LOGG3D
-from networks.pipelines.GeMNet import PointNetGeM,ResNet50GeM
-from networks.pipelines.overlap_transformer import featureExtracter
-from networks.pipelines.MACNet import PointNetMAC 
 from networks.pipelines.PointNetGAP import PointNetGAP
+from networks.pipelines.LOGG3D import LOGG3D
+
+from networks.pipelines.overlap_transformer import featureExtracter
 import yaml
 
 from utils import loss as losses
 from networks import contrastive
 
 # ==================================================================================================
-MODELS = ['LOGG3D',
-          'PointNetVLAD',
-          'overlap_transformer']
-
 # ==================================================================================================
 # ======================================== PIPELINE FACTORY ========================================
 # ==================================================================================================
@@ -51,19 +46,14 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f"Model: {pipeline_name}")
     print(f"N.points: {num_points}")
     print(f"Dpts: {output_dim}")
-    print(f"Feat Dim: {feat_dim}")
     print("**************************************************\n")
 
     if pipeline_name == 'LOGG3D':
         pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "PointNetGeM":
-        pipeline = PointNetGeM(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "PointNetGAP":
-        pipeline = PointNetGAP(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == "PointNetMAC":
-        pipeline = PointNetMAC(output_dim=output_dim, num_points = num_points, feat_dim = 1024)
+    elif pipeline_name == 'PointNetGAP':
+        pipeline = PointNetGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name == 'overlap_transformer':
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
@@ -71,23 +61,22 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         raise NotImplementedError("Network not implemented!")
 
     loss = None
-    
-    if argv['loss'] !=  None:
+    if 'loss' in argv:
         loss_type  = argv['loss']['type']
         loss_param = argv['loss']['args']
 
-        loss = losses.__dict__[loss_type](**loss_param, device = device)
+        loss = losses.__dict__[loss_type](**loss_param,device = device)
 
     print("*"*30)
     print(f'Loss: {loss}')
     print("*"*30)
 
-    if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("spvcnn"):
-        # Sparse model has a different wrapper, because of the splitting 
-        model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['modelwrapper'])
-    else:
-        model = contrastive.ModelWrapper(pipeline,loss =loss,device = device, **argv['modelwrapper'])
+    if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("SPV"):
+        model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
+    else: 
+        model = contrastive.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
         
+
     print("*"*30)
     print("Model: %s" %(str(model)))
     print("*"*30)
@@ -98,39 +87,41 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 # ======================================== DATALOADER FACTORY ======================================
 # ==================================================================================================
 
-def dataloader_handler(root_dir,network,session,**args):
+def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,**args):
 
+    # Load the predefined data splits 
+    datasplits = yaml.load(open("sessions/data_splits.yaml", 'r'),Loader=yaml.FullLoader)
+    # Get the training and validation sequences based on VAL_SET
+    session['train_loader']['sequence'] = datasplits['cross_validation'][val_set] # Get the training sequences for val_set
+    session['val_loader']['sequence']   = [val_set]
+    
+    sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
 
     roi = None
     if 'roi' in args and args['roi'] > 0:
+        roi = {}
         print(f"\nROI: {args['roi']}\n")
         roi['xmin'] = -args['roi']
         roi['xmax'] = args['roi']
         roi['ymin'] = -args['roi']
         roi['ymax'] = args['roi']
 
-    if network in ['overlap_transformer'] or network.startswith("ResNet50"):
+    if network in ['overlap_transformer']:
         # These networks use proxy representation to encode the point clouds
         if session['modality'] == "bev" or network == "overlap_transformer":
-            modality = BEVProjection(width=256,height=256,square_roi=roi,aug_flag=session['aug'])
+            modality = BEVProjection(width=256,height=256,square_roi=roi)
         elif session['modality'] == "spherical" or network != "overlap_transformer":
-            modality = SphericalProjection(256,256,square_roi=roi,aug_flag=session['aug'])
+            modality = SphericalProjection(256,256,square_roi=roi)
             
-    elif network in ['LOGG3D'] or network.startswith("spvcnn"):
+    elif network in ['LOGG3D'] or network.startswith("SPV"):
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
-        output_dim=256
-        modality = SparseLaserScan(voxel_size=0.05,max_points=num_points,
-                                   aug_flag=session['aug'])
+        modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
     
-    elif network in ['PointNetVLAD',"PointNetGeM"] or network.startswith("PointNet"):
+    elif network in ['PointNetVLAD','PointNetGAP']:
         # Get point cloud based modality
         num_points = session['max_points']
-        output_dim=256
-        modality = Scan(max_points=num_points,
-                        aug_flag=session['aug'],
-                        square_roi=roi,
-                        pcl_norm = False)
+        modality = Scan(max_points=num_points,square_roi=roi, pcl_norm=pcl_norm,clean_zeros=False)
     else:
         raise NotImplementedError("Modality not implemented!")
 
@@ -144,22 +135,14 @@ def dataloader_handler(root_dir,network,session,**args):
 
     if model_evaluation == "cross_validation":
         loader = cross_validation( root = root_dir,
-                                    #dataset = dataset,
+                                    dataset = dataset,
                                     modality = modality,
                                     memory   = session['memory'],
                                     train_loader  = session['train_loader'],
                                     val_loader    = session['val_loader'],
                                     max_points    = session['max_points']
                                     )
-    elif model_evaluation == "split":
-        loader = split( root = root_dir,
-                                    #dataset = dataset,
-                                    modality = modality,
-                                    memory   = session['memory'],
-                                    train_loader  = session['train_loader'],
-                                    val_loader    = session['val_loader'],
-                                    max_points    = session['max_points']
-                                    )
+        
     else:
         raise NotImplementedError("Model Evaluation not implemented!")
 

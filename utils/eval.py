@@ -131,7 +131,7 @@ def eval_place(queries,descriptrs,poses,k=25,radius=[25],reranking = None,window
 
 
 
-def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[25],reranking = None,window=1):
+def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25, radius=[25],window=1,warmup = 100, sim='L2'):
   """_summary_
 
   Args:
@@ -171,14 +171,12 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
   
   metric = reloc_metrics(n_top_cand,radius)
 
-  ignore_indices = 100
+  ignore_indices = warmup
   if ignore_indices < window:
     ignore_indices = window + 10
     
   queries = all_indices[ignore_indices:]
-  
-  loop_cands = []
-  loop_scores= []
+
   gt_loops   = []
   
   predictions = {}
@@ -216,9 +214,9 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
      # CANDIDATES LOOP
     #delta_dscpts = np.dot(query_destps,selected_desptrs.transpose())
     delta_dscpts = query_destps - selected_desptrs
+    
     embed_sim = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
-    max_value = np.max(embed_sim)
-    min_value = np.min(embed_sim)
+
     # Sort to get the most similar (lowest values) vectors first
     cand_loop_idx = np.argsort(embed_sim)[:n_top_cand]
     cand_dist = gt_euclid_dist[cand_loop_idx]
@@ -250,7 +248,7 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25,radius=[
 
 
 
-def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[25],reranking = None,window=1):
+def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[25],window=1,sim = 'L2'):
   """_summary_
 
   Args:
@@ -295,25 +293,38 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     
     query_pos = poses[q,:]
     query_destps = descriptrs[q]
-    query_labels = row_labels[q]
+    query_label = row_labels[q]
     
     # Ignore scans within a window around the query
-    q_map_idx = np.arange(0,q-window) # generate indices until q - window 
+    q_map_idx = np.arange(0,q-window,dtype=np.uint32) # generate indices until q - window 
     selected_map_idx = all_map_indices[q_map_idx]
 
     selected_poses   = poses[selected_map_idx,:]
     selected_desptrs = descriptrs[selected_map_idx,:]
     selected_map_labels   = row_labels[selected_map_idx]
     # ====================================================== 
-     # compute ground truth distance
+    # compute ground truth distance
+    
     delta = query_pos.reshape(1,3) - selected_poses
-    gt_euclid_dist = np.linalg.norm(delta, axis=-1) 
+    gt_euclid_dist = np.linalg.norm(delta, axis=-1)
+       
     # return the indices of the sorted array
     gt_loops.append(np.argsort(gt_euclid_dist)[:n_top_cand])
     
+    
+    
      # Compute loop candidates
-    delta_dscpts = query_destps - selected_desptrs
-    embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
+    if sim == 'L2':
+      delta_dscpts = query_destps - selected_desptrs
+      embed_dist = np.linalg.norm(delta_dscpts, axis=-1) # Euclidean distance
+    elif sim == 'sc_similarity':
+      import networks.scancontext.scancontext as sc
+      embed_dist = sc.sc_dist(query_destps,selected_desptrs)
+    else:
+      raise NameError('Similarity metric not implemented')
+    
+    
+    
     # Sort to get the most similar (lowest values) vectors first
     est_loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
     
@@ -321,7 +332,7 @@ def eval_row_place(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[2
     gt_loops_cand_euclid_dist = gt_euclid_dist[est_loop_cand_idx]
     loop_cand_labels = selected_map_labels[est_loop_cand_idx]
     #cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
-    cand_in_same_row_bool = query_labels == loop_cand_labels
+    cand_in_same_row_bool = query_label == loop_cand_labels
     metric.update(gt_loops_cand_euclid_dist,cand_in_same_row_bool)
 
     # save loop candidates indices 

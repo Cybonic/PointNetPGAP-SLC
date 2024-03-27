@@ -2,12 +2,6 @@
 # This file is covered by the LICENSE file in the root of this project.
 
 
-# Getting latend space using Hooks :
-#  https://towardsdatascience.com/the-one-pytorch-trick-which-you-should-know-2d5e9c1da2ca
-
-# Binary Classification
-# https://jbencook.com/cross-entropy-loss-in-pytorch/
-
 
 import argparse
 import yaml

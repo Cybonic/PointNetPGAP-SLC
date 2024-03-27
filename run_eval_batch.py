@@ -1,21 +1,12 @@
 
 import os
 
+chkpt = "/home/tiago/workspace/pointnetgap-RAL/checkpoints"
+
+root_dataset = "/home/tiago/workspace/DATASET"
 
 
-root = "/home/deep/workspace/orchnet/v2"
-
-chkpt = os.path.join(root,'checkpoints')
-dataset = os.path.join(root,'agro3d-rc')
-
-
-models = ['PointNetVLAD',
-        #f'--network PointNetGeM',
-        #f'--network PointNetMAC',
-        #f'--network PointNetSPoC',
-        #f'--network overlap_transformer --modality bev',
-        #f'--network LOGG3D',
-]
+models = ['PointNetGAP']
 
 losses = ['LazyTripletLoss']
 
@@ -23,9 +14,9 @@ density    = ['10000']
 experiment = "publishingtest"
 
 test_sequences = [
-        'OJ22',
-        'OJ23',
-        'ON22',
+        #'OJ22',
+        #'OJ23',
+        #'ON22',
         'SJ23'
 ]
 
@@ -39,10 +30,9 @@ for seq in test_sequences:
                             f'--chkpt_root {chkpt}',
                             f'--network {model}',
                             f'--resume {resume}',
-                            f'--dataset_root {dataset}',
+                            f'--dataset_root {root_dataset}',
                 ]
                 
                 func_arg_str = ' '.join(func_arg)
                             
-                #print(func_arg)
                 os.system('python3 eval_knn.py ' + func_arg_str)

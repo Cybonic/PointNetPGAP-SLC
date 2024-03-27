@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+from tqdm import tqdm
 import numpy as np
 from torchsparse.utils.quantize import sparse_quantize
 from torchsparse.utils.collate import sparse_collate

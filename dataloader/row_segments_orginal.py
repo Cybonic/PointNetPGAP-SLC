@@ -20,7 +20,7 @@ The row segments are defined as a dictionary with the following structure:
 
 """
 
-ON23 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
+husky_orchards_10nov23_00 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
         'rows':
             [ 
              #[ -55,-44,-1, 100],
@@ -39,12 +39,12 @@ ON23 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
 orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
         'rows':
             [ 
-             [ -15,-9,-49, -1],
-             [ -9,-5,-49, -1],
-             [  -5,-2,-49, -1],
-             [ -15, 5,-55,-49],
-             [ -15, 5, -1,  5], 
-             [  -2, 5,-49, -1],
+             [ -15,-10,-50, -1],
+             [ -10,-5,-50, -1],
+             [  -5,-2,-50, -1],
+             [ -15, 2,-55,-49],
+             [ -15, 2, -1,  5], 
+             [  -2, 5,-50, -1],
              ]
  } 
 
@@ -52,16 +52,16 @@ orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
 orchards_sum22 = {'angle':87, # -3, # Angle to aline the rows with the image frame
         'rows':
             [
-            [ -8,-6,-39,-1],#, # row 3
-            [ -6,-2,-39,-1],  # row 2
-            [-2,2, -39,-1], # row 1
-            [-8,2,-45,-39], # row 4
-            [-8,2,-1,5]
+            [ -39,-0,-2,0.7],#, # row 3
+            [ -39,-0, 1.8,4],  # row 2
+            [-39,-0, 4.7,8], # row 1
+            [-1,3,-10,8], # row 4
+            [-45,-39,-10,8]
             ]# row 5
  } 
 
 
-GTJ23 = {'angle':88, # Angle to aline the rows with the image frame
+e3 = {'angle':88, # Angle to aline the rows with the image frame
         'rows':
         [[-1,0.5,1,37],
          [1,3,1,37],
@@ -73,20 +73,20 @@ GTJ23 = {'angle':88, # Angle to aline the rows with the image frame
 
 orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
         'rows': # From left to right
-        [[-5.5,-4,-45,0], # first vertial row
-         [-2,1,-45,0], # second vertical row
-         [2.5,5.5,-45,0],  # third vertical row
-         [-5.5, 5.5,-50,-45], # bottom horizontal row
-         [-5.5, 5.5, 0,10]]   # top horizontal row
+        [[-15,-11.5,-43,5], # first vertial row
+         [-11.5,-7,-43,5], # second vertical row
+         [-7,2,-43,5],  # third vertical row
+         [-15, 4,-48,-43], # bottom horizontal row
+         [-15, 4, 2,10]]   # top horizontal row
          }
 
 strawberry_june23 = {'angle':26, # Angle to aline the rows with the image frame
         'rows':
-        [[2,5,-105,-2],
-         [10,15,-105,-2],
-         [17,22,-105,-2],
-         [2, 25, -120,-105],
-         [0, 25,-2,5]]
+        [[-30,-16,-108,-2],
+         [-16,-10,-108,-2],
+         [-10,-2,-108,-2],
+         [-30, -2, -113,-103],
+         [-30, -2,-2,5]]
          }
 
 

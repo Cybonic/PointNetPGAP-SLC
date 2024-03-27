@@ -7,6 +7,14 @@ import torchvision.transforms as Tr
 import torch
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
 
+def shuffle_points(points):
+  """
+  Shuffle the points
+  """
+  indices = np.arange(len(points))
+  np.random.shuffle(indices)
+  return points[indices]
+
 def random_subsampling(points,max_points):
   '''
   https://towardsdatascience.com/how-to-automate-lidar-point-cloud-processing-with-python-a027454a536c
@@ -92,18 +100,18 @@ class LaserScan:
   """Class that contains LaserScan with x,y,z,r"""
   EXTENSIONS_SCAN = ['.bin']
 
-  def __init__(self, parser = None, max_points = -1, aug=False,**argv):
+  def __init__(self, parser = None, max_points = -1, aug=False,clean_zeros = False, **argv):
 
     self.reset()
     self.parser = parser
-
+    self.clean_zeros = clean_zeros
 
     self.set_pcl_norm_flag = False
     if 'pcl_norm' in argv and argv['pcl_norm'] == True:
       self.set_pcl_norm_flag = True
       
     self.max_points = max_points
-    self.noise = 0
+    self.noise      = 0
     self.set_aug_flag = aug
     
     # Configure ROI
@@ -222,45 +230,57 @@ class LaserScan:
 
   # ==================================================================
   # ==================================================================
-  def set_augmentation(self):
+  def set_augmentation(self,points):
     # https://towardsdatascience.com/deep-learning-on-point-clouds-implementing-pointnet-in-google-colab-1fd65cd3a263
 
-    pointcloud = self.points
-    # rotation around z-axis
-    theta = random.random() * 2. * math.pi # rotation angle
+    pointcloud = points.copy()
+    # choose a random angle and rotate the point cloud along the z-axis from -angle_range to angle_range
+    
+    angle_range = [0, math.pi,math.pi/2,-math.pi/2, math.pi]
+    # select an angle from the angle_range array uniformly
+    theta = random.choice(angle_range)
+    
+    #theta = random.random() * 2. * math.pi # rotation angle
     rot_matrix = np.array([[math.cos(theta), -math.sin(theta),    0],
                           [ math.sin(theta),  math.cos(theta),    0],
                           [0,                             0,      1]])
 
-    rot_pointcloud = rot_matrix.dot(pointcloud.T).T
+    points = rot_matrix.dot(pointcloud.T).T
+    
+    return points
 
+   
+  def set_noise(self):
     # add some noise
-    noise = np.random.normal(0,self.noise, (pointcloud.shape))
-    noisy_pointcloud = rot_pointcloud + noise
+    noise = np.random.normal(0,self.noise, (self.points.shape))
+    noisy_pointcloud = self.points + noise
     self.points = noisy_pointcloud
-  
+    
   # ==================================================================
   def set_sampling(self):
-    import time
-    start = time.time()
+
     idx = random_subsampling(self.points,self.max_points)
-    #idx  = fps(self.points, self.max_points)
-    end = time.time()
-    #print(end - start)
     self.points = self.points[idx,:]
     self.remissions = self.remissions[idx]
 
 
   # ==================================================================
-  def get_points(self):    
+  def get_points(self):
+    
+    if self.clean_zeros:
+      mask = np.logical_and(self.points[:,0]!=0,self.points[:,1]!=0,self.points[:,2]!=0)
+      self.points = self.points[mask,:]
+      self.remissions = self.remissions[mask]
+      
+      
     if self.set_roi_flag:
       self.set_roi()
 
     if self.max_points > 0:  # if max_points == -1 do not subsample
       self.set_sampling()
 
-    if self.set_aug_flag:
-      self.set_augmentation()
+    #if self.set_aug_flag:
+    #  self.set_augmentation()
 
     if self.set_pcl_norm_flag:
       self.points = normalize_pcl(self.points)
@@ -268,9 +288,15 @@ class LaserScan:
     return self.points,self.remissions
   
 
+
+
+
+
 class Scan(LaserScan):
-  def __init__(self,parser = None, max_points = -1, aug_flag=False,**argv):
-    super(Scan,self).__init__(parser,max_points,aug_flag,**argv)
+  def __init__(self,parser = None, max_points = -1,**argv):
+    super(Scan,self).__init__(parser,max_points,**argv)
+    
+    self.shuffle_points = True if 'shuffle_points' in argv and argv['shuffle_points'] == True else False
     pass
 
   def load(self,file):
@@ -283,10 +309,18 @@ class Scan(LaserScan):
     #input = input.transpose(dim0=1,dim1=0)
     return input
   
-  def __call__(self,files):
-
+  def __getitem__(self,file):
+    points, intensity = self.load(file)
+    return points
+  
+  def __call__(self,files,set_augmentation=False,set_shuffle_points=False):
     points,intensity = self.load(files)
-
+    
+    if set_augmentation:
+      points = self.set_augmentation(points)
+    if set_shuffle_points:
+      points = shuffle_points(points)
+            
     return self.to_tensor(points)
   
   def __str__(self):

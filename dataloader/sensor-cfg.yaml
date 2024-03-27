@@ -1,0 +1,70 @@
+
+
+uk:
+  square_roi:
+      xmin: -30
+      xmax:  30
+      ymin: -30
+      ymax:  30
+      zmin: -1 # Do not change
+      zmax: 2 # Do not change
+  bev:
+    width: 254
+    height: 254
+
+    
+greenhouse:
+  sensor: "ousterlaser"
+  BEV:
+    W: 256
+    H: 256
+  roi:
+      xmin: -50
+      xmax:  50
+      ymin: -50
+      ymax:  50
+      zmin: -2.73
+      zmax: 20
+
+
+ouster:
+  means: []
+  std:   []
+  sensor: "ousterlaser"
+  roi:
+      xmin: -50
+      xmax:  50
+      ymin: -50
+      ymax:  50
+      zmin: -2.73
+      zmax: 20
+      
+  RP: # HDL-32E  
+    W: 512
+    H: 32
+    max_depth: 50
+    max_rem: 1
+
+  BEV:
+    W: 256
+    H: 256
+    
+
+HDL32: 
+  fov_up: 10.67
+  fov_down: -30.67
+  SP:
+    width: 512
+    height: 32
+    max_depth: 30
+  BEV:
+    width: 256
+    height: 256
+
+ousterlaser: # +16.6° to -16.6
+  fov_up: 16.6
+  fov_down: -16.6
+
+HDL64E: 
+  fov_up: 2.0
+  fov_down: -24.9

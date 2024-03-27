@@ -3,8 +3,7 @@ from cmath import nan
 from base.base_trainer import BaseTrainer
 from tqdm import tqdm  
 import numpy as np
-from evaluator import PlaceRecognition
-import logging
+from place_recognition import PlaceRecognition
 
 # ===================================================================================================================
 #       
@@ -15,14 +14,17 @@ import logging
 class Trainer(BaseTrainer):
     def __init__(self,  model,
                         train_loader,
-                        test_loader,
+                        val_loader,
+                        resume,
                         config,
-                        resume = None,
                         device = 'cpu',
                         run_name = 'default',
                         train_epoch_zero = True,
+                        debug = False,
                         monitor_range = 1, # The range to monitor the performance (meters)
-                        eval_protocol='place'
+                        eval_protocol='place',
+                        roi_window = 600,
+                        warmup_window = 100,
                         
                         ):
 
@@ -31,14 +33,12 @@ class Trainer(BaseTrainer):
 
         self.trainer_cfg    = config
         self.train_loader   = train_loader
-        self.test_loader     = test_loader
-        self.val_loader    = None
+        self.val_loader     = val_loader
+        self.test_loader    = None
         self.device         = device
-        self.model          = model.to(self.device)
+        self.model          = model#.to(self.device)
         self.hyper_log      = config
         self.loss_dist      = config['loss']['args']['metric']
-        
-        logger = logging.getLogger("Training")
         
         self.eval_metric = config['trainer']['eval_metric']
         self.top_cand_retrieval = config['retrieval']['top_cand']
@@ -46,51 +46,84 @@ class Trainer(BaseTrainer):
         assert isinstance(self.top_cand_retrieval,list)
 
         self.train_metrics = None #StreamSegMetrics(len(labels))
-        self.val_metrics = None #StreamSegMetrics(len(labels))
+        self.val_metrics   = None #StreamSegMetrics(len(labels))
         
-        
-        window = 600 # Avoid the nearby frames
         self.monitor_range = monitor_range
         self.eval_approach = PlaceRecognition(self.model ,
-                                                self.test_loader,
+                                                self.val_loader,
                                                 self.top_cand_retrieval,
-                                                window,
                                                 self.loss_dist,
-                                                logger,
-                                                device= self.device,
+                                                self.logger,
+                                                roi_window = roi_window,
+                                                warmup_window = warmup_window,
+                                                device = self.device,
                                                 eval_protocol = eval_protocol,
                                                 logdir =  run_name['experiment'],
                                                 monitor_range = monitor_range
                                                 )
+     
+        
+
+    def _reset_metrics(self):
+        # Reset all evaluation metrics 
+        #self.train_metrics.reset()
+        #self.val_metrics.reset()
+        pass 
+
+    def _send_to_device(self,input):
+        # Send data structure to GPU 
+        output = []
+        if isinstance(input,list):
+            for item in input:
+                output_dict = {}
+                if isinstance(item,dict):
+                    for k,v in item.items():
+                        if isinstance(v,list):
+                            continue
+                        value = v.to(self.device)
+                        output_dict[k]=value
+                    output.append(output_dict)
+                else:
+                    output.append(item)
+                            
+        elif isinstance(input,dict):
+            output = {}
+            for k,v in input.items():
+                value = v.to(self.device)
+                output[k]=value
+        else:
+            output = input.to(self.device)
+        return output
 
 # ===================================================================================================================
 # 
 # ===================================================================================================================
     def mean_grad(self,batch_size):
-
         for name, param in self.model.named_parameters():
             if param.requires_grad and  param.grad is not None:
-                
                 param.grad /= batch_size
     
-    def _train_epoch(self, epoch, batch_size = 10 ):
+    def _train_epoch(self, epoch, batch_size = 10):
         
         self.logger.info('\n')
         self.model.train()
-     
+        
+        row_labels = self.train_loader.dataset.row_labels
+        
         dataloader = iter(self.train_loader)
+        n_samples  = len(self.train_loader)
         tbar = tqdm(range(len(self.train_loader)), ncols=80)
 
-        #self._reset_metrics()
+        self._reset_metrics()
         epoch_loss_list = {}
         epoch_loss = 0
+        batch_norm = []
         
         self.optimizer.zero_grad()
         for batch_idx in tbar:
             
             input = next(dataloader)
-                    
-            batch_data ,info= self.model(input)
+            batch_data ,info= self.model(input,labels = row_labels)
             
             for key,value in info.items():
                 if key in epoch_loss_list:
@@ -101,22 +134,34 @@ class Trainer(BaseTrainer):
             # Accumulate error
             epoch_loss += batch_data.detach().cpu().item()
 
-            # Update progress bar description
-            tbar.set_description('T ({}) | Loss {:.10f}'.format(epoch,epoch_loss/(batch_idx+1)))
+            bar_str = 'T ({}) | Loss {:.10f}'.format(epoch,epoch_loss/(batch_idx+1))
+            
+            tbar.set_description(bar_str)
             tbar.update()
 
-            # Backward and optimize
             if batch_idx % batch_size == 0 and batch_idx > 0:
+                
+                # Monitor the gradient norm
+                param = {'params': filter(lambda p:p.requires_grad, self.model.parameters())}
+                for layer in param['params']:
+                    if layer.grad is None:
+                        continue
+                    norm_grad = layer.grad.norm()
+                    batch_norm.append(norm_grad.detach().cpu().numpy().item())
+            
                 # Update model every batch_size iteration
                 self.mean_grad(batch_size)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 
-        # Update model every batch_size iteration
+        self.logger.info(bar_str)
+        # Update the model after the last batch
         epoch_perfm = {}
         for key,value in epoch_loss_list.items():
             epoch_perfm[key] = np.mean(value)
         
+        # Update tensorboard with the performance
+        epoch_perfm['grad_norm'] = np.mean(batch_norm)
         epoch_perfm['loss'] = epoch_loss/batch_idx
         self._write_scalars_tb('train',epoch_perfm,epoch)
 
@@ -129,20 +174,20 @@ class Trainer(BaseTrainer):
 
     def _valid_epoch(self,epoch,loop_range = None):
 
+        self.model.eval()
         if loop_range is None or isinstance(loop_range,int):
             loop_range = [loop_range]
         
-        # Evaluate the model
         overall_scores = self.eval_approach.run(loop_range=loop_range)
 
-        max_cand = self.top_cand_retrieval[-1]
-        
         # Post on tensorboard
+        #recall_scores = overall_scores['recall']
         for range,scores in overall_scores.items():
             for score,top in zip(scores['recall'],['1','1%']):
                 self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
         
         # For model comparison use the first range top 1 recall
+        # 10
         output = {'recall':overall_scores[self.monitor_range]['recall'][0]}
         return output,[]
 
@@ -162,7 +207,7 @@ class Trainer(BaseTrainer):
         # https://towardsdatascience.com/a-complete-guide-to-using-tensorboard-with-pytorch-53cb2301e8c3        
         hparam_dict = { "batch_size": self.hyper_log['train_loader']['batch_size'],
                         "experim_name": str(self.hyper_log['experim_name']),
-                        "dataset": str(self.hyper_log['val_loader']['dataset']),
+                        #"dataset": str(self.hyper_log['val_loader']['dataset']),
                         "sequence": str(self.hyper_log['val_loader']['sequence']),
                         "model": self.hyper_log['modelwrapper']['type'],
                         "minibatch_size": self.hyper_log['modelwrapper']['minibatch_size'],

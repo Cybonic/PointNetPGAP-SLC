@@ -29,7 +29,6 @@ def dump_info(file, text, flag='w'):
 
 
 
-
 def generate_descriptors(model,val_loader, device):
     model.eval()
     
@@ -59,7 +58,6 @@ def generate_descriptors(model,val_loader, device):
 
 
 
-
 def unique2D(input):
     if not isinstance(input,(np.ndarray, np.generic)):
         input = np.array(input)
@@ -71,6 +69,8 @@ def unique2D(input):
     #p = np.array([np.unique(p) for p in positive]).ravel()
     output = np.unique(output)
     return(output)
+
+
 
 
 def get_available_devices(n_gpu,logger = None):

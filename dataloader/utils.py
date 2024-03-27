@@ -260,4 +260,63 @@ def extract_points_in_rectangle_roi(points:np.ndarray,rois:np.ndarray) -> np.nda
 
 
 
+
+def make_data_loader(root_dir,dataset,session,modality,max_points=50000):
+
+    dataset = dataset.lower()
+    assert dataset in ['kitti','orchard-uk','uk','pointnetvlad'],'Dataset Name does not exist!'
+
+    
+    #if dataset == 'kitti':
+        # Kitti 
+    from dataloader.kitti.kitti import KITTI as DATALOADER
+    
+    loader = DATALOADER( root = root_dir,
+                    dataset = dataset,
+                    modality = modality,
+                    memory   = session['memory'],
+                    train_loader  = session['train_loader'],
+                    val_loader    = session['val_loader'],
+                    max_points    = session['max_points']
+                    )
+    
+    #elif dataset in ['orchards-uk','uk'] :
+
+    #    from .ORCHARDS import ORCHARDS
+
+    #    loader = ORCHARDS(  root    = root_dir,
+    #                        modality = modality,
+    #                        train_loader  = session['train_loader'],
+    #                        test_loader   = session['val_loader'],
+    #                        memory = session['memory'],
+    #                        max_points    = session['max_points']
+    #                        )
+    
+    
+    #elif dataset == 'pointnetvlad':
+        
+    #    from .POINTNETVLAD import POINTNETVLAD
+        
+    #    loader = POINTNETVLAD(root       = session[root_dir],
+    #                        train_loader = session['train_loader'],
+    #                        val_loader   = session['val_loader'],
+    #                        memory       = memory
+    #                        )
+    
+
+    #elif dataset == 'fuberlin':
+        
+        #session['train_loader']['root'] =  session[root_dir]
+    #    session['val_loader']['root'] =  session[root_dir]
+    #    loader = FUBERLIN(
+    #                        train_loader  = session['train_loader'],
+    #                        val_loader    = session['val_loader'],
+    #                        mode          = memory,
+    #                        max_points = 50000
+    #                        )
+    
+    return(loader)
+
+
+
     
