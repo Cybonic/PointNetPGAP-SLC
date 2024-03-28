@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 # This file is covered by the LICENSE file in the root of this project.
 
-
-
 import argparse
 import yaml
 import os
 import torch 
 
+#from networks.orchnet import *
 from trainer import Trainer
-
 from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
 
-
+# To force deterministic algorithms
+# On terminal run the following command to set the environment variable
+# export CUBLAS_WORKSPACE_CONFIG=":4096:8"
+# torch.use_deterministic_algorithms(True)
+  
 def force_cudnn_initialization():
     s = 32
     dev = torch.device('cuda')
@@ -27,22 +29,15 @@ if __name__ == '__main__':
         '--dataset_root',
         type=str,
         required=False,
-        default='',
+        default='/home/tiago/workspace/DATASET',
         help='Directory to get the trained model.'
     )
-    
     
     parser.add_argument(
         '--network', '-m',
         type=str,
         required=False,
         default='PointNetGAP',
-        choices=['PointNetGAP',
-                'PointNetVLAD',
-                 'LOGG3D',
-                 'PointNetGeM',
-                 'PointNetMAC',
-                 'overlap_transformer'],
         help='Directory to get the trained model.'
     )
 
@@ -50,14 +45,13 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='test/loop_range_10m',
+        default='RAL',
         help='Directory to get the trained model.'
     )
 
     parser.add_argument(
         '--resume', '-r',
         type=str,
-        #choices=['none', 'best_model'],
         required=False,
         default='None',
         help='Directory to get the trained model.'
@@ -73,11 +67,24 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--epoch',
+        '--epochs',
         type=int,
         required=False,
-        default=2,
+        default=5,
         help='Directory to get the trained model.'
+    )
+    parser.add_argument(
+        '--dataset',
+        type=str,
+        required=False,
+        default='HORTO-3DLM', # uk
+        help='Directory to get the trained model.'
+    )
+    parser.add_argument(
+        '--val_set',
+        type=str,
+        required=False,
+        default = 'ON22',
     )
     parser.add_argument(
         '--device',
@@ -90,7 +97,14 @@ if __name__ == '__main__':
         '--batch_size',
         type=int,
         required=False,
-        default=20,
+        default=5,
+        help='Directory to get the trained model.'
+    )
+    parser.add_argument(
+        '--eval_batch_size',
+        type=int,
+        required=False,
+        default=10,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -105,7 +119,7 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default = 'LazyTripletLoss',
-        choices=['LazyTripletLoss','LazyQuadrupletLoss'],
+        choices=['LazyTripletLoss'],
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -120,14 +134,7 @@ if __name__ == '__main__':
         type=int,
         required=False,
         default = 1024,
-        help='sampling points.'
-    )
-    parser.add_argument(
-        '--modality',
-        type=str,
-        required=False,
-        default = "pcl",
-        help='sampling points.'
+        help='number of features.'
     )
 
     parser.add_argument(
@@ -150,7 +157,7 @@ if __name__ == '__main__':
         '--loop_range',
         type=float,
         required=False,
-        default = 1,
+        default = 10,
         help='sampling points.'
     )
 
@@ -161,12 +168,7 @@ if __name__ == '__main__':
         default = True,
         help='sampling points.'
     )
-    parser.add_argument(
-        '--val_set',
-        type=str,
-        required=False,
-        default = 'OJ23',
-    )
+    
 
     parser.add_argument(
         '--roi',
@@ -179,43 +181,76 @@ if __name__ == '__main__':
         type=str,
         required=False,
         default = "cross_validation",
-        choices = ["cross_validation","split"]
+        choices = ["cross_validation"]
     )
-
+    parser.add_argument(
+        '--session',
+        type=str,
+        required=False,
+        default = "ukfrpt",
+    )
+    
+    parser.add_argument(
+        '--augmentation',
+        type=float,
+        required=False,
+        default = 1,
+    )
+    
+    parser.add_argument(
+        '--shuffle_points',
+        type=float,
+        required=False,
+        default = 1,
+    )
+    parser.add_argument(
+        '--pcl_norm',
+        type=float,
+        required=False,
+        default = 0,
+    )
+    parser.add_argument(
+        '--eval_roi_window',
+        type=float,
+        required=False,
+        default = 100,
+    )
+    
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
 
-    session_cfg_file = os.path.join('sessions','uk.yaml')
+    session_cfg_file = os.path.join('sessions', FLAGS.session + '.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
-
-
+    
+    SESSION['pcl_norm'] = FLAGS.pcl_norm
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
-    SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
-    SESSION['modelwrapper']['feat_dim']  = FLAGS.feat_dim
-    
+    SESSION['trainer']['minibatch_size']  = FLAGS.mini_batch_size
+    SESSION['trainer']['feat_dim']  = FLAGS.feat_dim
+    SESSION['aug']  = FLAGS.augmentation
     # Define evaluation mode: cross_validation or split
     SESSION['model_evaluation'] = FLAGS.model_evaluation
     
-    if SESSION['model_evaluation'] == "cross_validation":
-        SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
-        SESSION['val_loader']['sequence']   = [FLAGS.val_set]
-    elif SESSION['model_evaluation'] == "split":
-        SESSION['train_loader']['sequence'] = [FLAGS.val_set]
-        SESSION['val_loader']['sequence']   = [FLAGS.val_set]
    
-    SESSION['val_loader']['batch_size'] = FLAGS.batch_size
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
-    SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
+    SESSION['train_loader']['augmentation'] = FLAGS.augmentation
+    SESSION['train_loader']['shuffle_points'] = FLAGS.shuffle_points
     
-    SESSION['trainer']['epochs'] =  FLAGS.epoch
+    SESSION['val_loader']['batch_size'] = FLAGS.eval_batch_size
+    SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
+    SESSION['val_loader']['augmentation'] = False
+    
+    
+    SESSION['trainer']['epochs'] =  FLAGS.epochs
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
-    SESSION['monitor_range'] = FLAGS.loop_range
+    
+    SESSION['monitor_range']   = FLAGS.loop_range
+    SESSION['eval_roi_window'] = FLAGS.eval_roi_window
 
 
     print("----------")
@@ -225,36 +260,38 @@ if __name__ == '__main__':
     # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
     print("Max Points: " + str(SESSION['max_points']))
     print("Triplet Data File: " + str(FLAGS.triplet_file))
+    print("Augmentation: " + str(SESSION['train_loader']['augmentation']))
+    print("Batch Size : ", str(SESSION['train_loader']['batch_size']))
+    print("MiniBatch Size: ", str(SESSION['trainer']['minibatch_size']))
+    
     print("\n======= VAL LOADER =======")
-    print("Dataset  : ", SESSION['val_loader']['dataset'])
-    print("Sequence : ", SESSION['val_loader']['sequence'])
     print("Batch Size : ", str(SESSION['val_loader']['batch_size']))
     print("Max Points: " + str(SESSION['max_points']))
+    print("Eval Data File: " + str(FLAGS.eval_file))
+    print("Augmentation: " + str(SESSION['val_loader']['augmentation']))
+    print("Eval window : " + str(SESSION['eval_roi_window']))
+    
+    
     print("\n========== MODEL =========")
     print("Backbone : ", FLAGS.network)
     print("Resume: ",  FLAGS.resume )
     print("Loss: ",FLAGS.loss)
-    print("MiniBatch Size: ", str(SESSION['modelwrapper']['minibatch_size']))
+    print("MiniBatch Size: ", str(SESSION['trainer']['minibatch_size']))
+    
+    
     print("\n==========================")
     print(f'Memory: {FLAGS.memory}')
     print(f'Device: {FLAGS.device}')
     print("Loss: %s" %(SESSION['loss']['type']))
     print("Experiment: %s" %(FLAGS.experiment))
-    print("Max epochs: %s" %(FLAGS.epoch))
+    print("Max epochs: %s" %(FLAGS.epochs))
+    print("PCL Norm: %s" %(FLAGS.pcl_norm))
     #print("Modality: %s" %(model_param['modality']))
     print("----------\n")
 
     # For repeatability
     torch.manual_seed(0)
     np.random.seed(0)
-
-    # Get Loss parameters
-    ###################################################################### 
-    # The development has been made on different PCs, each has some custom settings
-    # e.g the root path to the dataset;
-
-
-    root_dir = FLAGS.dataset_root #pc_config[device_name]
     
     # Build the model and the loader
     model_ = model_handler(FLAGS.network,
@@ -263,26 +300,35 @@ if __name__ == '__main__':
                             feat_dim  =FLAGS.feat_dim,
                             device    =FLAGS.device,
                             loss = SESSION['loss'],
-                            modelwrapper = SESSION['modelwrapper']
+                            trainer = SESSION['trainer']
                             )
-
-    loader = dataloader_handler(root_dir,FLAGS.network,SESSION, roi = FLAGS.roi)
+    
+    loader = dataloader_handler(FLAGS.dataset_root,
+                                FLAGS.network,
+                                FLAGS.dataset,
+                                FLAGS.val_set,
+                                SESSION,
+                                roi = FLAGS.roi,
+                                pcl_norm = FLAGS.pcl_norm)
 
     run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
-                'experiment':FLAGS.experiment, 
+                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
                 'model': str(model_)
             }
 
     trainer = Trainer(
-            model         = model_,
-            train_loader  = loader.get_train_loader(),
-            test_loader   = loader.get_test_loader(),
+            model        = model_,
+            train_loader = loader.get_train_loader(),
+            val_loader   = loader.get_val_loader(),
             resume = FLAGS.resume,
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
             train_epoch_zero = True,
-            monitor_range = SESSION['monitor_range']
+            monitor_range = SESSION['monitor_range'],
+            roi_window    = FLAGS.eval_roi_window,
+            eval_protocol = 'place',
+            debug = False
             )
     
     loop_range = [1,5,10,20]
@@ -293,7 +339,9 @@ if __name__ == '__main__':
     
         # Generate descriptors, predictions and performance for the best weights
         trainer.eval_approach.load_pretrained_model(best_model_filename)
+        loop_range = list(range(0,120,1))
         trainer.eval_approach.run(loop_range=loop_range)
+
         trainer.eval_approach.save_params()
         trainer.eval_approach.save_descriptors()
         trainer.eval_approach.save_predictions_cv()

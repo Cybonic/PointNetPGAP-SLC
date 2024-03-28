@@ -12,7 +12,7 @@ resume  = "PointNetGAP.pth" # choice [checkpoints.pth, descriptors.torch]
 # Path to save the predictions
 save_path  = 'predictions'
 
-test_sequences = ['OJ22']#,'OJ23','ON22','SJ23']
+test_sequences = ['OJ22','OJ23','ON22','SJ23']
 
 for seq in test_sequences:
         func_arg = [ 
