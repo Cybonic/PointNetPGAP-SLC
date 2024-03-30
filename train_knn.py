@@ -14,7 +14,8 @@ import numpy as np
 # To force deterministic algorithms
 # On terminal run the following command to set the environment variable
 # export CUBLAS_WORKSPACE_CONFIG=":4096:8"
-# torch.use_deterministic_algorithms(True)
+# os.system('export CUBLAS_WORKSPACE_CONFIG=:4096:8')
+torch.use_deterministic_algorithms(True)
   
 def force_cudnn_initialization():
     s = 32
@@ -70,7 +71,7 @@ if __name__ == '__main__':
         '--epochs',
         type=int,
         required=False,
-        default=5,
+        default=1,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -296,7 +297,7 @@ if __name__ == '__main__':
     # Build the model and the loader
     model_ = model_handler(FLAGS.network,
                             num_points=SESSION['max_points'],
-                            output_dim=256,
+                            output_dim =256,
                             feat_dim  =FLAGS.feat_dim,
                             device    =FLAGS.device,
                             loss = SESSION['loss'],

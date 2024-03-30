@@ -242,18 +242,18 @@ class BaseTrainer:
             # SAVE CHECKPOINT
             if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
                 self._save_checkpoint(epoch, save_best = self.improved)
-                self.eval_approach.save_params()
-                self.eval_approach.save_descriptors()
-                self.eval_approach.save_predictions_cv()
-                self.eval_approach.save_results_cv()
+                #self.eval_approach.save_params()
+                #self.eval_approach.save_descriptors()
+                #self.eval_approach.save_predictions_cv()
+                #self.eval_approach.save_results_cv()
                 self.improved = False
             
 
         # Register best scores and hyper
-        if self.best_log == None:
-            self._write_hyper_tb(val_results)
-        else:
-            self._write_hyper_tb(self.best_log)
+        #if self.best_log == None:
+        #    self._write_hyper_tb(val_results)
+        #else:
+        #    self._write_hyper_tb(self.best_log)
             
         
         return(self.save_best_model_filename)

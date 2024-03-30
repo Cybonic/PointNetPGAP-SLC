@@ -188,7 +188,7 @@ class Trainer(BaseTrainer):
         
         # For model comparison use the first range top 1 recall
         # 10
-        output = {'recall':overall_scores[self.monitor_range]['recall'][0]}
+        output = {'recall':overall_scores[self.monitor_range]['recall'][0]} # gets Top1 recall
         return output,[]
 
 # ===================================================================================================================
@@ -209,7 +209,7 @@ class Trainer(BaseTrainer):
                         "experim_name": str(self.hyper_log['experim_name']),
                         #"dataset": str(self.hyper_log['val_loader']['dataset']),
                         "sequence": str(self.hyper_log['val_loader']['sequence']),
-                        "model": self.hyper_log['modelwrapper']['type'],
+                        "model": str(self.model),
                         "minibatch_size": self.hyper_log['modelwrapper']['minibatch_size'],
                         #"output_dim": self.hyper_log['model']['output_dim'],
                         "optim": str(self.hyper_log['modelwrapper']['type']),
