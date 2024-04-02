@@ -71,7 +71,7 @@ loss:
   type: 'TripletLoss'
   args:
     margin: 0.5
-    metric: 'L2' # [L2,Hinge,cosine,kl_divergence]
+    metric: 'cosine' # [L2,Hinge,cosine,kl_divergence]
     reduction: 'mean'
 
 

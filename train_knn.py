@@ -15,7 +15,7 @@ import numpy as np
 # On terminal run the following command to set the environment variable
 # export CUBLAS_WORKSPACE_CONFIG=":4096:8"
 # os.system('export CUBLAS_WORKSPACE_CONFIG=:4096:8')
-torch.use_deterministic_algorithms(True)
+#torch.use_deterministic_algorithms(True)
   
 def force_cudnn_initialization():
     s = 32
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         '--epochs',
         type=int,
         required=False,
-        default=1,
+        default=100,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -170,7 +170,6 @@ if __name__ == '__main__':
         help='sampling points.'
     )
     
-
     parser.add_argument(
         '--roi',
         type=float,
@@ -186,8 +185,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--session',
-        type=str,
-        required=False,
+        type=str,required=False,
         default = "ukfrpt",
     )
     
@@ -325,7 +323,7 @@ if __name__ == '__main__':
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
-            train_epoch_zero = True,
+            train_epoch_zero = False,
             monitor_range = SESSION['monitor_range'],
             roi_window    = FLAGS.eval_roi_window,
             eval_protocol = 'place',

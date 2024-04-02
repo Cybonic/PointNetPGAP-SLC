@@ -309,11 +309,12 @@ class ModelWrapperLoss(nn.Module):
         self.model = model
         self.device = 'cpu'
         self.margin = margin
-        self.representation = args['representation']
-        self.class_loss_on = args['class_loss_on']
-        self.pooling = args['pooling']
+        # self.representation = args['representation']
+        #self.class_loss_on = args['class_loss_on']
+        #self.pooling = args['pooling']
+        self.class_loss_margin = 0.5
         
-        self.sec_loss = pcl_binary_loss() 
+        self.sec_loss = segment_loss(n_classes=6,feat_dim=256,w=0.1) 
         print('ModelWrapper device: ',self.device)
 
 
@@ -322,7 +323,7 @@ class ModelWrapperLoss(nn.Module):
         self.device =  next(self.parameters()).device
         if self.training == False:
             pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
-            pred = pred['out']
+            #pred = pred['out']
             return(pred)
 
         # Training
@@ -360,13 +361,8 @@ class ModelWrapperLoss(nn.Module):
             
             if pclt.shape[0]==1: # drop last
                 continue
-            
+
             pred = self.model(pclt.to(self.device)) # pclt.cuda()
-            
-            feat = pred['feat']
-            pred = pred['out'] 
-            
-            global_loss = 0
             
             a_idx = num_anchor
             p_idx = num_pos+num_anchor
@@ -374,25 +370,21 @@ class ModelWrapperLoss(nn.Module):
             
             dq,dp,dn = pred[0:a_idx],pred[a_idx:p_idx],pred[p_idx:n_idx]
             descriptor = {'a':dq,'p':dp,'n':dn}
-
-            if self.class_loss_on:
-                if self.representation == 'features':
-                    if self.pooling == 'max':
-                        feat = torch.max(feat, dim=1, keepdim=False)[0]
-                    elif self.pooling == 'mean':
-                        feat = torch.mean(feat, dim=1, keepdim=False)[0]
-                    da,dp,dn = feat[0:a_idx],feat[a_idx:p_idx],feat[p_idx:n_idx]
-                else:
-                    da,dp,dn = pred[0:a_idx],pred[a_idx:p_idx],pred[p_idx:n_idx]
-                
-            class_loss_value = self.sec_loss(da,dp,dn)
             loss_value,info = self.loss(descriptor = descriptor, poses = pose)
-            loss_value += self.margin*class_loss_value
+            
+            
+            #if 'labels' in arg:
+            self.row_labels = torch.tensor(labels,dtype=torch.float32).to(self.device)
+            #pred[anchor_idx],pred[positive_idx],pred[negative_idx]
+            target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
+                
+            class_loss_value = self.sec_loss( pred, target)
+            loss_value =  self.class_loss_margin * loss_value + (1-self.class_loss_margin)*class_loss_value
             info['class_loss'] = class_loss_value.detach()
-
             
             # devide by the number of batch iteration; as direct implication in the grads
             loss_value /= mini_batch_total_iteration 
+            
             
             loss_value.backward() # Backpropagate gradients and free graph
             batch_loss += loss_value
@@ -403,9 +395,7 @@ class ModelWrapperLoss(nn.Module):
         
         name = [str(self.model),
                 str(self.loss),
-               f'{self.sec_loss}M{self.margin}' if self.class_loss_on else 'noloss',
-               self.representation if self.class_loss_on else '',
-                self.pooling if self.class_loss_on else ''
+               f'{self.sec_loss}M{self.margin}'
                ]
         str_name = '-'.join(name)
         return str_name
@@ -451,12 +441,13 @@ class MLPNet(torch.nn.Module):
 
 
 class segment_loss(nn.Module):
-    def __init__(self,num_c=7, feat_dim=256, w=0.1):
+    def __init__(self,n_classes=7, feat_dim=256, w=0.1):
         super().__init__()
         self.w = w
         
+        self.n_classes = n_classes
         list_layers = mlp_layers(feat_dim, [256, 64], b_shared=False, bn_momentum=0.01, dropout=0.0)
-        list_layers.append(torch.nn.Linear(64, num_c))
+        list_layers.append(torch.nn.Linear(64, n_classes))
         self.classifier = torch.nn.Sequential(*list_layers)
     
     def forward(self, descriptor, target):
@@ -467,6 +458,10 @@ class segment_loss(nn.Module):
         descriptor = descriptor[correct_targets]
         
         out = self.classifier(descriptor)
+        
+        assert target.min() >= 0, "Negative class label found"
+        assert target.max() < self.n_classes, "Class label out of range found"
+
         loss_c = F.nll_loss(F.log_softmax(out, dim=1), target,reduction='mean')
         #loss_c = self.classloss(
         #    torch.nn.functional.log_softmax(out, dim=1), target)

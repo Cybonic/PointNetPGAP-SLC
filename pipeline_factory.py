@@ -52,8 +52,8 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name == 'PointNetGAP':
-        pipeline = PointNetGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
+    elif pipeline_name in ['PointNetGAP','PointNetGAPLoss']:
+        pipeline = PointNetGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = feat_dim)
     elif pipeline_name == 'overlap_transformer':
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
@@ -73,6 +73,8 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("SPV"):
         model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
+    elif pipeline_name in ['PointNetGAPLoss']:
+        model = contrastive.ModelWrapperLoss(pipeline,loss = loss,device = device,**argv['trainer'])
     else: 
         model = contrastive.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
         
@@ -118,7 +120,7 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         num_points=session['max_points']
         modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
     
-    elif network in ['PointNetVLAD','PointNetGAP']:
+    elif network in ['PointNetVLAD','PointNetGAP','PointNetGAPLoss']:
         # Get point cloud based modality
         num_points = session['max_points']
         modality = Scan(max_points=num_points,square_roi=roi, pcl_norm=pcl_norm,clean_zeros=False)

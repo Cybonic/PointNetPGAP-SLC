@@ -22,6 +22,7 @@ test_sequences = ['OJ22','OJ23','ON22','SJ23']
 for seq in test_sequences:
         func_arg = [
                 f'--dataset_root {dataset_root}', # path to Dataset 
+                '--resume best_model', # [best_model, last_model]
                 f'--val_set {seq}',
                 '--memory RAM', # [DISK, RAM] 
                 '--device cuda', # Device

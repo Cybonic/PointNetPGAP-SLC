@@ -30,8 +30,16 @@ def kl_divergence(p, q):
 #  cosine
 # ==========================================================================
 def cosine_torch_loss(x,y,eps=1e-8,dim=0):
+    # convert to tensor
+    if not torch.is_tensor(x):
+        x = torch.tensor(x,dtype=torch.float32)
+    if not torch.is_tensor(y):
+        y = torch.tensor(y,dtype=torch.float32)
+    
+    cosine = torch.max(torch.cosine_similarity(x, y, dim, eps),torch.tensor(1e-8))
+    loss = 1-cosine
     #return torch.max(1-torch.abs(cosine(x,y,dim)),torch.tensor(eps))
-    loss = 1 - F.cosine_similarity(x, y, dim, eps)
+    #loss = 1 - F.cosine_similarity(x, y, dim, eps)
     return torch.max(loss,torch.tensor(eps))
 
 def cosine_loss(x,y,eps=1e-8,dim=0):

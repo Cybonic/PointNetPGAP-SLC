@@ -40,7 +40,7 @@ class Trainer(BaseTrainer):
         self.hyper_log      = config
         self.loss_dist      = config['loss']['args']['metric']
         
-        self.eval_metric = config['trainer']['eval_metric']
+        self.sim_func = config['loss']['args']['metric']
         self.top_cand_retrieval = config['retrieval']['top_cand']
         
         assert isinstance(self.top_cand_retrieval,list)
@@ -52,14 +52,14 @@ class Trainer(BaseTrainer):
         self.eval_approach = PlaceRecognition(self.model ,
                                                 self.val_loader,
                                                 self.top_cand_retrieval,
-                                                self.loss_dist,
                                                 self.logger,
                                                 roi_window = roi_window,
                                                 warmup_window = warmup_window,
                                                 device = self.device,
                                                 eval_protocol = eval_protocol,
                                                 logdir =  run_name['experiment'],
-                                                monitor_range = monitor_range
+                                                monitor_range = monitor_range,
+                                                sim_func=self.sim_func
                                                 )
      
         

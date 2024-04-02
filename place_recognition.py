@@ -30,7 +30,6 @@ class PlaceRecognition():
     def __init__(self,model,
                     loader,
                     top_cand,
-                    eval_metric,
                     logger,
                     roi_window    = 600,
                     warmup_window = 100,
@@ -38,13 +37,21 @@ class PlaceRecognition():
                     device        = 'cpu',
                     eval_protocol = 'place',
                     monitor_range = 1, # m
+                    sim_func = 'L2',
                     **arg):
 
         self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
-        self.eval_metric   = eval_metric
         self.logger = logger
         
+        self.sim_func = sim_func
+        
+        logger.warning(f'\n ** Evaluation Protocol: {self.eval_protocol}')
+        logger.warning(f'\n ** Similarity Function: {self.sim_func}')
+        logger.warning(f'\n ** Monitor Range: {self.monitor_range}m')
+        
+        
+        assert sim_func in ['L2','cosine'], 'Wrong similarity function: ' + sim_func
         if device in ['gpu','cuda']:
             device, availble_gpus = get_available_devices(1,logger)
         
@@ -79,7 +86,7 @@ class PlaceRecognition():
         self.param['top_cand']     = top_cand
         self.param['roi_window']   = self.roi_window
         self.param['warmup_window'] = self.warmup_window
-        self.param['eval_metric']  = eval_metric
+        self.param['sim_func']  = self.sim_func
         self.param['save_deptrs']  = save_deptrs
         self.param['device']       = device
         self.param['dataset_name'] = self.dataset_name
@@ -378,9 +385,6 @@ class PlaceRecognition():
         if not isinstance(self.top_cand,list):
             self.top_cand = [self.top_cand]
         
-        # Check if the results were generated       
-        sim_func =  'sc_similarity' if str(self.model).startswith("scancontext") else 'L2'
-        
         # GENERATE DESCRIPTORS
         if self.use_load_deptrs == False:
             self.descriptors = self.generate_descriptors(self.model,self.loader)
@@ -406,7 +410,7 @@ class PlaceRecognition():
                                                     radius=self.loop_range_distance, # Radius
                                                     roi_window=self.roi_window,
                                                     warmup_window=self.warmup_window,
-                                                    sim = sim_func 
+                                                    sim = self.sim_func 
                                                     )
         
         elif self.eval_protocol == 'place':
@@ -417,7 +421,7 @@ class PlaceRecognition():
                                                     k_top_cand, # Max top candidates
                                                     radius=self.loop_range_distance, # Radius
                                                     window=self.roi_window,
-                                                    sim = sim_func # 
+                                                    sim = self.sim_func # 
                                                     )
         else:
             raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
