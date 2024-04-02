@@ -61,7 +61,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         raise NotImplementedError("Network not implemented!")
 
     loss = None
-    if 'loss' in argv:
+    if 'loss' in argv and argv['loss'] is not None:
         loss_type  = argv['loss']['type']
         loss_param = argv['loss']['args']
 

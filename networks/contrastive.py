@@ -313,6 +313,8 @@ class ModelWrapperLoss(nn.Module):
         #self.class_loss_on = args['class_loss_on']
         #self.pooling = args['pooling']
         self.class_loss_margin = 0.5
+        if self.loss == None:
+            self.class_loss_margin = 0
         
         self.sec_loss = segment_loss(n_classes=6,feat_dim=256,w=0.1) 
         print('ModelWrapper device: ',self.device)
@@ -370,7 +372,13 @@ class ModelWrapperLoss(nn.Module):
             
             dq,dp,dn = pred[0:a_idx],pred[a_idx:p_idx],pred[p_idx:n_idx]
             descriptor = {'a':dq,'p':dp,'n':dn}
-            loss_value,info = self.loss(descriptor = descriptor, poses = pose)
+            
+            # intialize parameters in case of no loss
+            loss_value=0
+            info={}
+            
+            if self.loss != None:
+                loss_value,info = self.loss(descriptor = descriptor, poses = pose)
             
             
             #if 'labels' in arg:
@@ -394,8 +402,8 @@ class ModelWrapperLoss(nn.Module):
     def __str__(self):
         
         name = [str(self.model),
-                str(self.loss),
-               f'{self.sec_loss}M{self.margin}'
+                str(self.loss) if self.loss != None else 'NoTripleLoss',
+               f'{self.sec_loss}M{self.class_loss_margin}'
                ]
         str_name = '-'.join(name)
         return str_name

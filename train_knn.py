@@ -38,7 +38,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetGAP',
+        default='PointNetGAPLoss',
         help='Directory to get the trained model.'
     )
 
@@ -298,7 +298,7 @@ if __name__ == '__main__':
                             output_dim =256,
                             feat_dim  =FLAGS.feat_dim,
                             device    =FLAGS.device,
-                            loss = SESSION['loss'],
+                            loss = None,#SESSION['loss'],
                             trainer = SESSION['trainer']
                             )
     
