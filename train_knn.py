@@ -99,7 +99,7 @@ if __name__ == '__main__':
         '--device',
         type=str,
         required=False,
-        default='cuda',
+        default='cpu',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -307,7 +307,10 @@ if __name__ == '__main__':
                             feat_dim  = FLAGS.feat_dim,
                             device    = FLAGS.device,
                             loss      = SESSION['loss'],
-                            trainer = SESSION['trainer']
+                            trainer = SESSION['trainer'],
+                            stage_1 = True,
+                            stage_2 = True,
+                            stage_3 = True
                             )
     
     loader = dataloader_handler(FLAGS.dataset_root,
