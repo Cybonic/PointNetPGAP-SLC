@@ -294,6 +294,7 @@ class ModelWrapper(nn.Module):
 class ModelWrapperLoss(nn.Module):
     def __init__(self,  model,
                         loss        = None,
+                        aux_loss    = None,
                         minibatch_size = 3, 
                         margin = 0.5,
                         **args,
@@ -303,21 +304,34 @@ class ModelWrapperLoss(nn.Module):
         assert minibatch_size>= 3, 'Minibatch size too small'
         
         self.loss = loss
+        self.aux_loss = aux_loss 
+        
         self.minibatch_size = minibatch_size
         #self.device = device
         self.batch_counter = 0 
         self.model = model
         self.device = 'cpu'
-        self.margin = margin
-        # self.representation = args['representation']
-        #self.class_loss_on = args['class_loss_on']
-        #self.pooling = args['pooling']
-        self.class_loss_margin = 0.5
-        if self.loss == None:
-            self.class_loss_margin = 0
+        self.loss_margin = margin
         
-        self.sec_loss = segment_loss(n_classes=6,feat_dim=256,w=0.1) 
-        print('ModelWrapper device: ',self.device)
+        # Check if loss is defined
+        # check if loss is None or not
+        
+        assert  loss is None or not isinstance(loss, nn.Module) and self.aux_loss == None, 'No loss specified'
+        
+        # Check if main loss (triplet) is defined
+        if self.loss == None:
+            self.loss_margin = 0
+        
+        # Check if auxilary loss is defined
+        
+        
+        if aux_loss == None:
+            self.loss_margin = 1
+        elif aux_loss == 'segment_loss':
+            self.aux_loss = segment_loss(n_classes=6,feat_dim=256) 
+        else:
+            raise ValueError('No aux loss specified')
+        
 
 
     def forward(self,pcl,**argv):
@@ -325,11 +339,13 @@ class ModelWrapperLoss(nn.Module):
         self.device =  next(self.parameters()).device
         if self.training == False:
             pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
-            #pred = pred['out']
             return(pred)
 
         # Training
         row_labels = argv['labels']
+        # get the segment labels
+        self.row_labels = torch.tensor(labels,dtype=torch.float32).to(self.device)
+        
         # Adaptation to new paradigm
         anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'],pcl[0]['negative']
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
@@ -377,23 +393,25 @@ class ModelWrapperLoss(nn.Module):
             loss_value=0
             info={}
             
+            # Main loss: Triplet loss
             if self.loss != None:
                 loss_value,info = self.loss(descriptor = descriptor, poses = pose)
             
-            
-            #if 'labels' in arg:
-            self.row_labels = torch.tensor(labels,dtype=torch.float32).to(self.device)
-            #pred[anchor_idx],pred[positive_idx],pred[negative_idx]
-            target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
+            # Auxilary loss: Segment loss
+            class_loss_value = 0 
+            if self.aux_loss != None:
                 
-            class_loss_value = self.sec_loss( pred, target)
+                target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
+                class_loss_value = self.aux_loss( pred, target)
+            
+            # Final loss
             loss_value =  self.class_loss_margin * loss_value + (1-self.class_loss_margin)*class_loss_value
             info['class_loss'] = class_loss_value.detach()
             
             # devide by the number of batch iteration; as direct implication in the grads
             loss_value /= mini_batch_total_iteration 
             
-            
+            # compute the gradients
             loss_value.backward() # Backpropagate gradients and free graph
             batch_loss += loss_value
 
@@ -401,10 +419,14 @@ class ModelWrapperLoss(nn.Module):
     
     def __str__(self):
         
-        name = [str(self.model),
-                str(self.loss) if self.loss != None else 'NoTripleLoss',
-               f'{self.sec_loss}M{self.class_loss_margin}'
-               ]
+        name = [str(self.model)]
+        
+        if self.loss != None:
+            name.append(str(self.loss)) if self.loss != None else 'NoTripleLoss'
+        
+        elif self.sec_loss != None:
+            name.append(f'{self.sec_loss}M{self.class_loss_margin}')
+            
         str_name = '-'.join(name)
         return str_name
 
@@ -449,9 +471,8 @@ class MLPNet(torch.nn.Module):
 
 
 class segment_loss(nn.Module):
-    def __init__(self,n_classes=7, feat_dim=256, w=0.1):
+    def __init__(self,n_classes=7, feat_dim=256):
         super().__init__()
-        self.w = w
         
         self.n_classes = n_classes
         list_layers = mlp_layers(feat_dim, [256, 64], b_shared=False, bn_momentum=0.01, dropout=0.0)

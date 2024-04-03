@@ -27,6 +27,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
 
     parser.add_argument(
+        '--train',
+        type=int,
+        required=False,
+        default=1,
+        help='Train the model.Default is True. If False, the model will be evaluated.'
+    )
+    
+    parser.add_argument(
         '--dataset_root',
         type=str,
         required=False,
@@ -212,7 +220,7 @@ if __name__ == '__main__':
         '--eval_roi_window',
         type=float,
         required=False,
-        default = 100,
+        default = 600,
     )
     
     FLAGS, unparsed = parser.parse_known_args()
@@ -296,9 +304,9 @@ if __name__ == '__main__':
     model_ = model_handler(FLAGS.network,
                             num_points=SESSION['max_points'],
                             output_dim =256,
-                            feat_dim  =FLAGS.feat_dim,
-                            device    =FLAGS.device,
-                            loss = None,#SESSION['loss'],
+                            feat_dim  = FLAGS.feat_dim,
+                            device    = FLAGS.device,
+                            loss      = SESSION['loss'],
                             trainer = SESSION['trainer']
                             )
     
@@ -330,12 +338,15 @@ if __name__ == '__main__':
             debug = False
             )
     
-    loop_range = [1,5,10,20]
-    best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
-    
 
-    if FLAGS.save_predictions:
+    if FLAGS.train:
+        loop_range = [1,5,10,20]
+        best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
     
+    
+    if FLAGS.save_predictions:
+        
+        best_model_filename = trainer.save_best_model_filename
         # Generate descriptors, predictions and performance for the best weights
         trainer.eval_approach.load_pretrained_model(best_model_filename)
         loop_range = list(range(0,120,1))
