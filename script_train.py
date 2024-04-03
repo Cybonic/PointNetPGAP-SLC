@@ -23,7 +23,7 @@ stages = ['011','101','001']
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
-                        '--train 0', # Train or test
+                        '--train 1', # Train or test
                         f'--dataset_root {dataset_root}', # path to Dataset 
                         '--resume best_model', # [best_model, last_model]
                         f'--val_set {seq}',
