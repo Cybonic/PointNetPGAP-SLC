@@ -63,20 +63,59 @@ class PointNetHGAP(nn.Module):
         self.feat_dim = feat_dim
         self.output_dim = output_dim
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=8)
-        self.fc = nn.LazyLinear(output_dim)
+        
+        
+        self.fco = nn.LazyLinear(output_dim)
+        self.fch = nn.LazyLinear(output_dim)
+        self.fci = nn.LazyLinear(output_dim)
+        
+        # Default stages
+        self.stage_1 = False
+        self.stage_2 = False
+        self.stage_3 = True
+        
+        if 'stage_1' in argv:
+            self.stage_1 = argv['stage_1']
+        if 'stage_2' in argv:
+            self.stage_2 = argv['stage_2']
+        if 'stage_3' in argv:
+            self.stage_3 = argv['stage_3']
         
         self.head = GAP(outdim=output_dim)
 
     def forward(self, x):
-        x = self.point_net(x)
+        xo = self.point_net(x)
+        
+        h = self.point_net.t_out_h1
+        h = h.transpose(1, 2)
+        
+        d = torch.zeros(h.shape[0], 256, device=h.device)
+        if self.stage_1:
+            #xi = x.transpose(1, 2)
+            xi =wishart_descriptor(x)
+            xi = self.fci(xi)
+            xi = xi / (torch.norm(xi, p=2, dim=1, keepdim=True) + 1e-10)
+            d += xi
+        
+        if self.stage_2:
+            xh =wishart_descriptor(h)
+            xh = self.fch(xh)
+            xh = xh / (torch.norm(xh, p=2, dim=1, keepdim=True) + 1e-10)
+            d += xh
+        
         # Transpose to [B, N, C]
-        x = x.transpose(1, 2)
-        x =wishart_descriptor(x)
-        x = self.fc(x)
+        if self.stage_3:
+            xo = xo.transpose(1, 2)
+            xo =wishart_descriptor(xo)
+            xo = self.fco(xo)
+            xo = xo / (torch.norm(xo, p=2, dim=1, keepdim=True) + 1e-10)
+            d += xo
+        
         # L2 normalize
-        x = x / (torch.norm(x, p=2, dim=1, keepdim=True) + 1e-10)
-        return x
+        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        return d
   
     def __str__(self):
-        return "PointNetHGAP_{}_{}".format(self.feat_dim, self.output_dim)
+        return "PointNetHGAP_{}_{}_S{}{}{}".format(self.feat_dim, self.output_dim,
+                                                   int(self.stage_1),int(self.stage_2),int(self.stage_3))
 
