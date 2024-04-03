@@ -48,8 +48,8 @@ val_loader:
 
 trainer:
   iter_per_epoch: 1
-  epochs: 50
-  report_val: 1      # every x epochs, report validation set
+  epochs: 100
+  report_val: 5      # every x epochs, report validation set
   save_period: 1
   log_dir: "saved/"
   save_dir: "checkpoints/"
