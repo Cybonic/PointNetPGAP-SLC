@@ -342,19 +342,19 @@ class ModelWrapperLoss(nn.Module):
             return(pred)
 
         # Training
-        row_labels = argv['labels']
-        # get the segment labels
-        self.row_labels = torch.tensor(labels,dtype=torch.float32).to(self.device)
-        
+       
         # Adaptation to new paradigm
         anchor,positive,negative = pcl[0]['anchor'],pcl[0]['positive'],pcl[0]['negative']
         pose_anchor,pose_positive,pose_negative = pcl[1]['anchor'],pcl[1]['positive'],pcl[1]['negative']
         num_anchor,num_pos,num_neg = 1,len(positive),len(negative)
         
+        # get the segment labels
+        row_labels = argv['labels']
         labels = []
         labels.append(row_labels[pose_anchor])
         labels.extend(row_labels[pose_positive])
         labels.extend(row_labels[pose_negative])
+        self.row_labels = torch.tensor(labels,dtype=torch.float32).to(self.device)
         
         if len(anchor.shape)<4:
             anchor = anchor.unsqueeze(0)
@@ -391,22 +391,22 @@ class ModelWrapperLoss(nn.Module):
             
             # intialize parameters in case of no loss
             loss_value=0
-            info={}
             
+            info={}
             # Main loss: Triplet loss
             if self.loss != None:
                 loss_value,info = self.loss(descriptor = descriptor, poses = pose)
             
             # Auxilary loss: Segment loss
-            class_loss_value = 0 
+            class_loss_value = torch.tensor(0) 
             if self.aux_loss != None:
                 
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
                 class_loss_value = self.aux_loss( pred, target)
             
             # Final loss
-            loss_value =  self.class_loss_margin * loss_value + (1-self.class_loss_margin)*class_loss_value
-            info['class_loss'] = class_loss_value.detach()
+            loss_value =  self.loss_margin * loss_value + (1-self.loss_margin)*class_loss_value
+            info['class_loss'] = class_loss_value
             
             # devide by the number of batch iteration; as direct implication in the grads
             loss_value /= mini_batch_total_iteration 
