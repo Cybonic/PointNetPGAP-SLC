@@ -79,7 +79,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name in ['PointNetGAPLoss','PointNetHGAPLoss']:
         model = contrastive.ModelWrapperLoss(pipeline,
                                              loss = loss,
-                                             aux_loss = 'segment_loss', # ['segment_loss',None]
+                                             aux_loss = None, # 'segment_loss', # ['segment_loss',None]
                                              device = device,
                                              **argv['trainer'])
     else: 
