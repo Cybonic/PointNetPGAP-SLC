@@ -89,29 +89,32 @@ class PointNetHGAP(nn.Module):
         h = self.point_net.t_out_h1
         h = h.transpose(1, 2)
         
-        d = torch.zeros(h.shape[0], 256, device=h.device)
+        d = torch.tensor([],dtype=x.dtype,device=x.device)
         if self.stage_1:
             #xi = x.transpose(1, 2)
             xi =wishart_descriptor(x)
-            xi = self.fci(xi)
+            #xi = self.fci(xi)
             xi = xi / (torch.norm(xi, p=2, dim=1, keepdim=True) + 1e-10)
-            d += xi
+            d = torch.cat((d, xi), dim=1)
+   
         
         if self.stage_2:
             xh =wishart_descriptor(h)
-            xh = self.fch(xh)
+            #xh = self.fch(xh)
             xh = xh / (torch.norm(xh, p=2, dim=1, keepdim=True) + 1e-10)
-            d += xh
+            d = torch.cat((d, xh), dim=1)
+   
         
         # Transpose to [B, N, C]
         if self.stage_3:
             xo = xo.transpose(1, 2)
             xo =wishart_descriptor(xo)
-            xo = self.fco(xo)
+            #
             xo = xo / (torch.norm(xo, p=2, dim=1, keepdim=True) + 1e-10)
-            d += xo
+            d = torch.cat((d, xo), dim=1)
         
         # L2 normalize
+        d = self.fco(d)
         d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
   
