@@ -98,7 +98,7 @@ class PointNet_features(torch.nn.Module):
     def __init__(self,in_dim=3, dim_k=1024, use_tnet=False, sym_fn=symfn_max, scale=1):
         super().__init__()
         mlp_h1 = [int(64/scale), int(64/scale)]
-        mlp_h2 = [int(64/scale), int(128/scale), int(dim_k/scale)]
+        mlp_h2 = [int(64/scale), int(128/scale), int(dim_k)]
 
         self.h1 = MLPNet(in_dim, mlp_h1, b_shared=True).layers
         self.h2 = MLPNet(mlp_h1[-1], mlp_h2, b_shared=True).layers

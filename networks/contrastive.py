@@ -316,7 +316,7 @@ class ModelWrapperLoss(nn.Module):
         # Check if loss is defined
         # check if loss is None or not
         
-        assert  loss is None or not isinstance(loss, nn.Module) and self.aux_loss == None, 'No loss specified'
+        assert  loss is None or not isinstance(loss, nn.Module) or self.aux_loss == None, 'No loss specified'
         
         # Check if main loss (triplet) is defined
         if self.loss == None:
