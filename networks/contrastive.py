@@ -424,8 +424,8 @@ class ModelWrapperLoss(nn.Module):
         if self.loss != None:
             name.append(str(self.loss)) if self.loss != None else 'NoTripleLoss'
         
-        elif self.sec_loss != None:
-            name.append(f'{self.sec_loss}M{self.class_loss_margin}')
+        elif self.aux_loss != None:
+            name.append(f'{self.aux_loss}-m{self.loss_margin}')
             
         str_name = '-'.join(name)
         return str_name
