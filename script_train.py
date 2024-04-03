@@ -3,7 +3,7 @@ import os
 
 
 # Define the number of epochs
-epochs = 100
+epochs = 300
 # Define the path to the checkpoints
 # Define the path to the dataset
 # dataset_root = '/home/tiago/workspace/DATASET'
