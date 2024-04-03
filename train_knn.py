@@ -222,7 +222,12 @@ if __name__ == '__main__':
         required=False,
         default = 600,
     )
-    
+    parser.add_argument(
+        '--stages',
+        type=str,
+        required=False,
+        default = '011',
+    )
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
@@ -308,9 +313,9 @@ if __name__ == '__main__':
                             device    = FLAGS.device,
                             loss      = SESSION['loss'],
                             trainer = SESSION['trainer'],
-                            stage_1 = True,
-                            stage_2 = True,
-                            stage_3 = True
+                            stage_1 = bool(int(FLAGS.stages[0])),
+                            stage_2 = bool(int(FLAGS.stages[1])),
+                            stage_3 = bool(int(FLAGS.stages[2]))
                             )
     
     loader = dataloader_handler(FLAGS.dataset_root,
