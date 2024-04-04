@@ -13,7 +13,7 @@ def wishart_descriptor(X):
     dim = X.shape[1]
     #X = X.t()
     S = compute_similarity_matrix(X)
-    S = vectorized_euclidean_distance(S)
+    #S = vectorized_euclidean_distance(S)
     return S.view(S.shape[0],-1)
 
 
