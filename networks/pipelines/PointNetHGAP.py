@@ -55,7 +55,50 @@ def so_meanpool(x):
     #x = torch.reshape(x, (batchSize, nFeat, dimFeat, dimFeat))
     x = torch.mean(x, 1)
     return x
+
+
+class MSGAP(nn.Module):
+    def __init__(self, **argv):
+        super(MSGAP, self).__init__()
         
+        # Default stages
+        self.stage_1 = argv['stage_1']
+        self.stage_2 = argv['stage_2']
+        self.stage_3 = argv['stage_3']
+        
+        self.head1 = GAP(outdim=argv['output_dim'])
+        self.head2 = GAP(outdim=argv['output_dim'])
+        self.head3 = GAP(outdim=argv['output_dim'])
+        
+        self.fco = nn.LazyLinear(argv['output_dim'])
+        
+        
+    
+    def forward(self, xi,xh,xo):
+        d = torch.tensor([],dtype=xi.dtype,device=xi.device)
+        if self.stage_1:
+            xi = self.head1(x)
+            d = torch.cat((d, xi), dim=1)
+   
+        
+        if self.stage_2:
+            xh = self.head2(xh)
+            d = torch.cat((d, xh), dim=1)
+   
+        if self.stage_3:
+            xo = self.head3(xo)
+            d = torch.cat((d, xo), dim=1)
+        
+        # L2 normalize
+        d = self.fco(d)
+        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        return d
+    
+    def __str__(self):
+        return "MSGAP_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+    
+
+
 class PointNetHGAP(nn.Module):
     def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=1024, **argv):
         super(PointNetHGAP, self).__init__()
@@ -65,23 +108,7 @@ class PointNetHGAP(nn.Module):
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=8)
         
         
-        self.fco = nn.LazyLinear(output_dim)
-        self.fch = nn.LazyLinear(output_dim)
-        self.fci = nn.LazyLinear(output_dim)
-        
-        # Default stages
-        self.stage_1 = False
-        self.stage_2 = False
-        self.stage_3 = True
-        
-        if 'stage_1' in argv:
-            self.stage_1 = argv['stage_1']
-        if 'stage_2' in argv:
-            self.stage_2 = argv['stage_2']
-        if 'stage_3' in argv:
-            self.stage_3 = argv['stage_3']
-        
-        self.head = GAP(outdim=output_dim)
+        self.head= MSGAP(output_dim=output_dim, **argv)
 
     def forward(self, x):
         xo = self.point_net(x)
@@ -89,36 +116,10 @@ class PointNetHGAP(nn.Module):
         h = self.point_net.t_out_h1
         h = h.transpose(1, 2)
         
-        d = torch.tensor([],dtype=x.dtype,device=x.device)
-        if self.stage_1:
-            #xi = x.transpose(1, 2)
-            xi =wishart_descriptor(x)
-            #xi = self.fci(xi)
-            xi = xi / (torch.norm(xi, p=2, dim=1, keepdim=True) + 1e-10)
-            d = torch.cat((d, xi), dim=1)
-   
-        
-        if self.stage_2:
-            xh =wishart_descriptor(h)
-            #xh = self.fch(xh)
-            xh = xh / (torch.norm(xh, p=2, dim=1, keepdim=True) + 1e-10)
-            d = torch.cat((d, xh), dim=1)
-   
-        
-        # Transpose to [B, N, C]
-        if self.stage_3:
-            xo = xo.transpose(1, 2)
-            xo =wishart_descriptor(xo)
-            #
-            xo = xo / (torch.norm(xo, p=2, dim=1, keepdim=True) + 1e-10)
-            d = torch.cat((d, xo), dim=1)
-        
-        # L2 normalize
-        d = self.fco(d)
-        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        d = self.head(x,h,xo)
         return d
   
     def __str__(self):
-        return "PointNetHGAP_{}_{}_S{}{}{}".format(self.feat_dim, self.output_dim,
-                                                   int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "PointNetHGAP_{}_{}_{}".format(self.feat_dim, self.output_dim,
+                                                   self.head.__str__())
 
