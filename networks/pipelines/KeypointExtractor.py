@@ -7,8 +7,6 @@ from torch.nn import Sequential, Linear, ReLU
 import torch
 from torch.nn import Linear
 import torch.nn.functional as F
-from torch_geometric.nn import MLP, DynamicEdgeConv, global_max_pool
-from torch_geometric.nn import EdgeConv
 
 """
 https://colab.research.google.com/drive/1oO-Raqge8oGXGNkZQOYTH-je4Xi1SFVI?usp=sharing#scrollTo=i3G7KOpFIhjZ
