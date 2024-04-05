@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointPillarsGAP',
+        default='PointNetKeypointLoss',
         help='Directory to get the trained model.'
     )
 

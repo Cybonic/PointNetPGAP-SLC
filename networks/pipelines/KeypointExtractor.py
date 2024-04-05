@@ -7,8 +7,6 @@ from torch.nn import Sequential, Linear, ReLU
 import torch
 from torch.nn import Linear
 import torch.nn.functional as F
-from torch_geometric.nn import MLP, DynamicEdgeConv, global_max_pool
-from torch_geometric.nn import EdgeConv
 
 """
 https://colab.research.google.com/drive/1oO-Raqge8oGXGNkZQOYTH-je4Xi1SFVI?usp=sharing#scrollTo=i3G7KOpFIhjZ
@@ -84,7 +82,7 @@ class PointNet_features(torch.nn.Module):
         self.t_out_h1 = x2 # local features
         x3 = self.h2(x2)
         
-        xx = torch.cat([x,x2,x3],dim=1)
+        xx = torch.cat([x2,x3],dim=1)
         return xx
 
 
@@ -139,7 +137,7 @@ class PointNetKeypoint(nn.Module):
         self.fc2 = nn.LazyLinear(256)  # Output keypoint coordinates
     
     def __str__(self):
-        return "KeypointExtractor"
+        return "KeypointExtractor_S011"
     
     
     def forward(self, x):
