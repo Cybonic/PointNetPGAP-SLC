@@ -19,10 +19,11 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 test_sequences = ['ON22']#'OJ22','OJ23','ON22', 'SJ23']
 
-stages = ['100','110','010','011','111','001']
+stages = ['011','111','001']
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
+                        '--network PointNetHGAP', # Network
                         '--train 1', # Train or test
                         f'--dataset_root {dataset_root}', # path to Dataset 
                         '--resume best_model', # [best_model, last_model]
