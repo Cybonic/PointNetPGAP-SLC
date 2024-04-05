@@ -27,6 +27,9 @@ class PointPillarsGAP(nn.Module):
         
         for param in self.model.neck.parameters():
             param.requires_grad = True
+        
+        for param in self.model.backbone.parameters():
+            param.requires_grad = True
 
     def __str__(self):
         return "PointPillarsGAP"
