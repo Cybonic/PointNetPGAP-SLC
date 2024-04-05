@@ -38,49 +38,68 @@ class PlaceRecognition():
                     eval_protocol = 'place',
                     monitor_range = 1, # m
                     sim_func = 'L2',
+                    save_predictions = 'saved_model_data',
                     **arg):
 
         self.monitor_range = monitor_range
         self.eval_protocol = eval_protocol
         self.logger = logger
-        
         self.sim_func = sim_func
-        
-        logger.warning(f'\n ** Evaluation Protocol: {self.eval_protocol}')
-        logger.warning(f'\n ** Similarity Function: {self.sim_func}')
-        logger.warning(f'\n ** Monitor Range: {self.monitor_range}m')
-        
-        
-        assert sim_func in ['L2','cosine'], 'Wrong similarity function: ' + sim_func
-        if device in ['gpu','cuda']:
-            device, availble_gpus = get_available_devices(1,logger)
-        
-        self.device = device
         self.model  = model#.to(self.device)
         self.loader = loader
         self.top_cand = top_cand
         self.roi_window    = roi_window
         self.warmup_window = warmup_window
-        
         self.model_name      = str(self.model).lower()
         self.save_deptrs     = save_deptrs # Save descriptors after being generated 
         self.use_load_deptrs = False # Load descriptors when they are already generated 
-
-
+        self.save_predictions_root = save_predictions
+        
         self.dataset_name = str(loader.dataset)
+        
+        assert sim_func in ['L2','cosine'], 'Wrong similarity function: ' + sim_func
+        
+            
+        if self.logger == None:
+            log_file = os.path.join('logs',f'{model}_{eval_protocol}_{sim_func}_{roi_window}_{warmup_window}.log')
+            self.logger = logging.getLogger(__name__)
+            log_handler = logging.FileHandler(log_file)
+            log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            log_handler.setFormatter(log_formatter)
+            self.logger.addHandler(log_handler)
+            self.logger.setLevel(logging.INFO)
+        
+        self.logger.warning(f'\n ** Evaluation Settings **')
+        
+        self.logger.warning(f'\n ** Model: {self.model}')
+        self.logger.warning(f'\n ** Evaluation Protocol: {self.eval_protocol}')
+        self.logger.warning(f'\n ** Similarity Function: {self.sim_func}')
+        self.logger.warning(f'\n ** Monitor Range: {self.monitor_range}m')
+        self.logger.warning(f'\n ** ROI Window: {self.roi_window}')
+        self.logger.warning(f'\n ** Warmup Window: {self.warmup_window}')
+        self.logger.warning(f'\n ** Top Candidates: {self.top_cand}')
+        self.logger.warning(f'\n ** Dataset: {self.dataset_name}')
+        self.logger.warning(f'\n ** Save Prediction Path: {self.save_predictions_root}')
+        self.logger.warning(f'\n ** Save Descriptors: {self.save_deptrs}')
+        self.logger.warning(f'\n ** Use Load Descriptors: {self.use_load_deptrs}')
+        
+        self.device = device
+        if self.device in ['gpu','cuda']:
+            self.device, availble_gpus = get_available_devices(1,self.logger)
+        
+        self.logger.warning(f'\n ** Device: {self.device}')
+        
         self.anchors  = loader.dataset.get_anchor_idx()
+        
         table      = loader.dataset.table
         self.poses = loader.dataset.get_pose()
         self.row_labels = loader.dataset.get_row_labels()
-
+        
         self.true_loop = np.array([line==1 for line in table])
 
-        # SAVE PREDICTIONS
-        self.predictions_dir = os.path.join('saved_model_data',arg['logdir'],f'{str(self.model)}',f'{self.dataset_name}')
-        #self.prediction_file = os.path.join(predictions_dir,f'{str(self.model)}')
-        if not os.path.isdir(self.predictions_dir):
-            os.makedirs(self.predictions_dir)
-            logger.warning('\n ** Created a new directory: ' + self.predictions_dir)
+        
+        #default approach
+        self.predictions_dir = os.path.join(self.save_predictions_root,arg['logdir'],f'{str(self.model)}',f'{self.dataset_name}')
         
         self.param = {}
         self.param['top_cand']     = top_cand
@@ -165,9 +184,23 @@ class PlaceRecognition():
             self.logger.warning("\n ** Generating descriptors!")
             return
         
-        else:
-            self.logger.warning('\n ** Loading descriptors from internal File: ' + file)
+        
+        self.logger.warning('\n ** Loading descriptors from internal File: ' + file)
 
+        # SAVE PREDICTIONS
+    
+        path_strucuture = file.split('/')
+        
+        path = path_strucuture[:-1]
+        file_name = path_strucuture[-1]
+        file_type = file_name.split('.')[-1]
+        assert file_type in ['torch'], 'Wrong file type: ' + file_type
+        
+        save_path = os.sep.join(path)
+        self.logger.warning('\n ** Overwiting saving prediction path: ' + save_path)
+        self.predictions_dir = save_path
+        
+            
         # LOADING DESCRIPTORS
         self.descriptors = torch.load(file)
         self.use_load_deptrs = True # Disable descriptor generation
@@ -182,9 +215,12 @@ class PlaceRecognition():
             file (string): file name to save the descriptors, default is None
         return: None
         '''
-
+        if self.save_deptrs == False:
+            self.logger.warning('\n ** Descriptors were not saved')
+            return None
+        
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range])
+            target_dir = self.predictions_dir
         else:
             target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range])
         
@@ -195,7 +231,7 @@ class PlaceRecognition():
             self.logger.warning('\n ** Created a new directory: ' + target_dir)
         file = os.path.join(target_dir,'descriptors.torch')
 
-        # LOADING DESCRIPTORS
+        # SAVING DESCRIPTORS
         torch.save(self.descriptors,file)
         self.logger.warning('\n ** Saving descriptors at File: ' + file)
     
@@ -264,7 +300,8 @@ class PlaceRecognition():
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
-            self.logger.warning('\n ** Created DIR at: ' +target_dir)
+            self.logger.warning('\n ** Created a new directory to store predictions: ' + target_dir)
+        
         
         file = os.path.join(target_dir,'predictions.pkl')
         # save predictions as a pkl file
