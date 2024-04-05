@@ -77,7 +77,7 @@ class MSGAP(nn.Module):
     def forward(self, xi,xh,xo):
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
         if self.stage_1:
-            xi = self.head1(x)
+            xi = self.head1(xi)
             d = torch.cat((d, xi), dim=1)
    
         
