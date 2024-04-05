@@ -105,7 +105,7 @@ class PointNetHGAP(nn.Module):
 
         self.feat_dim = feat_dim
         self.output_dim = output_dim
-        self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=8)
+        self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
         
         self.head= MSGAP(output_dim=output_dim, **argv)

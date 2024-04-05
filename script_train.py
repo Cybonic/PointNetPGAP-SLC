@@ -19,7 +19,7 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 test_sequences = ['ON22']#'OJ22','OJ23','ON22', 'SJ23']
 
-stages = ['010','011','001']
+stages = ['100','110','010','011','111','001']
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
@@ -33,6 +33,7 @@ for stage_conf in stages:
                         f'--epochs {epochs}',
                         f'--stages {stage_conf}',
                         f'--experiment no_distance_stage', 
+                        f'--feat_dim 512',
                         input_preprocessing
                 ]
                         
