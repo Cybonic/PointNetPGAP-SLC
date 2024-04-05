@@ -328,7 +328,7 @@ class ModelWrapperLoss(nn.Module):
         if aux_loss == None:
             self.loss_margin = 1
         elif aux_loss == 'segment_loss':
-            self.aux_loss = segment_loss(n_classes=6,feat_dim=256) 
+            self.sec_loss = segment_loss(n_classes=6,feat_dim=256) 
         else:
             raise ValueError('No aux loss specified')
         
@@ -399,7 +399,7 @@ class ModelWrapperLoss(nn.Module):
             
             # Auxilary loss: Segment loss
             class_loss_value = torch.tensor(0) 
-            if self.aux_loss != None:
+            if self.sec_loss != None:
                 
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
                 class_loss_value = self.aux_loss( pred, target)
