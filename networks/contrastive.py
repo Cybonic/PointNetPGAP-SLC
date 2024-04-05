@@ -304,7 +304,7 @@ class ModelWrapperLoss(nn.Module):
         assert minibatch_size>= 3, 'Minibatch size too small'
         
         self.loss = loss
-        self.aux_loss = aux_loss 
+        self.sec_loss = aux_loss 
         
         self.minibatch_size = minibatch_size
         #self.device = device
@@ -316,7 +316,7 @@ class ModelWrapperLoss(nn.Module):
         # Check if loss is defined
         # check if loss is None or not
         
-        assert  loss is None or not isinstance(loss, nn.Module) or self.aux_loss == None, 'No loss specified'
+        assert  loss is None or not isinstance(loss, nn.Module) or self.sec_loss == None, 'No loss specified'
         
         # Check if main loss (triplet) is defined
         if self.loss == None:
@@ -402,7 +402,7 @@ class ModelWrapperLoss(nn.Module):
             if self.sec_loss != None:
                 
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
-                class_loss_value = self.aux_loss( pred, target)
+                class_loss_value = self.sec_loss( pred, target)
             
             # Final loss
             loss_value =  self.loss_margin * loss_value + (1-self.loss_margin)*class_loss_value
@@ -424,8 +424,8 @@ class ModelWrapperLoss(nn.Module):
         if self.loss != None:
             name.append(str(self.loss)) if self.loss != None else 'NoTripleLoss'
         
-        if self.aux_loss != None:
-            name.append(f'{self.aux_loss}-m{self.loss_margin}')
+        if self.sec_loss != None:
+            name.append(f'{self.sec_loss}-m{self.loss_margin}')
             
         str_name = '-'.join(name)
         return str_name
