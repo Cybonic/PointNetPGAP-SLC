@@ -24,7 +24,7 @@ class Trainer(BaseTrainer):
                         monitor_range = 1, # The range to monitor the performance (meters)
                         eval_protocol='place',
                         roi_window = 600,
-                        warmup_window = 100,
+                        warmup_window = 100
                         
                         ):
 

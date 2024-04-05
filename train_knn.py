@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetGAPLoss',
+        default='PointPillarsGAP',
         help='Directory to get the trained model.'
     )
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         '--device',
         type=str,
         required=False,
-        default='cpu',
+        default='cuda',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         '--mini_batch_size',
         type=int,
         required=False,
-        default=20000, #  Max size (based on the negatives)
+        default=10, #  Max size (based on the negatives)
         help='Directory to get the trained model.'
     )
     parser.add_argument(

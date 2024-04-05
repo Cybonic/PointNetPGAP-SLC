@@ -51,6 +51,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name == 'LOGG3D':
         pipeline = LOGG3D(output_dim=output_dim)
+    elif pipeline_name == 'PointPillarsGAP':
+        from networks.pipelines.PointPillars import PointPillarsGAP
+        pipeline = PointPillarsGAP()
     elif pipeline_name == 'PointNetKeypoint':
         from networks.pipelines.KeypointExtractor import PointNetKeypoint
         pipeline = PointNetKeypoint()
@@ -134,7 +137,7 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         num_points=session['max_points']
         modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
     
-    elif network in ['PointNetVLAD','PointNetGAP','PointNetGAPLoss'] or network.startswith("PointNet"):
+    elif network in ['PointNetVLAD','PointNetGAP','PointNetGAPLoss','PointPillarsGAP'] or network.startswith("PointNet"):
         # Get point cloud based modality
         num_points = session['max_points']
         modality = Scan(max_points=num_points,square_roi=roi, pcl_norm=pcl_norm,clean_zeros=False)

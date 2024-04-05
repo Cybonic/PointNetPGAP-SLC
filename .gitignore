@@ -20,4 +20,8 @@ Worklog.md
 *.txt
 *.log
 *.pcd
-
+*.o
+*.so
+*.cu
+*.pth
+*.png
