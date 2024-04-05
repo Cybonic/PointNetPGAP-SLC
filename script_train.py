@@ -7,7 +7,7 @@ epochs = 300
 # Define the path to the checkpoints
 # Define the path to the dataset
 # dataset_root = '/home/tiago/workspace/DATASET'
-dataset_root = '/home/tiago/workspace/DATASET'
+dataset_root = '/home/tbarros/workspace/DATASET'
 
 # Path to save the predictions
 save_path  = 'predictions/RAL'
@@ -32,7 +32,7 @@ for stage_conf in stages:
                         f'--save_predictions {save_path}', # Save predictions
                         f'--epochs {epochs}',
                         f'--stages {stage_conf}',
-                        f'--experiment no_distance_stage', 
+                        f'--experiment MSGAP', 
                         f'--feat_dim 512',
                         input_preprocessing
                 ]
