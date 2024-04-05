@@ -83,8 +83,8 @@ class PlaceRecognition():
         self.logger.warning(f'\n ** Save Descriptors: {self.save_deptrs}')
         self.logger.warning(f'\n ** Use Load Descriptors: {self.use_load_deptrs}')
         
-        
-        if device in ['gpu','cuda']:
+        self.device = device
+        if self.device in ['gpu','cuda']:
             self.device, availble_gpus = get_available_devices(1,self.logger)
         
         self.logger.warning(f'\n ** Device: {self.device}')

@@ -51,6 +51,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name == 'LOGG3D':
         pipeline = LOGG3D(output_dim=output_dim)
+    elif pipeline_name == 'PointNetKeypoint':
+        from networks.pipelines.KeypointExtractor import PointNetKeypoint
+        pipeline = PointNetKeypoint()
     elif pipeline_name.startswith('PointNetHGAP'):
         pipeline = PointNetHGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = feat_dim,
                                 stage_1 = argv['stage_1'], 
