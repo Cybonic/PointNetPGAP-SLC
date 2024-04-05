@@ -83,7 +83,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("SPV"):
         model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
-    elif pipeline_name in ['PointNetGAPLoss','PointNetHGAPLoss']:
+    elif pipeline_name.endswith('Loss'):
         model = contrastive.ModelWrapperLoss(pipeline,
                                              loss = loss,
                                              aux_loss = 'segment_loss', # 'segment_loss', # ['segment_loss',None]
