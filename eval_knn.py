@@ -105,7 +105,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'OJ22',
+        default = 'ON22',
         help = 'Validation set'
     )
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/checkpoints/OJ22/PointNetGAP.pth',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/saved_model_data/PointNetGAP-LazyTripletLoss_L2/eval-ON22/descriptors.torch',
         help='Directory to get the trained model or descriptors.'
     )
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
         '--eval_roi_window',
         type=float,
         required=False,
-        default = 100,
+        default = 600,
         help='Number of frames to ignore in imidaite vicinity of the query frame.'
     )
     
@@ -217,22 +217,14 @@ if __name__ == '__main__':
     torch.manual_seed(0)
     np.random.seed(0)
 
-
-    ###################################################################### 
+    if os.path.isfile(FLAGS.resume):
+        print("Resuming form %s"%FLAGS.resume)
+        
+        resume_struct= FLAGS.resume.split('/')
+        assert FLAGS.val_set in resume_struct, "The resume file does not match the validation set"
+        assert FLAGS.network in resume_struct, "The resume file does not match the network" 
     
-    # Build the model and the loader
-    model = model_handler(FLAGS.network,
-                            num_points = SESSION['max_points'],
-                            output_dim = 256,
-                            device     = FLAGS.device,
-                            trainer    = SESSION['trainer']
-                            )
-
-    print("*"*30)
-    print("Model: %s" %(str(model)))
-    print("*"*30)
-
-
+    ###################################################################### 
     loader = dataloader_handler(FLAGS.dataset_root,
                                 FLAGS.network,
                                 FLAGS.dataset,
@@ -241,43 +233,38 @@ if __name__ == '__main__':
                                 roi = FLAGS.roi, 
                                 pcl_norm = False)
 
-    run_name = {'dataset': '-'.join(str(FLAGS.val_set).split('/')),
-                'experiment':os.path.join(FLAGS.experiment,str(FLAGS.max_points)), 
-                'model': str(model)
-            }
+  
 
-    trainer = Trainer(
-            model        = model,
-            train_loader = None, #loader.get_train_loader(),
-            val_loader   = loader.get_val_loader(),
-            resume       = None,
-            config       = SESSION,
-            device       = FLAGS.device,
-            run_name     = run_name,
-            train_epoch_zero = False,
-            monitor_range = FLAGS.monitor_loop_range,
-            roi_window    = FLAGS.eval_roi_window,
-            warmup_window = FLAGS.eval_warmup_window,
-            eval_protocol = 'place',
-            debug = False
-            )
+    from place_recognition import PlaceRecognition
+    eval_approach = PlaceRecognition(   FLAGS.network,
+                                        loader.get_val_loader(),
+                                        1, # Internally it adds top-1% 
+                                        None,
+                                        roi_window = FLAGS.eval_roi_window,
+                                        warmup_window = FLAGS.eval_warmup_window,
+                                        device = FLAGS.device,
+                                        eval_protocol = FLAGS.eval_protocol,
+                                        logdir = FLAGS.experiment,
+                                        monitor_range = FLAGS.monitor_loop_range,
+                                        sim_func= 'L2'
+                                        )
+
     
     # Define a set of loop ranges to be evaluated
     loop_range = list(range(0,120,1))
     
     # Check if the resume file exists
     assert os.path.exists(FLAGS.resume), "File not found %s"%FLAGS.resume 
-    
-    trainer.eval_approach.load_pretrained_model(FLAGS.resume)
+
+    root_path = os.path.dirname(FLAGS.resume)
         
     if FLAGS.resume.split('/')[-1] == 'descriptors.torch':
-        trainer.eval_approach.load_descriptors(FLAGS.resume)
+        eval_approach.load_descriptors(FLAGS.resume)
     
     # Run the evaluation
-    trainer.eval_approach.run(loop_range=loop_range)
+    eval_approach.run(loop_range=loop_range)
     
-    save_to = FLAGS.save_predictions
-    trainer.eval_approach.save_params(save_to)
-    trainer.eval_approach.save_descriptors(save_to)
-    trainer.eval_approach.save_predictions_cv(save_to)
-    trainer.eval_approach.save_results_cv(save_to)
+    eval_approach.save_params()
+    eval_approach.save_descriptors()
+    eval_approach.save_predictions_cv()
+    eval_approach.save_results_cv()
