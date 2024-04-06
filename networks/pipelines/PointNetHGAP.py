@@ -116,8 +116,8 @@ class PointNetHGAP(nn.Module):
 
     def forward(self, x):
         # In Point cloud shape: BxNx3
-        
         xo = self.point_net(x)
+        
         # backbone output shape: BxFxN
         xo = xo.transpose(1, 2)
         
