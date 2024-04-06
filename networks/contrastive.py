@@ -338,7 +338,9 @@ class ModelWrapperLoss(nn.Module):
         
         self.device =  next(self.parameters()).device
         if self.training == False:
-            pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
+            _ = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
+            
+            pred = self.model.d
             return(pred)
 
         # Training
