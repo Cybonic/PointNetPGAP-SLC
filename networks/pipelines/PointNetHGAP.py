@@ -112,22 +112,22 @@ class PointNetHGAP(nn.Module):
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
         
-        self.head1= MSGAP(output_dim=output_dim, **argv)
-        self.head = GAP(outdim=output_dim)
+        self.head= MSGAP(output_dim=output_dim, **argv)
+        #self.head = GAP(outdim=output_dim)
 
     def forward(self, x):
         # In Point cloud shape: BxNx3
         xo = self.point_net(x)
         
         # backbone output shape: BxFxN
-        xo = xo.transpose(1, 2)
+        #xo = xo.transpose(1, 2)
         
         h = self.point_net.t_out_h1
-        h = h.transpose(1, 2)
+        #h = h.transpose(1, 2)
         
-        # Head's Input shape: BxNxF
-        #d = self.head(x,h,xo)
-        d = self.head(xo)
+        # Head's Input shape: BxFxN
+        d = self.head(x,h,xo)
+        #d = self.head(xo)
         return d
   
     def __str__(self):
