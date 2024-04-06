@@ -75,7 +75,10 @@ class MSGAP(nn.Module):
         
     
     def forward(self, xi,xh,xo):
+        
+        # Head's inout shape: BxNxF
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
+        
         if self.stage_1:
             xi = self.head1(xi)
             d = torch.cat((d, xi), dim=1)
@@ -91,7 +94,8 @@ class MSGAP(nn.Module):
         
         # L2 normalize
         d = self.fco(d)
-        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        d = torch.softmax(d, dim=1)
+        # d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
     
     def __str__(self):
@@ -111,11 +115,16 @@ class PointNetHGAP(nn.Module):
         self.head= MSGAP(output_dim=output_dim, **argv)
 
     def forward(self, x):
+        # In Point cloud shape: BxNx3
+        
         xo = self.point_net(x)
+        # backbone output shape: BxFxN
+        xo = xo.transpose(1, 2)
         
         h = self.point_net.t_out_h1
         h = h.transpose(1, 2)
         
+        # Head's Input shape: BxNxF
         d = self.head(x,h,xo)
         return d
   
