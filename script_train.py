@@ -34,7 +34,7 @@ for stage_conf in stages:
                         f'--epochs {epochs}',
                         f'--stages {stage_conf}',
                         f'--experiment MSGAP', 
-                        f'--feat_dim 1024',
+                        f'--feat_dim 32',
                         input_preprocessing
                 ]
                         
