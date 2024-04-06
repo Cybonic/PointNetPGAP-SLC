@@ -162,6 +162,12 @@ if __name__ == '__main__':
         required=False,
         default = 'saved_model_data',
     )
+    parser.add_argument(
+        '--plot_on_map',
+        type=str,
+        required=False,
+        default = 'saved_model_data',
+    )
     
     FLAGS, unparsed = parser.parse_known_args()
 
@@ -233,8 +239,6 @@ if __name__ == '__main__':
                                 roi = FLAGS.roi, 
                                 pcl_norm = False)
 
-  
-
     from place_recognition import PlaceRecognition
     eval_approach = PlaceRecognition(   FLAGS.network,
                                         loader.get_val_loader(),
@@ -248,7 +252,6 @@ if __name__ == '__main__':
                                         monitor_range = FLAGS.monitor_loop_range,
                                         sim_func= 'L2'
                                         )
-
     
     # Define a set of loop ranges to be evaluated
     loop_range = list(range(0,120,1))
@@ -268,3 +271,30 @@ if __name__ == '__main__':
     eval_approach.save_descriptors()
     eval_approach.save_predictions_cv()
     eval_approach.save_results_cv()
+    
+    if FLAGS.plot_on_map:
+        root2save = os.path.join('retrieval_on_map',f'range{loop_range}m')
+        os.makedirs(root2save,exist_ok=True)
+        print("Saving to: ",root2save)
+    
+        predictions = trainer.eval_approach.get_predictions()
+        
+        # Save gif
+        file_name = '-'.join([FLAGS.dataset.lower(),
+                          FLAGS.val_set.lower().replace('/','-'),
+                          FLAGS.network.lower(),
+                          f'top{topk}'])
+    
+        poses = val_loader.dataset.get_pose()
+        xy = poses[:,0:2]
+        plot_retrieval_on_map(xy,predictions,
+                              loop_range=loop_range,
+                              topk=topk,
+                              record_gif=True,
+                              gif_name=file_name,
+                              save_dir = root2save,
+                              save_step_itr=save_itrs)
+    
+    
+    
+        

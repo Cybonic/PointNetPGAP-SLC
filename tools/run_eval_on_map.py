@@ -137,20 +137,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetSPoC',
-        choices=['PointNetSPoC',
-                 'PointNetORCHNetMaxPooling',
-                 'PointNetVLAD',
-                 'LOGG3D',
-                 'PointNetORCHNet',
-                 'ResNet50ORCHNet',
-                 'ResNet50GeM',
-                 'PointNetGeM',
-                 'ResNet50MAC',
-                 'PointNetMAC',
-                 'ResNet50SPoC',
-                 'PointNetSPoC',
-                 'overlap_transformer'],
+        default='PointNetGAP',
         help='Directory to get the trained model.'
     )
 
