@@ -93,7 +93,7 @@ class MSGAP(nn.Module):
             d = torch.cat((d, xo), dim=1)
         
         # L2 normalize
-        d = self.fco(d)
+        #d = self.fco(d)
         #d = torch.softmax(d, dim=1)
         #d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
