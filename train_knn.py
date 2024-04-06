@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetKeypointLoss',
+        default='PointNetHGAPLoss',
         help='Directory to get the trained model.'
     )
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         '--mini_batch_size',
         type=int,
         required=False,
-        default=10, #  Max size (based on the negatives)
+        default=1000, #  Max size (based on the negatives)
         help='Directory to get the trained model.'
     )
     parser.add_argument(
