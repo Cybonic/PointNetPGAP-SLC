@@ -142,7 +142,7 @@ if __name__ == '__main__':
         '--feat_dim',
         type=int,
         required=False,
-        default = 32,
+        default = 1024,
         help='number of features.'
     )
 
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         '--stages',
         type=str,
         required=False,
-        default = '111',
+        default = '001',
     )
     FLAGS, unparsed = parser.parse_known_args()
 
