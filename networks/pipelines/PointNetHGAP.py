@@ -80,7 +80,7 @@ class MSGAP(nn.Module):
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
         
         if self.stage_1:
-            xi = self.head1(xi)
+            xi = torch.mean(xi,-1)
             d = torch.cat((d, xi), dim=1)
    
         
@@ -104,7 +104,7 @@ class MSGAP(nn.Module):
 
 
 class PointNetHGAP(nn.Module):
-    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=1024, **argv):
+    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=256, **argv):
         super(PointNetHGAP, self).__init__()
 
         self.feat_dim = feat_dim
@@ -123,7 +123,7 @@ class PointNetHGAP(nn.Module):
         #xo = xo.transpose(1, 2)
         
         h = self.point_net.t_out_h1
-        #h = h.transpose(1, 2)
+        x = x.transpose(1, 2)
         
         # Head's Input shape: BxFxN
         d = self.head(x,h,xo)
