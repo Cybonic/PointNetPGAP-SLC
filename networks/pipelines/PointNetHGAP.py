@@ -89,12 +89,12 @@ class MSGAP(nn.Module):
             d = torch.cat((d, xh), dim=1)
    
         if self.stage_3:
+            xo = self.head3(xo)
             d = torch.cat((d, xo), dim=1)
             
-        d = self.head3(xo)
         # L2 normalize
-        #d = self.fco(d)
-        #d = torch.softmax(d, dim=1)
+        d = self.fco(d)
+        d = torch.softmax(d, dim=1)
         #d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
     
