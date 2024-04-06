@@ -85,11 +85,11 @@ class MSGAP(nn.Module):
    
         
         if self.stage_2:
-            xh = self.head2(xh)
+            xh = torch.mean(xh,-1)
             d = torch.cat((d, xh), dim=1)
    
         if self.stage_3:
-            xo = self.head3(xo)
+            xo = torch.mean(xo,-1)
             d = torch.cat((d, xo), dim=1)
             
         # L2 normalize

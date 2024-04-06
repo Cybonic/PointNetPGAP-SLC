@@ -226,7 +226,7 @@ if __name__ == '__main__':
         '--stages',
         type=str,
         required=False,
-        default = '001',
+        default = '010',
     )
     FLAGS, unparsed = parser.parse_known_args()
 
