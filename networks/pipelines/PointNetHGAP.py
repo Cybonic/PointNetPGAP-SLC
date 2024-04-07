@@ -96,12 +96,12 @@ class MSGAP(nn.Module):
         # L2 normalize
         self.out = d
         d = self.fout(d)
-        #d = torch.softmax(d, dim=1)
-        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        d = torch.softmax(d, dim=1)
+        #d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
     
     def __str__(self):
-        return "MSGAP_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_softmax_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
 
