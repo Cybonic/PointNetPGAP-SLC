@@ -177,7 +177,8 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
      
 
   if isinstance(descriptrs,dict):
-    descriptrs = np.array(list(descriptrs.values()))
+    descriptrs = np.array([d['d'] for d in descriptrs.values()])
+  #descriptrs = np.array(list(descriptrs.values()))
 
   all_map_indices = np.arange(descriptrs.shape[0])
   from utils.metric import retrieval_metrics

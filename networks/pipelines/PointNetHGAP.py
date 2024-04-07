@@ -112,6 +112,42 @@ class MSGAP(nn.Module):
         return "MSGAP_2stage_out_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
+def mlp(nch_input, nch_layers, b_shared=True, bn_momentum=0.1, dropout=0.0):
+    """ [B, Cin, N] -> [B, Cout, N] or
+        [B, Cin] -> [B, Cout]
+    """
+    layers = []
+    last = nch_input
+    for i, outp in enumerate(nch_layers):
+        if b_shared:
+            weights = torch.nn.Conv1d(last, outp, 1)
+        else:
+            weights = torch.nn.Linear(last, outp)
+        layers.append(weights)
+        layers.append(torch.nn.BatchNorm1d(outp, momentum=bn_momentum))
+        layers.append(torch.nn.ReLU())
+        if b_shared == False and dropout > 0.0:
+            layers.append(torch.nn.Dropout(dropout))
+        last = outp
+        
+    return layers  
+            
+class segment_classifier(nn.Module):
+    def __init__(self,n_classes=7, feat_dim=256,kernels = [256, 128], **argv):
+        super().__init__()
+        
+        self.n_classes = n_classes
+        assert feat_dim 
+        self.mlp = torch.nn.Sequential(*mlp(feat_dim, kernels, b_shared=False, bn_momentum=0.01, dropout=0.0))
+        self.out_fc = torch.nn.Linear(kernels[-1], n_classes)
+   
+    
+    def forward(self, descriptor, **argv):
+        x = self.mlp(descriptor)
+        out = self.out_fc(x)
+        return out
+    def __str__(self):
+        return "segment_loss"
 
 class PointNetHGAP(nn.Module):
     def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=256, **argv):
@@ -119,28 +155,25 @@ class PointNetHGAP(nn.Module):
 
         self.feat_dim = feat_dim
         self.output_dim = output_dim
-        self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
+        self.backbone = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
+        #self.head = NetVLADLoupe(feature_size=feat_dim, max_samples=10000, cluster_size=64,
+        #                             output_dim = output_dim, gating=True, add_batch_norm=True,
+        #                             is_training=True)
+        self.head = GAP(outdim=output_dim)
+        self.classifier = segment_classifier(n_classes=argv['n_classes'],feat_dim=output_dim,kernels=[256,64])
+   
         
-        self.head= MSGAP(output_dim=output_dim, **argv)
-        self.out = None
-        #self.head = GAP(outdim=output_dim)
 
     def forward(self, x):
         # In Point cloud shape: BxNx3
-        xo = self.point_net(x)
+        xo = self.backbone(x)
+        d = self.head(xo)
         
-        # backbone output shape: BxFxN
-        #xo = xo.transpose(1, 2)
-        
-        h = self.point_net.t_out_h1
-        x = x.transpose(1, 2)
-        
-        # Head's Input shape: BxFxN
-        d = self.head(x,h,xo)
-        self.out = self.head.out
+        d_mean = torch.mean(xo, -1)
+        c = self.classifier(d)
         #d = self.head(xo)
-        return d
+        return d,c
   
     def __str__(self):
         return "PointNetHGAP_{}_{}_{}".format(self.feat_dim, self.output_dim,

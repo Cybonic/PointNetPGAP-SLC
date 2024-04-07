@@ -99,7 +99,7 @@ if __name__ == '__main__':
         '--device',
         type=str,
         required=False,
-        default='cpu',
+        default='cuda',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         '--stages',
         type=str,
         required=False,
-        default = '111',
+        default = '010',
     )
     FLAGS, unparsed = parser.parse_known_args()
 
@@ -339,7 +339,7 @@ if __name__ == '__main__':
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
-            train_epoch_zero = True,
+            train_epoch_zero = False,
             monitor_range = SESSION['monitor_range'],
             roi_window    = FLAGS.eval_roi_window,
             eval_protocol = 'place',
