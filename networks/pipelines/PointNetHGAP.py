@@ -25,62 +25,114 @@ class MSGAP(nn.Module):
         super(MSGAP, self).__init__()
         
         # Default stages
-        self.stage_1 = argv['stage_1']
-        self.stage_2 = argv['stage_2']
-        self.stage_3 = argv['stage_3']
+        self.stage_1 = False #argv['stage_1']
+        self.stage_2 = True #argv['stage_2']
+        self.stage_3 = True #argv['stage_3']
         
-        self.head1 = GAP(outdim=argv['output_dim'])
-        self.head2 = GAP(outdim=argv['output_dim'])
-        self.head3 = GAP(outdim=argv['output_dim'])
+        self.head1 = GAP(outdim=argv['outdim'])
+        self.head2 = GAP(outdim=argv['outdim'])
+        self.head3 = GAP(outdim=argv['outdim'])
         
-        self.fco = nn.LazyLinear(argv['output_dim'])
-        
+        self.f1 = nn.LazyLinear(argv['outdim'])
+        self.fout = nn.LazyLinear(argv['outdim'])
+        self.out  = None
         
     
     def forward(self, xi,xh,xo):
+     
+        # Head's inout shape: BxNxF
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
-        if self.stage_1:
-            xi = self.head1(xi)
-            d = torch.cat((d, xi), dim=1)
-   
         
         if self.stage_2:
-            xh = self.head2(xh)
-            d = torch.cat((d, xh), dim=1)
+            xh = xh.transpose(1, 2)
+            sxh = compute_similarity_matrix(xh)
+            sxh = sxh.flatten(1)
+            d = torch.cat((d, sxh), dim=1)
    
-        if self.stage_3:
-            xo = self.head3(xo)
-            d = torch.cat((d, xo), dim=1)
+        if self.stage_2:
+            xox = xo.transpose(1, 2)
+            sxo = compute_similarity_matrix(xox)
+            sxo = sxo.flatten(1)
+            d = torch.cat((d, sxo), dim=1)
         
+        # outer product
+        d = self.fout(d)
+        d = d.unsqueeze(-1)
+        d_d = torch.matmul(d , d.transpose(1, 2))
+        dd_nom  = torch.softmax(d_d, dim=2)
+                
+        d_out,_ = torch.max(xo,-1)
+        d_out = self.f1(d_out).unsqueeze(-1)
+        
+        d = torch.matmul(d_out.transpose(2,1), dd_nom).squeeze()
         # L2 normalize
-        d = self.fco(d)
-        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        
+        self.out = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        
         return d
     
     def __str__(self):
-        return "MSGAP_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_attention_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
+def mlp(nch_input, nch_layers, b_shared=True, bn_momentum=0.1, dropout=0.0):
+    """ [B, Cin, N] -> [B, Cout, N] or
+        [B, Cin] -> [B, Cout]
+    """
+    layers = []
+    last = nch_input
+    for i, outp in enumerate(nch_layers):
+        if b_shared:
+            weights = torch.nn.Conv1d(last, outp, 1)
+        else:
+            weights = torch.nn.Linear(last, outp)
+        layers.append(weights)
+        layers.append(torch.nn.BatchNorm1d(outp, momentum=bn_momentum))
+        layers.append(torch.nn.ReLU())
+        if b_shared == False and dropout > 0.0:
+            layers.append(torch.nn.Dropout(dropout))
+        last = outp
+        
+    return layers  
+            
+class segment_classifier(nn.Module):
+    def __init__(self,n_classes=7, feat_dim=256,kernels = [256, 128], **argv):
+        super().__init__()
+        
+        self.n_classes = n_classes
+        assert feat_dim 
+        self.mlp = torch.nn.Sequential(*mlp(feat_dim, kernels, b_shared=False, bn_momentum=0.01, dropout=0.0))
+        self.out_fc = torch.nn.Linear(kernels[-1], n_classes)
+   
+    
+    def forward(self, descriptor, **argv):
+        x = self.mlp(descriptor)
+        out = self.out_fc(x)
+        return out
+    def __str__(self):
+        return "segment_loss"
 
 class PointNetHGAP(nn.Module):
-    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=1024, **argv):
+    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=256, **argv):
         super(PointNetHGAP, self).__init__()
 
         self.feat_dim = feat_dim
         self.output_dim = output_dim
-        self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
+        self.backbone = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
+        self.head = MSGAP(outdim=output_dim)
+        self.classifier = segment_classifier(n_classes=argv['n_classes'],feat_dim=output_dim,kernels=[256,64])
+   
         
-        self.head= MSGAP(output_dim=output_dim, **argv)
 
     def forward(self, x):
-        xo = self.point_net(x)
-        
-        h = self.point_net.t_out_h1
-        h = h.transpose(1, 2)
-        
-        d = self.head(x,h,xo)
-        return d
+        # In Point cloud shape: BxNx3
+        xo = self.backbone(x)
+        xh = self.backbone.t_out_h1
+        d = self.head(x,xh,xo)
+        c = self.classifier(d)
+        #d = self.head(xo)
+        return d,c
   
     def __str__(self):
         return "PointNetHGAP_{}_{}_{}".format(self.feat_dim, self.output_dim,

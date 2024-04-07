@@ -55,10 +55,11 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         from networks.pipelines.KeypointExtractor import PointNetKeypoint
         pipeline = PointNetKeypoint()
     elif pipeline_name.startswith('PointNetHGAP'):
-        pipeline = PointNetHGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = feat_dim,
+        pipeline = PointNetHGAP(use_tnet=False, output_dim=256, num_points = num_points, feat_dim = feat_dim,
                                 stage_1 = argv['stage_1'], 
                                 stage_2 = argv['stage_2'], 
-                                stage_3 = argv['stage_3'])
+                                stage_3 = argv['stage_3'],
+                                n_classes = 6)
         
     elif pipeline_name == 'PointNetVLAD':
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)

@@ -7,7 +7,7 @@ from ..backbones.pointnet import *
 from networks.utils import *
 
 class PointNetGAP(nn.Module):
-    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=1024, **argv):
+    def __init__(self, feat_dim = 1024, use_tnet=False, output_dim=254, **argv):
         super(PointNetGAP, self).__init__()
 
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)

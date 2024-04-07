@@ -14,6 +14,9 @@ class GAP(nn.Module):
         super().__init__()
         self.fc = nn.LazyLinear(outdim)
 
+    def __str__(self):
+        return "GAP"
+    
     def forward(self, x):
         # Return (batch_size, n_features) tensor
         x = x.view(x.shape[0],x.shape[1],-1)

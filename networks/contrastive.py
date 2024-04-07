@@ -332,14 +332,18 @@ class ModelWrapperLoss(nn.Module):
         else:
             raise ValueError('No aux loss specified')
         
+        self.stored_class_pred = []
 
 
     def forward(self,pcl,**argv):
         
         self.device =  next(self.parameters()).device
         if self.training == False:
-            pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
-            return(pred)
+            pred,class_pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
+            class_pred = torch.argmax(torch.softmax(class_pred,dim=1),dim=1).detach().cpu().numpy().astype(np.int32)
+            
+            #self.stored_class_pred.append(class_pred)
+            return(pred,class_pred)
 
         # Training
        
@@ -380,7 +384,7 @@ class ModelWrapperLoss(nn.Module):
             if pclt.shape[0]==1: # drop last
                 continue
 
-            pred = self.model(pclt.to(self.device)) # pclt.cuda()
+            pred,class_pred = self.model(pclt.to(self.device)) # pclt.cuda()
             
             a_idx = num_anchor
             p_idx = num_pos+num_anchor
@@ -389,6 +393,7 @@ class ModelWrapperLoss(nn.Module):
             dq,dp,dn = pred[0:a_idx],pred[a_idx:p_idx],pred[p_idx:n_idx]
             descriptor = {'a':dq,'p':dp,'n':dn}
             
+          
             # intialize parameters in case of no loss
             loss_value=0
             
@@ -400,9 +405,11 @@ class ModelWrapperLoss(nn.Module):
             # Auxilary loss: Segment loss
             class_loss_value = torch.tensor(0) 
             if self.sec_loss != None:
-                
+                class_pred =torch.cat((class_pred[0:a_idx],class_pred[a_idx:p_idx],class_pred[p_idx:n_idx]))
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
-                class_loss_value = self.sec_loss( pred, target)
+                prob = F.log_softmax(class_pred, dim=1)
+                loss_c = F.nll_loss(prob, target.long(),reduction='mean')
+                class_loss_value = loss_c
             
             # Final loss
             loss_value =  self.loss_margin * loss_value + (1-self.loss_margin)*class_loss_value
