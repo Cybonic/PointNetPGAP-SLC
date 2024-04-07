@@ -101,7 +101,7 @@ class MSGAP(nn.Module):
             self.fco(sxo)
             #xo = torch.mean(xo,-1)
             d = torch.cat((d, sxo), dim=1)
-            
+        xo=torch.mean(xo,-1) 
         # L2 normalize
         out = self.f1(xo)
         self.out = out / (torch.norm(out, p=2, dim=1, keepdim=True) + 1e-10)
