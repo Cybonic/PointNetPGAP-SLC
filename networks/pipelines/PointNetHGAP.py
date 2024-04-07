@@ -19,6 +19,7 @@ def wishart_descriptor(X):
 
 def compute_similarity_matrix(X):
     batch,nfeat,feat_dim = X.shape
+    X = X.to(torch.float16)
     #print(n_samples)
     if not torch.is_tensor(X):
         X = torch.tensor(X, dtype=torch.float32)
@@ -81,27 +82,34 @@ class MSGAP(nn.Module):
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
         
         if self.stage_1:
+            sxi=compute_similarity_matrix(xi).unsqueeze(1)
             xi = torch.mean(xi,-1)
-            d = torch.cat((d, xi), dim=1)
+            d = torch.cat((d, sxi), dim=1)
    
         
         if self.stage_2:
-            xh = torch.mean(xh,-1)
-            d = torch.cat((d, xh), dim=1)
+            xh = xh.transpose(1, 2)
+            sxh = so_meanpool(xh).unsqueeze(1)
+            sxh = vectorized_euclidean_distance(sxh).unsqueeze(1)
+            #sxh=compute_similarity_matrix(xh).unsqueeze(1)
+            d = torch.cat((d, sxh), dim=1)
    
         if self.stage_3:
-            xo = torch.mean(xo,-1)
-            d = torch.cat((d, xo), dim=1)
+            xh = xh.transpose(1, 2)
+            sxo = so_meanpool(xh)
+            sxo = vectorized_euclidean_distance(sxo).unsqueeze(1)
+            #xo = torch.mean(xo,-1)
+            d = torch.cat((d, sxo), dim=1)
             
         # L2 normalize
         self.out = d
+        d = torch.sum(d,1).flatten(1)
         d = self.fout(d)
-        d = torch.softmax(d, dim=1)
-        #d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         return d
     
     def __str__(self):
-        return "MSGAP_softmax_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_relu_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
 
