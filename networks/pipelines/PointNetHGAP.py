@@ -19,7 +19,6 @@ def wishart_descriptor(X):
 
 def compute_similarity_matrix(X):
     batch,nfeat,feat_dim = X.shape
-    X = X.to(torch.float16)
     #print(n_samples)
     if not torch.is_tensor(X):
         X = torch.tensor(X, dtype=torch.float32)
@@ -64,15 +63,15 @@ class MSGAP(nn.Module):
         
         # Default stages
         self.stage_1 = False #argv['stage_1']
-        self.stage_2 = False #argv['stage_2']
-        self.stage_3 = False #argv['stage_3']
+        self.stage_2 = True #argv['stage_2']
+        self.stage_3 = True #argv['stage_3']
         
-        self.head1 = GAP(outdim=argv['output_dim'])
-        self.head2 = GAP(outdim=argv['output_dim'])
-        self.head3 = GAP(outdim=argv['output_dim'])
+        self.head1 = GAP(outdim=argv['outdim'])
+        self.head2 = GAP(outdim=argv['outdim'])
+        self.head3 = GAP(outdim=argv['outdim'])
         
-        self.f1 = nn.LazyLinear(512)
-        self.fout = nn.LazyLinear(argv['output_dim'])
+        self.f1 = nn.LazyLinear(argv['outdim'])
+        self.fout = nn.LazyLinear(argv['outdim'])
         self.out  = None
         
     
@@ -81,31 +80,32 @@ class MSGAP(nn.Module):
         # Head's inout shape: BxNxF
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
         
-        if self.stage_1:
-            sxi=compute_similarity_matrix(xi).unsqueeze(1)
-            xi = torch.mean(xi,-1)
-            d = torch.cat((d, sxi), dim=1)
-   
-        
         if self.stage_2:
             xh = xh.transpose(1, 2)
-            sxh = so_meanpool(xh).unsqueeze(1)
-            sxh = vectorized_euclidean_distance(sxh).unsqueeze(1)
-            #sxh=compute_similarity_matrix(xh).unsqueeze(1)
+            sxh = compute_similarity_matrix(xh)
+            sxh = sxh.flatten(1)
             d = torch.cat((d, sxh), dim=1)
    
         if self.stage_2:
             xox = xo.transpose(1, 2)
-            sxo = so_meanpool(xox)
-            #sxo = vectorized_euclidean_distance(sxo).unsqueeze(1)
-            self.fco(sxo)
-            #xo = torch.mean(xo,-1)
+            sxo = compute_similarity_matrix(xox)
+            sxo = sxo.flatten(1)
             d = torch.cat((d, sxo), dim=1)
-        xo=torch.mean(xo,-1) 
+        
+        # outer product
+        d = self.fout(d)
+        d = d.unsqueeze(-1)
+        d_d = torch.matmul(d , d.transpose(1, 2))
+        dd_nom  = torch.softmax(d_d, dim=2)
+                
+        d_out,_ = torch.max(xo,-1)
+        d_out = self.f1(d_out).unsqueeze(-1)
+        
+        d = torch.matmul(d_out.transpose(2,1), dd_nom).squeeze()
         # L2 normalize
-        out = self.f1(xo)
-        self.out = out / (torch.norm(out, p=2, dim=1, keepdim=True) + 1e-10)
-        d = self.fout(torch.relu(out))
+        
+        self.out = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        
         return d
     
     def __str__(self):
@@ -157,10 +157,7 @@ class PointNetHGAP(nn.Module):
         self.output_dim = output_dim
         self.backbone = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
-        #self.head = NetVLADLoupe(feature_size=feat_dim, max_samples=10000, cluster_size=64,
-        #                             output_dim = output_dim, gating=True, add_batch_norm=True,
-        #                             is_training=True)
-        self.head = GAP(outdim=output_dim)
+        self.head = MSGAP(outdim=output_dim)
         self.classifier = segment_classifier(n_classes=argv['n_classes'],feat_dim=output_dim,kernels=[256,64])
    
         
@@ -168,9 +165,8 @@ class PointNetHGAP(nn.Module):
     def forward(self, x):
         # In Point cloud shape: BxNx3
         xo = self.backbone(x)
-        d = self.head(xo)
-        
-        d_mean = torch.mean(xo, -1)
+        xh = self.backbone.t_out_h1
+        d = self.head(x,xh,xo)
         c = self.classifier(d)
         #d = self.head(xo)
         return d,c
