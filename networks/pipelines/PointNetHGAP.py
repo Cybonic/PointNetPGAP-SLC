@@ -109,7 +109,7 @@ class MSGAP(nn.Module):
         return d
     
     def __str__(self):
-        return "MSGAP_relu_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_trans_inv_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
 
