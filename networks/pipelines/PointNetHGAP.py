@@ -123,6 +123,7 @@ class PointNetHGAP(nn.Module):
         
         
         self.head= MSGAP(output_dim=output_dim, **argv)
+        self.out = None
         #self.head = GAP(outdim=output_dim)
 
     def forward(self, x):
@@ -137,6 +138,7 @@ class PointNetHGAP(nn.Module):
         
         # Head's Input shape: BxFxN
         d = self.head(x,h,xo)
+        self.out = self.head.out
         #d = self.head(xo)
         return d
   
