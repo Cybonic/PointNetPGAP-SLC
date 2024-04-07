@@ -109,7 +109,7 @@ class MSGAP(nn.Module):
         return d
     
     def __str__(self):
-        return "MSGAP_2stage_out_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_attention_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
 def mlp(nch_input, nch_layers, b_shared=True, bn_momentum=0.1, dropout=0.0):
