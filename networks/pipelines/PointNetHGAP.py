@@ -63,21 +63,21 @@ class MSGAP(nn.Module):
         super(MSGAP, self).__init__()
         
         # Default stages
-        self.stage_1 = argv['stage_1']
-        self.stage_2 = argv['stage_2']
-        self.stage_3 = argv['stage_3']
+        self.stage_1 = False #argv['stage_1']
+        self.stage_2 = False #argv['stage_2']
+        self.stage_3 = False #argv['stage_3']
         
         self.head1 = GAP(outdim=argv['output_dim'])
         self.head2 = GAP(outdim=argv['output_dim'])
         self.head3 = GAP(outdim=argv['output_dim'])
         
-        self.fco = nn.LazyLinear(argv['output_dim'])
+        self.f1 = nn.LazyLinear(512)
         self.fout = nn.LazyLinear(argv['output_dim'])
         self.out  = None
         
     
     def forward(self, xi,xh,xo):
-        
+     
         # Head's inout shape: BxNxF
         d = torch.tensor([],dtype=xi.dtype,device=xi.device)
         
@@ -94,22 +94,22 @@ class MSGAP(nn.Module):
             #sxh=compute_similarity_matrix(xh).unsqueeze(1)
             d = torch.cat((d, sxh), dim=1)
    
-        if self.stage_3:
-            xh = xh.transpose(1, 2)
-            sxo = so_meanpool(xh)
-            sxo = vectorized_euclidean_distance(sxo).unsqueeze(1)
+        if self.stage_2:
+            xox = xo.transpose(1, 2)
+            sxo = so_meanpool(xox)
+            #sxo = vectorized_euclidean_distance(sxo).unsqueeze(1)
+            self.fco(sxo)
             #xo = torch.mean(xo,-1)
             d = torch.cat((d, sxo), dim=1)
             
         # L2 normalize
-        self.out = d
-        d = torch.sum(d,1).flatten(1)
-        d = self.fout(d)
-        d = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
+        out = self.f1(xo)
+        self.out = out / (torch.norm(out, p=2, dim=1, keepdim=True) + 1e-10)
+        d = self.fout(torch.relu(out))
         return d
     
     def __str__(self):
-        return "MSGAP_trans_inv_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
+        return "MSGAP_2stage_out_S{}{}{}".format(int(self.stage_1),int(self.stage_2),int(self.stage_3))
     
 
 
