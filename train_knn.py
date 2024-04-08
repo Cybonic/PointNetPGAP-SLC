@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetHGAPLoss',
+        default='PointPillarsGAP',
         help='Directory to get the trained model.'
     )
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         '--mini_batch_size',
         type=int,
         required=False,
-        default=20000, #  Max size (based on the negatives)
+        default=10000, #  Max size (based on the negatives)
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         '--roi',
         type=float,
         required=False,
-        default = 0,
+        default = 20,
     )
     parser.add_argument(
         '--model_evaluation',

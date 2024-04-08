@@ -10,6 +10,7 @@ from dataloader.horto3dlm.dataset import file_structure
 from tqdm import tqdm
 import pickle
 
+
 class Triplet():
     def __init__(self,
                  root,
@@ -31,7 +32,7 @@ class Triplet():
         self.modality = modality 
         self.augmentation   = bool(augmentation)
         self.shuffle_points = bool(shuffle_points)
-        
+  
         self.evaluation_mode = False
         self.plc_files  = []
         self.plc_names  = []
@@ -165,7 +166,7 @@ class Triplet():
             plt_pos = [self.data_on_ram[i] for i in pos_idx]
             plt_neg = [self.data_on_ram[i] for i in neg_idx]
 
-        
+
         pcl =  {'anchor':plt_anchor,'positive':plt_pos,'negative':plt_neg}
         indx = {'anchor':an_idx,'positive':pos_idx,'negative':neg_idx}
 
