@@ -26,12 +26,110 @@ from networks import contrastive
 from utils import loss as losses
 from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
+import tqdm
+from utils.viz import myplot
+
 
 def force_cudnn_initialization():
     s = 32
     dev = torch.device('cuda')
     torch.nn.functional.conv2d(torch.zeros(s, s, s, s, device=dev), torch.zeros(s, s, s, s, device=dev))
 
+
+def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,record_gif=False,**argv):
+    # Save Similarity map
+
+    save_dir =''
+    if 'save_dir' in argv:
+        save_dir = argv['save_dir']
+        
+    file_name = f'experiment'
+    if 'gif_name' in argv:
+            file_name = argv['gif_name']
+    
+    save_steps_flag = False
+    save_step_dir = ''
+    save_step_itrs = []
+    
+    if 'save_step_itr' in argv and  isinstance(argv['save_step_itr'],list):
+        save_step_itrs = argv['save_step_itr']
+        save_step_dir = os.path.join(save_dir,file_name)
+        os.makedirs(save_step_dir,exist_ok=True)
+    
+    
+    plot = myplot(delay = 0.001)
+    plot.init_plot(poses[:,0],poses[:,1],c='k',s=10)
+    plot.xlabel('m')
+    plot.ylabel('m')
+                     
+    if record_gif == True:
+        # Build the name of the file
+        name = os.path.join(save_dir,file_name+'.gif') # Only add .gif here because the name is used below as name of a dir
+        plot.record_gif(name)
+
+    keys = list(predictions.keys())
+    first_point = keys[0].item()
+    
+    n_samples = poses.shape[0]
+    
+    true_positive = []
+    wrong = []
+    query_list = list(range(first_point,n_samples,20))
+    for itr,query in tqdm.tqdm(enumerate(query_list),total = len(query_list)):
+        
+        c = np.array(['k']*(query+1)) # set to gray by default
+        #c[:query] = ['k']*query
+        s = np.ones(query+1)*10
+        
+    
+        query_label = predictions[query]['label']
+        true_loops = predictions[query]['true_loops']
+        cand_loops = predictions[query]['cand_loops']
+        
+        # array of booleans
+        knn = np.zeros(len(cand_loops['idx']),dtype=bool)
+        knn[:topk] = True
+        
+        positives = cand_loops['sim'] < sim_thresh 
+        inrange   = cand_loops['dist'] < loop_range
+        inrow     = cand_loops['labels'] == query_label
+        
+        bool_cand = positives*inrange*inrow*knn
+        
+        cand_idx = cand_loops['idx'][bool_cand]
+        loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
+
+        c[query] = 'b'
+        s[query] = 80
+        
+        
+                
+        if len(loop_idx) > 0 and len(cand_idx) > 0:
+            true_positive.extend(cand_idx)
+            
+        if len(loop_idx) > 0 and len(cand_idx) == 0:
+            wrong.append(query)
+           
+        if len(loop_idx) == 0 and len(cand_idx) > 0:
+            wrong.append(query)
+        
+        np_true_positive = np.array(true_positive,dtype=np.int32).flatten()
+        np_wrong = np.array(wrong,dtype=np.int32).flatten()
+        
+        c[np_true_positive] = 'g'
+        s[np_true_positive] = 150
+        
+        c[np_wrong] = 'r'
+        s[np_wrong] = 50
+
+        plot.update_plot(poses[:query+1,0],poses[:query+1,1],color = c , offset= 1, zoom=-1,scale=s)
+        
+         # save png of parts of the plot
+        if itr in save_step_itrs:
+            plot.save_plot(os.path.join(save_step_dir,f'{itr}.png'))
+        
+ 
+   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
@@ -254,6 +352,8 @@ if __name__ == '__main__':
                                         )
     
     # Define a set of loop ranges to be evaluated
+    
+    topk = 1
     loop_range = list(range(0,120,1))
     
     # Check if the resume file exists
@@ -277,16 +377,20 @@ if __name__ == '__main__':
         os.makedirs(root2save,exist_ok=True)
         print("Saving to: ",root2save)
     
-        predictions = trainer.eval_approach.get_predictions()
+        predictions = eval_approach.get_predictions()
         
         # Save gif
         file_name = '-'.join([FLAGS.dataset.lower(),
                           FLAGS.val_set.lower().replace('/','-'),
                           FLAGS.network.lower(),
                           f'top{topk}'])
-    
-        poses = val_loader.dataset.get_pose()
+        
+        loader = loader.get_val_loader()
+        
+        poses = loader.dataset.get_pose()
         xy = poses[:,0:2]
+        
+        
         plot_retrieval_on_map(xy,predictions,
                               loop_range=loop_range,
                               topk=topk,
