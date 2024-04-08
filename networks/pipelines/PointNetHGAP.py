@@ -57,6 +57,33 @@ def so_meanpool(x):
     return x
 
 
+class SoGA(nn.Module):
+    def __init__(self, **argv):
+        super(SoGA, self).__init__()
+        
+        # Default stages
+        self.fout = nn.LazyLinear(argv['outdim'])
+        self.out  = None
+        
+    
+    def forward(self, xi,xh,xo):
+     
+
+        xox = xo.transpose(1, 2)
+        sxo = compute_similarity_matrix(xox)
+        sxo = sxo.flatten(1)
+
+        d_out = self.fout(sxo)
+        # L2 normalize
+        x = nn.functional.normalize(d_out, p=2, dim=-1)    
+        return x
+    
+    def __str__(self):
+        return "SoGA_sym"
+    
+    
+    
+    
 class MSGAP(nn.Module):
     def __init__(self, **argv):
         super(MSGAP, self).__init__()
@@ -157,7 +184,7 @@ class PointNetHGAP(nn.Module):
         self.output_dim = output_dim
         self.backbone = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
-        self.head = MSGAP(outdim=output_dim)
+        self.head = SoGA(outdim=output_dim)
         self.classifier = segment_classifier(n_classes=argv['n_classes'],feat_dim=output_dim,kernels=[256,64])
    
         
