@@ -54,6 +54,10 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
         from networks.pipelines.KeypointExtractor import PointNetKeypoint
         pipeline = PointNetKeypoint()
+    elif pipeline_name == 'PointPillarsGAP':
+        from networks.pipelines.PointPillars import PointPillarsGAP
+        pipeline = PointPillarsGAP()
+        
     elif pipeline_name.startswith('PointNetHGAP'):
         pipeline = PointNetHGAP(use_tnet=False, output_dim=256, num_points = num_points, feat_dim = feat_dim,
                                 stage_1 = argv['stage_1'], 
