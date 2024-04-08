@@ -463,6 +463,25 @@ class PlaceRecognition():
         else:
             raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
 
+
+        seg_label_pred = np.array([d['c'] for d in self.descriptors.values()])
+        seg_label_gt = np.array([d['gt'] for d in self.descriptors.values()])
+        
+        # compute the confusion matrix
+        confusion_matrix = np.zeros((6,6))
+        
+        from sklearn.metrics import f1_score
+        
+        mf1 = f1_score(seg_label_gt, seg_label_pred,average='macro')
+        cf1 = f1_score(seg_label_gt, seg_label_pred,average='micro')
+        wf1 = f1_score(seg_label_gt, seg_label_pred,average='weighted')
+        
+        accuracy = np.sum(seg_label_gt == seg_label_pred)/len(seg_label_gt)
+        self.logger.info(f'Accuracy: {accuracy}')
+        self.logger.info(f'mF1: {mf1}')
+        self.logger.info(f'cF1: {cf1}')
+        self.logger.info(f'wF1: {wf1}')
+          
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
         self.score_value = {}
@@ -470,6 +489,11 @@ class PlaceRecognition():
             remapped_old_format[range_value]={'recall':[metric['recall'][range_value][top] for  top in [0,k_top_cand-1]] }            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
             
         self.results = metric
+        self.results['confusion_matrix'] = confusion_matrix
+        self.results['accuracy'] = accuracy
+        self.results['mf1'] = mf1
+        self.results['cf1'] = cf1
+        self.results['wf1'] = wf1
         
         self.score_value[self.monitor_range] = str(round(metric['recall'][self.monitor_range][0],3)) + f'@{1}'
 
@@ -489,21 +513,28 @@ class PlaceRecognition():
         model.eval()
         dataloader = iter(loader)
         num_sample = len(loader)
+        row_labels = loader.dataset.row_labels
+        
         tbar = tqdm(range(num_sample), ncols=100)
 
         prediction_bag = {}
         for batch_idx in tbar:
             input,inx = next(dataloader)
             input = input.to(self.device)
+        
             # Generate the Descriptor
-            prediction = model(input)
+            prediction,seg_pred_labels = model(input)
             #prediction,feat = model(input)
             assert prediction.isnan().any() == False
             if len(prediction.shape)<2:
                 prediction = prediction.unsqueeze(0)
             # Keep descriptors
-            for d,i in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist()):
-                prediction_bag[int(i)] = d
+            for d,i,c in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist(),seg_pred_labels):
+                
+                gt_label = row_labels[i]
+                
+                prediction_bag[int(i)] = {'d':d,'c':c,'gt':gt_label}
+                
         return(prediction_bag)
 
 
