@@ -71,6 +71,8 @@ class SoGA(nn.Module):
 
         xox = xo.transpose(1, 2)
         sxo = compute_similarity_matrix(xox)
+        
+        sxo = vectorized_euclidean_distance(sxo)
         sxo = sxo.flatten(1)
 
         d_out = self.fout(sxo)
@@ -79,7 +81,7 @@ class SoGA(nn.Module):
         return x
     
     def __str__(self):
-        return "SoGA_sym"
+        return "SoGA_sym_dist"
     
     
     
