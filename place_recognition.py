@@ -17,6 +17,33 @@ from utils.utils import get_available_devices
 from pipeline_factory import model_handler,dataloader_handler
 import pickle
 
+def compute_segment_pred(preds,targets):
+    # compute the confusion matrix
+    confusion_matrix = np.zeros((6,6))
+    
+    # compute confusion matrix
+    for pred,gt in zip(preds,targets):
+        confusion_matrix[gt,pred] += 1
+        
+    # compute accuracy
+    accuracy = np.sum(targets == preds)/len(preds)
+    
+    # compute f1 score
+    f1_score = np.zeros(6)
+    for i in range(6):
+        tp = confusion_matrix[i,i]
+        fp = np.sum(confusion_matrix[i,:]) - tp
+        fn = np.sum(confusion_matrix[:,i]) - tp
+        f1_score[i] = 2*tp/(2*tp+fp+fn)
+        
+    
+    restus = {'confusion_matrix':confusion_matrix,
+              'accuracy':accuracy,
+              'f1_score':f1_score}
+    
+    return restus
+        
+        
 
 def search_files_in_dir(directory,search_file):
     files_found = []
@@ -464,36 +491,25 @@ class PlaceRecognition():
             raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
 
 
-        seg_label_pred = np.array([d['c'] for d in self.descriptors.values()])
-        seg_label_gt = np.array([d['gt'] for d in self.descriptors.values()])
+        # COMPUTE Segment Prediction performance
         
-        # compute the confusion matrix
-        confusion_matrix = np.zeros((6,6))
+        content = self.descriptors.values()
+        if 'c' in content:
+            seg_preds = np.array([d['c'] for d in self.descriptors.values()])
+            seg_labels = np.array([d['gt'] for d in self.descriptors.values()])
+            
+            class_results = compute_segment_pred(seg_preds,seg_labels)
+            
+            # update the results
+            metric.update(class_results)
+                    
         
-        from sklearn.metrics import f1_score
-        
-        mf1 = f1_score(seg_label_gt, seg_label_pred,average='macro')
-        cf1 = f1_score(seg_label_gt, seg_label_pred,average='micro')
-        wf1 = f1_score(seg_label_gt, seg_label_pred,average='weighted')
-        
-        accuracy = np.sum(seg_label_gt == seg_label_pred)/len(seg_label_gt)
-        self.logger.info(f'Accuracy: {accuracy}')
-        self.logger.info(f'mF1: {mf1}')
-        self.logger.info(f'cF1: {cf1}')
-        self.logger.info(f'wF1: {wf1}')
           
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
         self.score_value = {}
         for range_value in self.loop_range_distance:
             remapped_old_format[range_value]={'recall':[metric['recall'][range_value][top] for  top in [0,k_top_cand-1]] }            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
-            
-        self.results = metric
-        self.results['confusion_matrix'] = confusion_matrix
-        self.results['accuracy'] = accuracy
-        self.results['mf1'] = mf1
-        self.results['cf1'] = cf1
-        self.results['wf1'] = wf1
         
         self.score_value[self.monitor_range] = str(round(metric['recall'][self.monitor_range][0],3)) + f'@{1}'
 
