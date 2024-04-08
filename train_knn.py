@@ -113,7 +113,7 @@ if __name__ == '__main__':
         '--eval_batch_size',
         type=int,
         required=False,
-        default=10,
+        default=22,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
