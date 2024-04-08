@@ -96,14 +96,14 @@ class MSGAP(nn.Module):
         d = self.fout(d)
         d = d.unsqueeze(-1)
         d_d = torch.matmul(d , d.transpose(1, 2))
-        dd_nom  = torch.softmax(d_d, dim=2)
-                
-        d_out,_ = torch.max(xo,-1)
-        d_out = self.f1(d_out).unsqueeze(-1)
+        dd_nom  = torch.softmax(d_d, dim=1)
+
         
+        # Descriptor
+        d_out = torch.mean(xo,-1)
+        d_out = self.f1(d_out).unsqueeze(-1)
         d = torch.matmul(d_out.transpose(2,1), dd_nom).squeeze()
         # L2 normalize
-        
         self.out = d / (torch.norm(d, p=2, dim=1, keepdim=True) + 1e-10)
         
         return d
