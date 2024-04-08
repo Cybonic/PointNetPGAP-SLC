@@ -36,12 +36,13 @@ class PointCloudNet(nn.Module):
             Whether or not to use the xyz position of a point as a feature
     """
 
-    def __init__(self, input_channels=6, output_channels=6, use_xyz=True, num_points=1024):
+    def __init__(self, input_channels=3, output_channels=6, use_xyz=True, num_points=1024):
         super(PointCloudNet, self).__init__()
         print(num_points)
         
         self.GLOBAL_module = nn.Sequential(
-            nn.Conv1d(in_channels=input_channels + 3, out_channels=32, kernel_size=1),
+            nn.Conv1d(in_channels=input_channels, out_channels=32, kernel_size=1),
+            #nn.Conv1d(in_channels=input_channels + 3, out_channels=32, kernel_size=1),
             nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=1),
