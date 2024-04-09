@@ -129,7 +129,7 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
 
     if network in ['overlap_transformer']:
         # These networks use proxy representation to encode the point clouds
-        if session['modality'] == "bev" or network == "overlap_transformer":
+        if network == "overlap_transformer":
             modality = BEVProjection(width=256,height=256,square_roi=roi)
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256,square_roi=roi)
