@@ -84,7 +84,7 @@ class retrieval_metrics:
     
   
   def reset(self):
-    self.n_updates = 0
+    self.n_updates = {r: [0]*(self.k_top+1) for r in self.radius}
     self.global_metrics = {'tp': {r: [0]*(self.k_top+1) for r in self.radius},
                       'RR': {r: [] for r in self.radius},
                       'precision': {r: [0]*(self.k_top+1) for r in self.radius},
@@ -94,19 +94,24 @@ class retrieval_metrics:
   def update(self,cand_true_dist,cand_in_row,gt_l2):
     
     # Update global metrics
-    self.n_updates += 1
+    #self.n_updates += 1
     for r in self.radius:
       for nn in range(0,self.k_top):
-        # Get the top-k candidates
-        label = cand_in_row[:nn + 1]
-        dist  = cand_true_dist[:nn + 1]
-        l2 = gt_l2[:nn + 1]
-        # Verify if there is a loop in the top-k candidates
         
+        
+        l2 = gt_l2[:nn + 1]
+        # Verify if there is a loop in range
         l2_in_range = np.where(l2 <= r)[0]
         if len(l2_in_range) == 0:
           continue
         
+        # Get the top-k L2 distances and segment labels 
+        # of the nn candidates
+        label = cand_in_row[:nn + 1]
+        dist  = cand_true_dist[:nn + 1]
+        
+        
+        self.n_updates[r][nn] += 1
         cand_in_range = np.where(dist <= r)[0]
         
         # Verify if the loop is in the same row
@@ -115,8 +120,8 @@ class retrieval_metrics:
         if (cand_inrange_and_inrow == True).any():
           self.global_metrics['tp'][r][nn] += 1
           
-        self.global_metrics['recall'][r][nn] = self.global_metrics['tp'][r][nn]/self.n_updates
-        self.global_metrics['precision'][r][nn] = (self.global_metrics['tp'][r][nn]/(nn+1))/self.n_updates
+        self.global_metrics['recall'][r][nn] = self.global_metrics['tp'][r][nn]/self.n_updates[r][nn]
+        self.global_metrics['precision'][r][nn] = (self.global_metrics['tp'][r][nn]/(nn+1))/self.n_updates[r][nn]
       
     return {'recall':self.global_metrics['recall'] , 'precision':self.global_metrics['precision']}
   
