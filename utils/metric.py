@@ -77,9 +77,10 @@ class retrieval_metrics:
   '''
   This class is used to compute the metrics for the retrieval task
   '''
-  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10]):
+  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10],n_segments = 6):
     self.k_top = k_top
     self.radius = radius
+    self.n_segments = n_segments
     self.reset()
     
   
@@ -91,7 +92,16 @@ class retrieval_metrics:
                       'recall': {r: [0]*(self.k_top+1) for r in self.radius},
     }
     
-  def update(self,cand_true_dist,cand_in_row,gt_l2):
+    if self.n_segments != None:
+      self.segm_metrics = {}
+      for i in range(0,self.n_segments):
+        self.segm_metrics[i]={'tp': {r: [0]*(self.k_top+1) for r in self.radius},
+                          'precision': {r: [0]*(self.k_top+1) for r in self.radius},
+                          'recall': {r: [0]*(self.k_top+1) for r in self.radius},
+                          'count': {r: [0]*(self.k_top+1) for r in self.radius}
+    }
+    
+  def update(self,query_segment,pred_segments,pred_l2,gt_l2):
     
     # Update global metrics
     #self.n_updates += 1
@@ -105,27 +115,43 @@ class retrieval_metrics:
         if len(l2_in_range) == 0:
           continue
         
+        self.n_updates[r][nn] += 1
+        
         # Get the top-k L2 distances and segment labels 
         # of the nn candidates
-        label = cand_in_row[:nn + 1]
-        dist  = cand_true_dist[:nn + 1]
+        segment = pred_segments[:nn + 1]
+        dist    = pred_l2[:nn + 1]
         
         
-        self.n_updates[r][nn] += 1
+        
         cand_in_range = np.where(dist <= r)[0]
         
+        
+        is_in_same_segm_bool = query_segment == segment
         # Verify if the loop is in the same row
-        cand_inrange_and_inrow = label[cand_in_range]
+        is_inrange_and_insegm = is_in_same_segm_bool[cand_in_range]
+        
         # Update metrics
-        if (cand_inrange_and_inrow == True).any():
+        if (is_inrange_and_insegm == True).any():
           self.global_metrics['tp'][r][nn] += 1
           
         self.global_metrics['recall'][r][nn] = self.global_metrics['tp'][r][nn]/self.n_updates[r][nn]
         self.global_metrics['precision'][r][nn] = (self.global_metrics['tp'][r][nn]/(nn+1))/self.n_updates[r][nn]
-      
+        
+        if self.n_segments != None:
+          # Update segment metrics
+          # Do this only if segment info exists
+          self.segm_metrics[query_segment]['count'][r][nn] += 1 # Update count
+          self.segm_metrics[query_segment]['tp'][r][nn] += 1 if (is_inrange_and_insegm == True).any() else 0
+          self.segm_metrics[query_segment]['recall'][r][nn] = self.segm_metrics[query_segment]['tp'][r][nn]/self.segm_metrics[query_segment]['count'][r][nn]
+          self.segm_metrics[query_segment]['precision'][r][nn] = (self.segm_metrics[query_segment]['tp'][r][nn]/(nn+1))/self.segm_metrics[query_segment]['count'][r][nn]
+    
     return {'recall':self.global_metrics['recall'] , 'precision':self.global_metrics['precision']}
   
   def get_metrics(self):
+    
+    for segment,scores in self.segm_metrics.items():
+      print(f"Segment: {segment}: {scores['recall'][10][1]}")
     return self.global_metrics
     
 def relocal_metric(relevant_hat,true_relevant):
