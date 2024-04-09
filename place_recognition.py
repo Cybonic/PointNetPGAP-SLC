@@ -492,14 +492,12 @@ class PlaceRecognition():
 
 
         # COMPUTE Segment Prediction performance
-        
         content = self.descriptors.values()
         if 'c' in content:
             seg_preds = np.array([d['c'] for d in self.descriptors.values()])
             seg_labels = np.array([d['gt'] for d in self.descriptors.values()])
             
             class_results = compute_segment_pred(seg_preds,seg_labels)
-            
             # update the results
             metric.update(class_results)
                     
@@ -539,18 +537,34 @@ class PlaceRecognition():
             input = input.to(self.device)
         
             # Generate the Descriptor
-            prediction,seg_pred_labels = model(input)
-            #prediction,feat = model(input)
-            assert prediction.isnan().any() == False
-            if len(prediction.shape)<2:
-                prediction = prediction.unsqueeze(0)
+            predictions = model(input)
+            
+            # Converto to numpy or list
+            segment_preds = None
+            if isinstance(predictions,dict) and 'c' in predictions:
+                segment_preds = predictions['c']
+                descriptors = predictions['d']
+            else:
+                descriptors = predictions
+                
+            # Check if there are NaN values
+            assert descriptors.isnan().any() == False
+            if len(descriptors.shape)<2:
+                descriptors = descriptors.unsqueeze(0)
+            
             # Keep descriptors
-            for d,i,c in zip(prediction.detach().cpu().numpy().tolist(),inx.detach().cpu().numpy().tolist(),seg_pred_labels):
-                
-                gt_label = row_labels[i]
-                
-                prediction_bag[int(i)] = {'d':d,'c':c,'gt':gt_label}
-                
+            inx = inx.detach().cpu().numpy().tolist()
+            descriptors = descriptors.detach().cpu().numpy().tolist()
+            
+            for i,(d,ix) in enumerate(zip(descriptors,inx)):
+                # Destinguis between segment prediction and place recognition
+                if segment_preds is None:
+                    prediction_bag[int(ix)] = {'d':d}
+                else:   
+                    gt_label = row_labels[ix]  # Get the ground truth label
+                    c = segment_preds[i]
+                    prediction_bag[int(i)] = {'d':d,'c':c,'gt':gt_label}
+                    
         return(prediction_bag)
 
 
