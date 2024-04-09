@@ -91,7 +91,7 @@ class retrieval_metrics:
                       'recall': {r: [0]*(self.k_top+1) for r in self.radius},
     }
     
-  def update(self,cand_true_dist,cand_in_row):
+  def update(self,cand_true_dist,cand_in_row,gt_l2):
     
     # Update global metrics
     self.n_updates += 1
@@ -100,8 +100,15 @@ class retrieval_metrics:
         # Get the top-k candidates
         label = cand_in_row[:nn + 1]
         dist  = cand_true_dist[:nn + 1]
+        l2 = gt_l2[:nn + 1]
         # Verify if there is a loop in the top-k candidates
+        
+        l2_in_range = np.where(l2 <= r)[0]
+        if len(l2_in_range) == 0:
+          continue
+        
         cand_in_range = np.where(dist <= r)[0]
+        
         # Verify if the loop is in the same row
         cand_inrange_and_inrow = label[cand_in_range]
         # Update metrics

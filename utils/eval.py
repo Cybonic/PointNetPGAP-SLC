@@ -207,9 +207,12 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
     
     delta = query_pos.reshape(1,3) - selected_poses
     gt_euclid_dist = np.linalg.norm(delta, axis=-1)
-       
+    
+    gt_loop_idx = np.argsort(gt_euclid_dist)[:n_top_cand]
+    gt_loop_L2 = gt_euclid_dist[gt_loop_idx]
+    gt_loop_labels = selected_map_labels[gt_loop_idx]
     # return the indices of the sorted array
-    gt_loops.append(np.argsort(gt_euclid_dist)[:n_top_cand])
+    
     
     
     
@@ -224,20 +227,26 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
       raise NameError('Similarity metric not implemented')
     
     
-    
     # Sort to get the most similar (lowest values) vectors first
     est_loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
     
-    est_loop_cand_sim_dist = embed_dist[est_loop_cand_idx]
-    gt_loops_cand_euclid_dist = gt_euclid_dist[est_loop_cand_idx]
-    loop_cand_labels = selected_map_labels[est_loop_cand_idx]
-    #cand_in_same_row_idx = np.where(query_labels == loop_cand_labels)[0]
-    cand_in_same_row_bool = query_label == loop_cand_labels
-    metric.update(gt_loops_cand_euclid_dist,cand_in_same_row_bool)
+    pred_loop_dist = embed_dist[est_loop_cand_idx]
+    pred_loop_L2 = gt_euclid_dist[est_loop_cand_idx]
+    pred_loop_labels = selected_map_labels[est_loop_cand_idx]
+
+    if not (query_label == gt_loop_labels).any():
+      # Guarantee that there exists ground truth loops in the same segment
+      # as the query
+      continue
+    cand_in_same_row_bool = query_label == pred_loop_labels
+    
+    
+    metric.update(pred_loop_L2,cand_in_same_row_bool,gt_loop_L2)
 
     # save loop candidates indices 
+    gt_loops.append(gt_loop_idx)
     loop_cands.append(est_loop_cand_idx)
-    loop_scores.append(est_loop_cand_sim_dist)
+    loop_scores.append(pred_loop_dist)
   
   global_metrics = metric.get_metrics()
   #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
