@@ -362,5 +362,5 @@ if __name__ == '__main__':
 
         trainer.eval_approach.save_params()
         trainer.eval_approach.save_descriptors()
-        trainer.eval_approach.save_predictions_cv()
-        trainer.eval_approach.save_results_cv()
+        trainer.eval_approach.save_predictions_pkl()
+        trainer.eval_approach.save_results_csv()
