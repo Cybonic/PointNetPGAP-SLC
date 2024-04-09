@@ -176,9 +176,12 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
      queries = np.array(queries)
      
 
-  if isinstance(descriptrs,dict):
+  if isinstance(descriptrs,dict) and 'd' in list(descriptrs.values())[0]:
     descriptrs = np.array([d['d'] for d in descriptrs.values()])
-  #descriptrs = np.array(list(descriptrs.values()))
+  else:
+    # Legacy suport
+    descriptrs = np.array(list(descriptrs.values()))
+
 
   all_map_indices = np.arange(descriptrs.shape[0])
   from utils.metric import retrieval_metrics
@@ -244,6 +247,17 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
     metric.update(query_label,pred_loop_labels,pred_loop_L2,gt_loop_L2)
 
     # save loop candidates indices 
+    # Convert variable to store to int32  
+    
+    query_label = np.array(query_label).astype(np.uint8)
+    est_loop_cand_idx = np.round(est_loop_cand_idx,3).astype(np.uint32)
+    pred_loop_dist = np.round(pred_loop_dist,3).astype(np.float32)
+    pred_loop_labels = pred_loop_labels.astype(np.uint8)
+    
+    gt_loop_idx = gt_loop_idx.astype(np.uint32)
+    gt_loop_labels = gt_loop_labels.astype(np.uint8)
+    gt_loop_L2 = np.round(gt_loop_L2,3).astype(np.float32)
+    
     to_store[q]= {'segment':query_label,'true_loops':{'idx':gt_loop_idx,'dist':gt_loop_L2,'segment':gt_loop_labels},
                                         'pred_loops':{'idx':est_loop_cand_idx,'dist':pred_loop_dist,'segment':pred_loop_labels}}
   
