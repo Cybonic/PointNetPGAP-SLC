@@ -44,7 +44,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetGAP', help='model to be used'
+        default='LOGG3D', help='model to be used'
     )
 
     parser.add_argument(
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/saved_model_data/PointNetGAP-LazyTripletLoss_L2/eval-ON22/descriptors.torch',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/predictions_RALv1/LOGG3D/ON22/descriptors.torch',
         help='Directory to get the trained model or descriptors.'
     )
 
@@ -266,5 +266,5 @@ if __name__ == '__main__':
     
     eval_approach.save_params()
     eval_approach.save_descriptors()
-    eval_approach.save_predictions_cv()
-    eval_approach.save_results_cv()
+    eval_approach.save_predictions_pkl()
+    eval_approach.save_results_csv()
