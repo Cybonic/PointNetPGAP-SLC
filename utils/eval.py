@@ -202,19 +202,16 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
     selected_poses   = poses[selected_map_idx,:]
     selected_desptrs = descriptrs[selected_map_idx,:]
     selected_map_labels   = row_labels[selected_map_idx]
+    
     # ====================================================== 
     # compute ground truth distance
-    
     delta = query_pos.reshape(1,3) - selected_poses
     gt_euclid_dist = np.linalg.norm(delta, axis=-1)
     
     gt_loop_idx = np.argsort(gt_euclid_dist)[:n_top_cand]
     gt_loop_L2 = gt_euclid_dist[gt_loop_idx]
     gt_loop_labels = selected_map_labels[gt_loop_idx]
-    # return the indices of the sorted array
-    
-    
-    
+
     
      # Compute loop candidates
     if sim == 'L2':
@@ -228,7 +225,7 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
     
     
     # Sort to get the most similar (lowest values) vectors first
-    est_loop_cand_idx = np.argsort(embed_dist)#[:n_top_cand]
+    est_loop_cand_idx = np.argsort(embed_dist)[:n_top_cand]
     
     pred_loop_dist = embed_dist[est_loop_cand_idx]
     pred_loop_L2 = gt_euclid_dist[est_loop_cand_idx]
@@ -238,10 +235,10 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
       # Guarantee that there exists ground truth loops in the same segment
       # as the query
       continue
-    cand_in_same_row_bool = query_label == pred_loop_labels
     
     
-    metric.update(pred_loop_L2,cand_in_same_row_bool,gt_loop_L2)
+    
+    metric.update(query_label,pred_loop_labels,pred_loop_L2,gt_loop_L2)
 
     # save loop candidates indices 
     gt_loops.append(gt_loop_idx)
