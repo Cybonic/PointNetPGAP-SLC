@@ -147,7 +147,7 @@ def eval_row_relocalization(descriptrs,poses, row_labels, n_top_cand=25, radius=
 
 
 
-def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25],window=1,sim = 'L2'):
+def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius=[25],window=1,sim = 'L2'):
   """_summary_
 
   Args:
@@ -182,7 +182,13 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
 
   all_map_indices = np.arange(descriptrs.shape[0])
   from utils.metric import retrieval_metrics
-  metric = retrieval_metrics(n_top_cand,radius)
+  
+  # Count number -1 in segment labels
+  
+  count = np.sum(segment_labels == -1)
+  print(f'Number of -1 in segment labels: {count}')
+  max_segments = np.max(segment_labels)
+  metric = retrieval_metrics(n_top_cand,radius,n_segments=max_segments+1)
 
   
   to_store= {}
@@ -192,7 +198,7 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
     
     query_pos = poses[q,:]
     query_destps = descriptrs[q]
-    query_label = row_labels[q]
+    query_label = segment_labels[q]
     
     # Ignore scans within a window around the query
     q_map_idx = np.arange(0,q-window,dtype=np.uint32) # generate indices until q - window 
@@ -200,7 +206,7 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
 
     selected_poses   = poses[selected_map_idx,:]
     selected_desptrs = descriptrs[selected_map_idx,:]
-    selected_map_labels   = row_labels[selected_map_idx]
+    selected_map_labels   = segment_labels[selected_map_idx]
     
     # ====================================================== 
     # compute ground truth distance
