@@ -183,10 +183,7 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
   all_map_indices = np.arange(descriptrs.shape[0])
   from utils.metric import retrieval_metrics
   metric = retrieval_metrics(n_top_cand,radius)
-  
-  loop_cands = []
-  loop_scores= []
-  gt_loops   = []
+
   
   to_store= {}
   
@@ -249,82 +246,3 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
  
   return global_metrics,to_store
 
-
-def comp_pair_permutations(n_samples):
-    combo_idx = torch.arange(n_samples)
-    permutation = torch.from_numpy(np.array([np.array([a, b]) for idx, a in enumerate(combo_idx) for b in combo_idx[idx + 1:]]))
-    return permutation[:,0],permutation[:,1]
-
-
-
-def comp_loops(sim_map,queries,window=500,max_top_cand=25):
-  loop_cand = []
-  loop_sim = []
-  #eu_value = np.linalg.norm(x - data,axis=1)
-  for i,q in enumerate(queries):
-    sim = sim_map[i] # get loop similarities for query i 
-    bottom = q-window # 
-    elegible = sim[:bottom] 
-    #elegible = sim
-    cand = np.argsort(elegible)[:max_top_cand] # sort similarities and get top N candidates
-    sim = elegible[cand]
-    loop_sim.append(sim)
-    loop_cand.append(cand)
-  return np.array(loop_cand), np.array(loop_sim)
-
-
-
-
-def calculateMahalanobis(y=None, data=None, inv_covmat=None):
-  
-    y_mu = y - data
-    #if not cov:
-    #    cov = np.cov(data.values.T)
-    #inv_covmat = np.linalg.inv(cov)
-    left = np.dot(y_mu, inv_covmat)
-    mahal = np.dot(left, y_mu.T)
-    #return np.sqrt(mahal)
-    return  np.sqrt(mahal.diagonal())
-
-def eval_row_retrieval(queries,descriptrs,poses, row_labels, n_top_cand=25,radius=[25],window=1):
-   
-  if not isinstance(queries,np.ndarray):
-     queries = np.array(queries)
-     
-  n_frames = queries.shape[0]
-  if isinstance(descriptrs,dict):
-    descriptrs = np.array(list(descriptrs.values()))
-  #else:
-  all_map_indices = np.arange(descriptrs.shape[0])
-  
-  # Initiate evaluation dictionary  
-  global_metrics = {'tp': {r: [0] * n_top_cand for r in radius}}
-  global_metrics['RR'] = {r: [] for r in radius}
-
-
-
-def retrieve_eval(retrieved_map,true_relevant_map,top=1,**argv):
-  '''
-  In a relaxed setting, at each query it is only required to retrieve one loop. 
-  so: 
-    Among the retrieved loop in true loop 
-    recall  = tp/1
-  '''
-  assert top > 0
-  n_queries = retrieved_map.shape[0]
-  precision, recall = 0,0
-  for retrieved,relevant in zip(retrieved_map,true_relevant_map):
-    top_retrieved = retrieved[:top] # retrieved frames for a given query
-    
-    tp = 0 # Reset 
-    if any(([True  if cand in relevant else False for cand in top_retrieved])):
-        # It is only required to find one loop per anchor in a set of retrieved frames
-        tp = 1 
-    
-    recall += tp # recall = tp/1
-    precision += tp/top # retrieved loops/ # retrieved frames (top candidates) (precision w.r.t the query)
-  
-  recall /= n_queries  # average recall of all queries 
-  precision /= n_queries  # average precision of all queries 
-
-  return({'recall':recall,'precision':precision})
