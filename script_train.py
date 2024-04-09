@@ -17,7 +17,7 @@ density = '10000'
 
 input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
-test_sequences = ['ON22']#,'OJ22','OJ23','ON22', 'SJ23']
+test_sequences = ['ON22','OJ22','OJ23','ON22', 'SJ23']
 
 stages = ['001']
 for stage_conf in stages:
