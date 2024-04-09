@@ -152,7 +152,8 @@ class retrieval_metrics:
     
     for segment,scores in self.segm_metrics.items():
       print(f"Segment: {segment}: {scores['recall'][10][1]}")
-    return self.global_metrics
+      
+    return {'global':self.global_metrics,'segment':self.segm_metrics}
     
 def relocal_metric(relevant_hat,true_relevant):
     '''

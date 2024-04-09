@@ -491,7 +491,7 @@ class PlaceRecognition():
             raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
 
 
-        # COMPUTE Segment Prediction performance
+        # COMPUTE Segment class Prediction performance
         content = self.descriptors.values()
         if 'c' in content:
             seg_preds = np.array([d['c'] for d in self.descriptors.values()])
@@ -499,7 +499,7 @@ class PlaceRecognition():
             
             class_results = compute_segment_pred(seg_preds,seg_labels)
             # update the results
-            metric.update(class_results)
+            metric['class']=class_results
                     
         
           
@@ -507,9 +507,11 @@ class PlaceRecognition():
         remapped_old_format={}
         self.score_value = {}
         for range_value in self.loop_range_distance:
-            remapped_old_format[range_value]={'recall':[metric['recall'][range_value][top] for  top in [0,k_top_cand-1]] }            #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
+            remapped_old_format[range_value]={'recall':[metric['global']['recall'][range_value][top] for  top in [0,k_top_cand-1]] }
+            for segment, scores in metric['segment'].items():
+                remapped_old_format[range_value][f'recall_{segment}']= [scores['recall'][range_value][top] for  top in [0,k_top_cand-1]]           #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))#self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
         
-        self.score_value[self.monitor_range] = str(round(metric['recall'][self.monitor_range][0],3)) + f'@{1}'
+        self.score_value[self.monitor_range] = str(round(metric['global']['recall'][self.monitor_range][0],3)) + f'@{1}'
 
         return remapped_old_format
 
@@ -557,7 +559,7 @@ class PlaceRecognition():
             descriptors = descriptors.detach().cpu().numpy().tolist()
             
             for i,(d,ix) in enumerate(zip(descriptors,inx)):
-                # Destinguis between segment prediction and place recognition
+                # Destinguish between segment prediction and place recognition
                 if segment_preds is None:
                     prediction_bag[int(ix)] = {'d':d}
                 else:   

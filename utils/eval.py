@@ -188,6 +188,8 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
   loop_scores= []
   gt_loops   = []
   
+  to_store= {}
+  
   poses[:,2] = 0 # ignore z axis
   for i,(q) in tqdm.tqdm(enumerate(queries),total = len(queries),desc='Evaluating Retrieval'):
     
@@ -236,22 +238,16 @@ def eval_row_place(queries,descriptrs,poses,row_labels, n_top_cand=25,radius=[25
       # as the query
       continue
     
-    
-    
     metric.update(query_label,pred_loop_labels,pred_loop_L2,gt_loop_L2)
 
     # save loop candidates indices 
-    gt_loops.append(gt_loop_idx)
-    loop_cands.append(est_loop_cand_idx)
-    loop_scores.append(pred_loop_dist)
+    to_store[q]= {'segment':query_label,'true_loops':{'idx':gt_loop_idx,'dist':gt_loop_L2,'segment':gt_loop_labels},
+                                        'pred_loops':{'idx':est_loop_cand_idx,'dist':pred_loop_dist,'segment':pred_loop_labels}}
   
   global_metrics = metric.get_metrics()
-  #global_metrics['mean_t_RR'] = np.mean(global_metrics['t_RR'])
-  prediction =  {'loop_cand':loop_cands,
-                 'loop_scores':loop_scores,
-                 'gt_loops':gt_loops}
-  
-  return global_metrics,prediction
+ 
+ 
+  return global_metrics,to_store
 
 
 def comp_pair_permutations(n_samples):
