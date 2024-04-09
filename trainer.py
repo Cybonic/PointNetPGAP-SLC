@@ -182,9 +182,10 @@ class Trainer(BaseTrainer):
 
         # Post on tensorboard
         #recall_scores = overall_scores['recall']
-        for range,scores in overall_scores.items():
-            for score,top in zip(scores['recall'],['1','1%']):
-                self._write_scalars_tb(f'Recall val@{top}',{f'Range {range}':score},epoch)
+        for range,metrics in overall_scores.items():
+            for metric,scores in metrics.items():
+                for score,top in zip(scores,['1','1%']):
+                    self._write_scalars_tb(f'{metric} val@{top}',{f'Range {range}':score},epoch)
         
         # For model comparison use the first range top 1 recall
         # 10
