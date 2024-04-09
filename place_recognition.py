@@ -177,9 +177,9 @@ class PlaceRecognition():
         return: None
         """
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range])
+            target_dir = os.path.join(self.predictions_dir,self.eval_protocol) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range])
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol)
 
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -202,7 +202,7 @@ class PlaceRecognition():
         """
         #target_dir = os.path.join(self.predictions_dir)
         if file == None:
-            target_dir = self.predictions_dir
+            target_dir = self.predictions_dir # Internal File name 
             #target_dir = os.path.join(self.predictions_dir,file)
             file = search_files_in_dir(target_dir,'descriptors')[0]
         
@@ -247,9 +247,9 @@ class PlaceRecognition():
             return None
         
         if save_dir == None:
-            target_dir = self.predictions_dir
+            target_dir = self.predictions_dir # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range])
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}')
         
         # Create directory
         if not os.path.isdir(target_dir):
@@ -289,8 +289,13 @@ class PlaceRecognition():
         # prediction is a dictionary
         # assert isinstance(self.predictions,dict), 'Predictions were not generated!'
         # Keys are ant array of integers
-        predictions_dir = os.path.join(self.predictions_dir,f"{self.monitor_range}m")
-        file = search_files_in_dir(predictions_dir,'predictions.pkl') # More then one file can be found (handle this later)
+        if save_dir == None:
+            target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
+        else:
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
+            
+            
+        file = search_files_in_dir(target_dir,'predictions.pkl') # More then one file can be found (handle this later)
         if len(file) == 0 or not os.path.isfile(file[0]): 
             self.logger.error("\n ** File does not exist: ")
             self.logger.warning("\n ** Generating predictions!")
@@ -313,17 +318,13 @@ class PlaceRecognition():
         return: None
         '''
         # Check if the results were generated
-        assert  hasattr(self, 'predictions')
+        assert hasattr(self, 'predictions'), 'Results were not generated!'
         
-        # prediction is a dictionary
-        assert isinstance(self.predictions,dict), 'Predictions were not generated!'
-        # Keys are ant array of integers
-        assert isinstance(list(self.predictions.keys())[0].item(),int), 'Predictions were not generated!'
-      
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,f"{self.monitor_range}m",self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f"{self.monitor_range}m",self.monitor_range,self.score_value[self.monitor_range],self.eval_protocol)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
+            
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -336,51 +337,27 @@ class PlaceRecognition():
             pickle.dump(self.predictions, handle, protocol=pickle.HIGHEST_PROTOCOL)
         self.logger.warning('\n ** Saving predictions at File: ' + file)
         return self.predictions
-
+       
         
-            
-            
-    def save_predictions_cv(self,save_dir=None):
-        '''
-        Save the predictions in a csv file
-        params:
-            file (string): file name to save the predictions, default is None
-        return: None
-        '''
-        # Check if the results were generated
-        assert  hasattr(self, 'predictions')
+    def __save_to_csv__(self,results,file_results,res = 3):
+        # SAVE global results
+        colum = []
+        rows  = []
         
-        assert 'loop_cand' in self.predictions.keys(), 'Predictions were not generated!'
-        loop_cand   = self.predictions['loop_cand']
-        loop_scores = self.predictions['loop_scores']
-        gt_loops    = self.predictions['gt_loops']
+        for value in results.items():
+            keys = value[0]
+            #new = keys[np.isin(keys,colum,invert=True)]
+            colum.append(keys)
+            rows.append(np.round(value[1],res))
 
-        assert hasattr(self, 'score_value'), 'Results were not generated!'
+        rows = np.array(rows)
+        #rows = np.concatenate((top_cand,rows),axis=1)
+        df = pd.DataFrame(rows.T,columns = colum)
+        df.to_csv(file_results)
         
-        if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],self.eval_protocol) # Internal File name 
-        else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
         
-        if not os.path.isdir(target_dir):
-            os.makedirs(target_dir)
-        self.logger.warning('\n ** Saving predictions at: ' +target_dir)
-
-        df_pred   = pd.DataFrame(loop_cand)
-        df_score  = pd.DataFrame(loop_scores)
-        df_target = pd.DataFrame(gt_loops)
-    
-        file_results_ped = os.path.join(target_dir,f'loops.csv')
-        file_results_score =os.path.join(target_dir,f'scores.csv')
-        file_target =os.path.join(target_dir,f'target.csv')
-
-        df_pred.to_csv(file_results_ped)
-        df_score.to_csv(file_results_score)
-        df_target.to_csv(file_target)
-
         
-
-    def save_results_cv(self,save_dir=None):
+    def save_results_csv(self,save_dir=None):
         """
         Save the results in a csv file
         params:
@@ -391,46 +368,51 @@ class PlaceRecognition():
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.score_value[self.monitor_range],'place') # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.score_value[self.monitor_range],self.eval_protocol)
+            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
         
         self.logger.warning('\n ** Saving results from internal File: ' + target_dir)
 
-        top_cand = np.array(list(self.results.keys())).reshape(-1,1)
-        colum = []
-        rows  = []
-        
-        for value in self.results['recall'].items():
-            keys = value[0]
-            #new = keys[np.isin(keys,colum,invert=True)]
-            colum.append(keys)
-            rows.append(np.round(value[1],3))
-
-        rows = np.array(rows)
-        #rows = np.concatenate((top_cand,rows),axis=1)
-        df = pd.DataFrame(rows.T,columns = colum)
-        file_results = os.path.join(target_dir,'results_recall.csv')
-        df.to_csv(file_results)
+        # SAVE Average Recall
+        global_results = self.results['global']['recall']
+        file_results = os.path.join(target_dir,'recall.csv')
+        self.__save_to_csv__(global_results,file_results)
         self.logger.warning("Saved results at: " + file_results)
         
-        colum = []
-        rows  = []
-        for value in self.results['precision'].items():
-            keys = value[0]
-            #new = keys[np.isin(keys,colum,invert=True)]
-            colum.append(keys)
-            rows.append(np.round(value[1],3))
-
-        rows = np.array(rows)
-        #rows = np.concatenate((top_cand,rows),axis=1)
-        df = pd.DataFrame(rows.T,columns = colum)
-        file_results = os.path.join(target_dir,'results_precision.csv')
-        df.to_csv(file_results)
+        
+        # SAVE Average Precision
+        global_results = self.results['global']['precision']
+        file_results = os.path.join(target_dir,'precision.csv')
+        self.__save_to_csv__(global_results,file_results)
         self.logger.warning("Saved results at: " + file_results)
+        
+        
+        # SAVE Segment Recall
+        for segment, scores in self.results['segment'].items():
+            global_results = scores['recall']
+            file_results = os.path.join(target_dir,f'recall_{segment}.csv')
+            self.__save_to_csv__(global_results,file_results)
+            self.logger.warning("Saved results at: " + file_results)
+        
+        
+        # SAVE Segment Precision
+        for segment, scores in self.results['segment'].items():
+            global_results = scores['precision']
+            file_results = os.path.join(target_dir,f'precision_{segment}.csv')
+            self.__save_to_csv__(global_results,file_results)
+            self.logger.warning("Saved results at: " + file_results)
+        
+        
+        # SAVE Segment class Prediction performance
+        if 'class' in self.results:
+            class_results = self.results['class']
+            file_results = os.path.join(target_dir,'class.csv')
+            self.__save_to_csv__(class_results,file_results)
+            self.logger.warning("Saved results at: " + file_results)
 
 
 
@@ -461,9 +443,7 @@ class PlaceRecognition():
         k_top_cand = max(self.top_cand)
         
         
-        
-        
-        # COMPUTE RETRIEVAL
+        # COMPUTE RETRIEVAL Performance
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
         if self.eval_protocol == 'relocalization':
             metric, self.predictions = eval_row_relocalization(
@@ -501,8 +481,11 @@ class PlaceRecognition():
             # update the results
             metric['class']=class_results
                     
+
+        # Save results to be stored in csv files
+        self.results = metric
         
-          
+        
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
         self.score_value = {}
