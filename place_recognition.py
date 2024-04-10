@@ -434,6 +434,7 @@ class PlaceRecognition():
         # GENERATE DESCRIPTORS
         if self.use_load_deptrs == False:
             self.descriptors = self.generate_descriptors(self.model,self.loader)
+    
         
         # COMPUTE TOP 1%
         # Compute number of samples to retrieve corresponding to 1% 
@@ -548,7 +549,7 @@ class PlaceRecognition():
                 else:   
                     gt_label = row_labels[ix]  # Get the ground truth label
                     c = segment_preds[i]
-                    prediction_bag[int(i)] = {'d':d,'c':c,'gt':gt_label}
+                    prediction_bag[int(ix)] = {'d':d,'c':c,'gt':gt_label}
                     
         return(prediction_bag)
 
