@@ -149,7 +149,8 @@ class PointNetHGAP(nn.Module):
         self.output_dim = output_dim
         self.backbone = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
         
-        self.head = SoGA(outdim=output_dim)
+        self.head = GAP(outdim=output_dim)
+        #self.head = SoGA(outdim=output_dim)
         self.classifier = segment_classifier(n_classes=argv['n_classes'],feat_dim=output_dim,kernels=[256,64])
    
         
@@ -157,8 +158,7 @@ class PointNetHGAP(nn.Module):
     def forward(self, x):
         # In Point cloud shape: BxNx3
         xo = self.backbone(x)
-        xh = self.backbone.t_out_h1
-        d = self.head(x,xh,xo)
+        d = self.head(xo)
         c = self.classifier(d)
         #d = self.head(xo)
         return d,c

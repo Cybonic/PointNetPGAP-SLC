@@ -342,8 +342,9 @@ class ModelWrapperLoss(nn.Module):
             pred,class_pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
             class_pred = torch.argmax(torch.softmax(class_pred,dim=1),dim=1).detach().cpu().numpy().astype(np.int32)
             
+            pred = {'d':pred,'c':class_pred}
             #self.stored_class_pred.append(class_pred)
-            return(pred,class_pred)
+            return(pred)
 
         # Training
        
