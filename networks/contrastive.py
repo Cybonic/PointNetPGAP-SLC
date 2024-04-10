@@ -417,7 +417,7 @@ class ModelWrapperLoss(nn.Module):
             info['class_loss'] = class_loss_value
             
             # devide by the number of batch iteration; as direct implication in the grads
-            loss_value /= mini_batch_total_iteration 
+            #loss_value /= mini_batch_total_iteration 
             
             # compute the gradients
             loss_value.backward() # Backpropagate gradients and free graph

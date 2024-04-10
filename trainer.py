@@ -150,7 +150,7 @@ class Trainer(BaseTrainer):
                     batch_norm.append(norm_grad.detach().cpu().numpy().item())
             
                 # Update model every batch_size iteration
-                self.mean_grad(batch_size)
+                #self.mean_grad(batch_size)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 
