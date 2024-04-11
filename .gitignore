@@ -21,5 +21,6 @@ Worklog.md
 *.log
 *.pcd
 *.png
+*.DS_Store
 
 
