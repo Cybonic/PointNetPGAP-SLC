@@ -406,10 +406,13 @@ class ModelWrapperLoss(nn.Module):
             # Auxilary loss: Segment loss
             class_loss_value = torch.tensor(0) 
             if self.sec_loss != None:
+                # Remove unwanted class (e.g -1 )
                 class_pred =torch.cat((class_pred[0:a_idx],class_pred[a_idx:p_idx],class_pred[p_idx:n_idx]))
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
+                
+                
                 prob = F.log_softmax(class_pred, dim=1)
-                loss_c = F.nll_loss(prob, target.long(),reduction='mean')
+                loss_c = F.nll_loss(prob, target.long(),reduction='mean',ignore_index=-1) # 
                 class_loss_value = loss_c
             
             # Final loss
