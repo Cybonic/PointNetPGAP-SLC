@@ -17,14 +17,14 @@ density = '10000'
 
 input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
-test_sequences = ['OJ23', 'SJ23']
+test_sequences = ['OJ22']
 
-stages = ['LOGG3D','PointNetVLAD','overlap_transformer',]
+stages = ['PointNetHGAPLoss']#,#'LOGG3D','PointNetVLAD','overlap_transformer',]
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
                         f'--network {stage_conf}', # Network
-                        '--train 1', # Train or test
+                        '--train 0', # Train or test
                         f'--dataset_root {dataset_root}', # path to Dataset 
                         '--resume best_model', # [best_model, last_model]
                         f'--val_set {seq}',
