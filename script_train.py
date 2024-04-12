@@ -3,11 +3,11 @@ import os
 
 
 # Define the number of epochs
-epochs = 300
+epochs = 50
 # Define the path to the checkpoints
 # Define the path to the dataset
 #dataset_root = '/home/tiago/workspace/DATASET'
-dataset_root = '/home/tbarros/workspace/DATASET'
+dataset_root = '/home/tiago/workspace/DATASET'
 
 # Path to save the predictions
 save_path  = 'predictions/RAL'
@@ -19,11 +19,11 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 test_sequences = ['OJ23', 'SJ23']
 
-stages = ['001']
+stages = ['LOGG3D','PointNetVLAD','overlap_transformer',]
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
-                        '--network PointNetHGAPLoss', # Network
+                        f'--network {stage_conf}', # Network
                         '--train 1', # Train or test
                         f'--dataset_root {dataset_root}', # path to Dataset 
                         '--resume best_model', # [best_model, last_model]
@@ -32,7 +32,7 @@ for stage_conf in stages:
                         '--device cuda', # Device
                         f'--save_predictions {save_path}', # Save predictions
                         f'--epochs {epochs}',
-                        f'--stages {stage_conf}',
+                        #f'--stages {stage_conf}',
                         f'--experiment MSGAP', 
                         f'--feat_dim 1024',
                         f'--eval_batch_size {10}',

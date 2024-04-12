@@ -37,7 +37,7 @@ class SparseModelWrapper(nn.Module):
         
         if self.training == False:
             pred = self.model(pcl.to(self.device))
-            pred = pred['out']
+            #pred = pred['out']
             return(pred)
 
         # Training
@@ -53,8 +53,8 @@ class SparseModelWrapper(nn.Module):
         
         pred = self.model(sparse_data.to(self.device))
         
-        feat = pred['feat']
-        pred = pred['out']
+        #feat = pred['feat']
+        #pred = pred['out']
             
         descriptor = {'a':pred[anchor_idx],'p':pred[positive_idx],'n':pred[negative_idx]}
         poses = {'a':sparse_index[anchor_idx],'p':sparse_index[positive_idx],'n':sparse_index[negative_idx]}
@@ -142,8 +142,8 @@ class SparseModelWrapperLoss(nn.Module):
         
         pred = self.model(sparse_data.to(self.device))
         
-        feat = pred['feat']
-        pred = pred['out']
+       # feat = pred['feat']
+        #pred = pred['out']
         # Check for NaN
         assert not torch.any(torch.isnan(pred), dim=0).any()
             
