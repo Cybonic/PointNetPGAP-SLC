@@ -49,7 +49,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f"Dpts: {output_dim}")
     print("**************************************************\n")
 
-    if pipeline_name == 'LOGG3D':
+    if pipeline_name.startswith('LOGG3D'):
         pipeline = LOGG3D(output_dim=output_dim)
     elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
         from networks.pipelines.KeypointExtractor import PointNetKeypoint
@@ -86,8 +86,15 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f'Loss: {loss}')
     print("*"*30)
 
-    if pipeline_name in ['LOGG3D'] or pipeline_name.startswith("SPV"):
-        model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
+    if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV"):
+        if pipeline_name.endswith('Loss'):
+            model = contrastive.SparseModelWrapperLoss(pipeline,loss = loss,
+                                                       aux_loss = 'segment_loss',
+                                                       device = device,
+                                                       **argv['trainer'])
+        else:
+            model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
+        #model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
     elif pipeline_name.endswith('Loss'):
         model = contrastive.ModelWrapperLoss(pipeline,
                                              loss = loss,
@@ -134,7 +141,7 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         elif session['modality'] == "spherical" or network != "overlap_transformer":
             modality = SphericalProjection(256,256,square_roi=roi)
             
-    elif network in ['LOGG3D'] or network.startswith("SPV"):
+    elif network.startswith('LOGG3D') or network.startswith("SPV"):
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
         modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
