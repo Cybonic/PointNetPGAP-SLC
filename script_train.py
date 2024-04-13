@@ -3,7 +3,7 @@ import os
 
 
 # Define the number of epochs
-epochs = 50
+epochs = 100
 # Define the path to the checkpoints
 # Define the path to the dataset
 #dataset_root = '/home/tiago/workspace/DATASET'
@@ -17,9 +17,9 @@ density = '10000'
 
 input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
-test_sequences = ['OJ22']
+test_sequences = ['OJ22','OJ23','SJ23','ON22']
 
-stages = ['PointNetHGAPLoss']#,#'LOGG3D','PointNetVLAD','overlap_transformer',]
+stages = ['LOGG3D','PointNetVLAD','overlap_transformer',]
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
