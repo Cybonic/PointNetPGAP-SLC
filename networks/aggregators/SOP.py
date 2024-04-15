@@ -48,7 +48,7 @@ class SOP(nn.Module):
             x = u_ @ torch.diag_embed(s_alpha) @ v_.transpose(-2, -1)
 
         x = torch.reshape(x, (batchSize, tupleLen, dimFeat, dimFeat))
-        return x  # .float()
+        return x.float()
     
     def _so_meanpool(self, x):
         while len(x.data.shape) < 4:
