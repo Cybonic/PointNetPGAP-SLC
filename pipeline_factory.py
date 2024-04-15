@@ -58,8 +58,8 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         from networks.pipelines.GeMNet import PointNetGeM
         pipeline = PointNetGeM(output_dim=output_dim,feat_dim=feat_dim,num_points=num_points)
     elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
-        from networks.pipelines.KeypointExtractor import PointNetKeypoint
-        pipeline = PointNetKeypoint()
+        from networks.pipelines.KeypointExtractor import PointNetKeypointNET
+        pipeline = PointNetKeypointNET()
     elif pipeline_name == 'PointPillarsGAP':
         from networks.pipelines.PointPillars import PointPillarsGAP
         pipeline = PointPillarsGAP()
@@ -71,11 +71,11 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
                                 stage_3 = argv['stage_3'],
                                 n_classes = 6)
         
-    elif pipeline_name == 'PointNetVLAD':
+    elif pipeline_name.startswith('PointNetVLAD'):
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name in ['PointNetGAP','PointNetGAPLoss']:
         pipeline = PointNetGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = feat_dim)
-    elif pipeline_name == 'overlap_transformer':
+    elif pipeline_name.startswith('overlap_transformer'):
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
     else:
