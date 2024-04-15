@@ -52,9 +52,7 @@ class SparseModelWrapper(nn.Module):
         negative_idx = np.array([idx for idx,label in enumerate(labels) if label == 'negative'])
         
         pred = self.model(sparse_data.to(self.device))
-        
-        #feat = pred['feat']
-        #pred = pred['out']
+
             
         descriptor = {'a':pred[anchor_idx],'p':pred[positive_idx],'n':pred[negative_idx]}
         poses = {'a':sparse_index[anchor_idx],'p':sparse_index[positive_idx],'n':sparse_index[negative_idx]}
@@ -255,8 +253,7 @@ class ModelWrapper(nn.Module):
 
             loss_value,info = self.loss(descriptor = descriptor, poses = pose)
             # devide by the number of batch iteration; as direct implication in the grads
-            loss_value /= mini_batch_total_iteration 
-            
+
             loss_value.backward() # Backpropagate gradients and free graph
             batch_loss += loss_value
 
@@ -316,10 +313,10 @@ class ModelWrapperLoss(nn.Module):
         
         self.device =  next(self.parameters()).device
         if self.training == False:
-            pred,class_pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
-            class_pred = torch.argmax(torch.softmax(class_pred,dim=1),dim=1).detach().cpu().numpy().astype(np.int32)
+            pred = self.model(pcl.to(self.device)) # pred = self.model(pcl.cuda())
+            #class_pred = torch.argmax(torch.softmax(class_pred,dim=1),dim=1).detach().cpu().numpy().astype(np.int32)
             
-            pred = {'d':pred,'c':class_pred}
+            #pred = {'d':pred,'c':class_pred}
             #self.stored_class_pred.append(class_pred)
             return(pred)
 
@@ -362,7 +359,7 @@ class ModelWrapperLoss(nn.Module):
             if pclt.shape[0]==1: # drop last
                 continue
 
-            pred,class_pred = self.model(pclt.to(self.device)) # pclt.cuda()
+            pred = self.model(pclt.to(self.device)) # pclt.cuda()
             
             a_idx = num_anchor
             p_idx = num_pos+num_anchor
@@ -382,22 +379,19 @@ class ModelWrapperLoss(nn.Module):
             
             # Auxilary loss: Segment loss
             class_loss_value = torch.tensor(0) 
+            
             if self.sec_loss != None:
                 # Remove unwanted class (e.g -1 )
                 class_pred =torch.cat((class_pred[0:a_idx],class_pred[a_idx:p_idx],class_pred[p_idx:n_idx]))
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
                 
-                
-                prob = F.log_softmax(class_pred, dim=1)
-                loss_c = F.nll_loss(prob, target.long(),reduction='mean',ignore_index=-1) # 
-                class_loss_value = loss_c
+                pred = pred.to(torch.float32)
+                class_loss_value = self.sec_loss( pred, target)
+                info['class_loss'] = class_loss_value.detach()
             
             # Final loss
             loss_value =  self.loss_margin * loss_value + (1-self.loss_margin)*class_loss_value
             info['class_loss'] = class_loss_value
-            
-            # devide by the number of batch iteration; as direct implication in the grads
-            #loss_value /= mini_batch_total_iteration 
             
             # compute the gradients
             loss_value.backward() # Backpropagate gradients and free graph
