@@ -51,6 +51,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name.startswith('LOGG3D'):
         pipeline = LOGG3D(output_dim=output_dim)
+    elif pipeline_name.startswith('PointNetMAC'):
+        from networks.pipelines.MACNet import PointNetMAC
+        pipeline = PointNetMAC(output_dim=output_dim,feat_dim=feat_dim,num_points=num_points)
     elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
         from networks.pipelines.KeypointExtractor import PointNetKeypoint
         pipeline = PointNetKeypoint()
