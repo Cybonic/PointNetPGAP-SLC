@@ -134,152 +134,73 @@ if __name__ == '__main__':
 
     
     parser.add_argument(
-        '--network', '-m',
-        type=str,
-        required=False,
-        default='PointNetSPoC',
-        choices=['PointNetSPoC',
-                 'PointNetORCHNetMaxPooling',
-                 'PointNetVLAD',
-                 'LOGG3D',
-                 'PointNetORCHNet',
-                 'ResNet50ORCHNet',
-                 'ResNet50GeM',
-                 'PointNetGeM',
-                 'ResNet50MAC',
-                 'PointNetMAC',
-                 'ResNet50SPoC',
-                 'PointNetSPoC',
-                 'overlap_transformer'],
-        help='Directory to get the trained model.'
+        '--dataset_root',type=str, required=False,
+        default='/home/tiago/workspace/DATASET',
+        help='Directory to the dataset root'
+    )
+    
+    parser.add_argument(
+        '--network', type=str,
+        default='PointNetGAPLoss', help='model to be used'
+    )
+    
+    parser.add_argument(
+        '--topk', type=int,
+        default=1, help='model to be used'
     )
 
     parser.add_argument(
-        '--experiment', '-e',
-        type=str,
-        required=False,
-        default='cross_validation/final@range1',
-        help='Directory to get the trained model.'
+        '--experiment',type=str,
+        default='RAL',
+        help='Name of the experiment to be executed'
     )
 
     parser.add_argument(
-        '--resume', '-r',
-        type=str,
-        required=False,
-        default='None',
-        help='Directory to get the trained model.'
-    )
-
-    parser.add_argument(
-        '--memory',
-        type=str,
-        required=False,
+        '--memory', type=str,
         default='DISK',
         choices=['DISK','RAM'],
-        help='Directory to get the trained model.'
+        help='RAM: loads the dataset to the RAM memory first. DISK: loads the dataset on the fly from the disk'
     )
 
     parser.add_argument(
-        '--epoch',
-        type=int,
-        required=False,
-        default=2,
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--dataset',
-        type=str,
-        required=False,
-        default='uk', # uk
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--device',
-        type=str,
-        required=False,
+        '--device', type=str,
         default='cuda',
         help='Directory to get the trained model.'
     )
     parser.add_argument(
-        '--batch_size',
-        type=int,
-        required=False,
-        default=20,
-        help='Directory to get the trained model.'
+        '--batch_size',type=int,
+        default=10,
+        help='Batch size'
     )
+    
     parser.add_argument(
-        '--mini_batch_size',
-        type=int,
-        required=False,
-        default=20000, #  Max size (based on the negatives)
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--loss',
-        type=str,
-        required=False,
-        default = 'LazyTripletLoss',
-        choices=['LazyTripletLoss','LazyQuadrupletLoss','PositiveLoss'],
-        help='Directory to get the trained model.'
-    )
-    parser.add_argument(
-        '--max_points',
-        type=int,
-        required=False,
+        '--max_points',type=int,
         default = 10000,
         help='sampling points.'
     )
-    parser.add_argument(
-        '--feat_dim',
-        type=int,
-        required=False,
-        default = 1024,
-        help='sampling points.'
-    )
-    parser.add_argument(
-        '--modality',
-        type=str,
-        required=False,
-        default = "pcl",
-        help='sampling points.'
-    )
 
     parser.add_argument(
-        '--triplet_file',
-        type=str,
-        required=False,
-        default = "triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl",
-        help='sampling points.'
-    )
-
-    parser.add_argument(
-        '--eval_file',
-        type=str,
-        required=False,
-        default = "eval/ground_truth_loop_range_10m.pkl",
-        help='sampling points.'
-    )
-
-    parser.add_argument(
-        '--loop_range',
+        '--monitor_loop_range',
         type=float,
         required=False,
-        default = 1,
-        help='sampling points.'
+        default = 10,
+        help='loop range to monitor the performance.'
     )
 
     parser.add_argument(
-        '--save_predictions',
-        type=bool,
+        '--dataset',
+        type=str,
         required=False,
-        default = True,
-        help='sampling points.'
+        default='HORTO-3DLM', # uk
+        help='Directory to get the trained model.'
     )
+    
     parser.add_argument(
         '--val_set',
         type=str,
         required=False,
-        default = 'orchards/june23/extracted',
+        default = 'OJ22',
+        help = 'Validation set'
     )
 
     parser.add_argument(
@@ -287,20 +208,52 @@ if __name__ == '__main__':
         type=float,
         required=False,
         default = 0,
+        help = 'Crop range [m] to crop the point cloud around the scan origin.'
     )
+    
     parser.add_argument(
-        '--model_evaluation',
+        '--resume', '-r',
         type=str,
         required=False,
-        default = "cross_validation",
-        choices = ["cross_validation"]
+        default='saved_model_data/RAL/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/PointNetGAP-LazyTripletLoss_L2-segment_lossM0.5/0.842@1',
+        help='Directory to get the trained model or descriptors.'
     )
+
     parser.add_argument(
-        '--chkpt_root',
+        '--session',
         type=str,
         required=False,
-        #default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
-        default = "/home/deep/workspace/orchnet/v2/aa-0.5/checkpoints"
+        default = "ukfrpt",
+    )
+    
+    parser.add_argument(
+        '--eval_roi_window',
+        type=float,
+        required=False,
+        default = 100,
+        help='Number of frames to ignore in imidaite vicinity of the query frame.'
+    )
+    
+    parser.add_argument(
+        '--eval_warmup_window',
+        type=float,
+        required=False,
+        default = 100,
+        help='Number of frames to ignore in the beginning of the sequence'
+    )
+    
+    parser.add_argument(
+        '--eval_file',
+        type=str,
+        required=False,
+        default = "eval/ground_truth_loop_range_10m.pkl",
+        help='sampling points.'
+    )
+    parser.add_argument(
+        '--save_predictions',
+        type=str,
+        required=False,
+        default = 'saved_model_data',
     )
 
     FLAGS, unparsed = parser.parse_known_args()
@@ -308,144 +261,115 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
 
-    session_cfg_file = os.path.join('sessions', FLAGS.dataset.lower() + '.yaml')
+    session_cfg_file = os.path.join('sessions', FLAGS.session + '.yaml')
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
-
-    SESSION['trainer']['save_dir'] =  FLAGS.chkpt_root
+    SESSION['save_predictions'] = FLAGS.save_predictions
+    
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
-    SESSION['modelwrapper']['minibatch_size']  = FLAGS.mini_batch_size
-    SESSION['modelwrapper']['feat_dim']  = FLAGS.feat_dim
     
     # Define evaluation mode: cross_validation or split
-    SESSION['model_evaluation'] = FLAGS.model_evaluation
-    SESSION['train_loader']['sequence'] = SESSION['cross_validation'][FLAGS.val_set]
-    SESSION['val_loader']['sequence']   = [FLAGS.val_set]
-   
+    SESSION['train_loader']['triplet_file'] = None
+    
+    # Update the validation loader
     SESSION['val_loader']['batch_size'] = FLAGS.batch_size
-    SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
-    SESSION['trainer']['epochs'] =  FLAGS.epoch
-    SESSION['loss']['type'] = FLAGS.loss
-    SESSION['max_points']= FLAGS.max_points
-    SESSION['memory']= FLAGS.memory
+    SESSION['val_loader']['augmentation'] = False
     
-    
-    SESSION['loop_range'] = FLAGS.loop_range
+    # Update the model settings
+    SESSION['roi'] = FLAGS.roi
+    SESSION['max_points'] = FLAGS.max_points
+    SESSION['memory']     = FLAGS.memory
+    SESSION['monitor_range']   = FLAGS.monitor_loop_range
+    SESSION['eval_roi_window'] = FLAGS.eval_roi_window
+    SESSION['descriptor_size'] = 256
+    SESSION['eval_warmup_window'] = FLAGS.eval_warmup_window
+    SESSION['eval_protocol'] = FLAGS.eval_protocol
+    SESSION['device'] = FLAGS.device
 
 
     print("----------")
-    print("Saving Predictions: %d"%FLAGS.save_predictions)
-    # print("Root: ", SESSION['root'])
-    print("\n======= TRAIN LOADER =======")
-    # print("Dataset  : ", SESSION['train_loader']['data']['dataset'])  print("Sequence : ", SESSION['train_loader']['data']['sequence'])
-    print("Max Points: " + str(SESSION['max_points']))
-    print("Triplet Data File: " + str(FLAGS.triplet_file))
+    print("Saving Predictions: %s"%FLAGS.save_predictions)
     print("\n======= VAL LOADER =======")
-    print("Dataset  : ", SESSION['val_loader']['dataset'])
-    print("Sequence : ", SESSION['val_loader']['sequence'])
     print("Batch Size : ", str(SESSION['val_loader']['batch_size']))
     print("Max Points: " + str(SESSION['max_points']))
     print("\n========== MODEL =========")
     print("Backbone : ", FLAGS.network)
     print("Resume: ",  FLAGS.resume )
-    print("Loss: ",FLAGS.loss)
-    print("MiniBatch Size: ", str(SESSION['modelwrapper']['minibatch_size']))
+    #print("MiniBatch Size: ", str(SESSION['modelwrapper']['minibatch_size']))
     print("\n==========================")
+    print(f'Eval Protocal: {FLAGS.eval_protocol}')
     print(f'Memory: {FLAGS.memory}')
     print(f'Device: {FLAGS.device}')
-    print("Loss: %s" %(SESSION['loss']['type']))
     print("Experiment: %s" %(FLAGS.experiment))
-    print("Max epochs: %s" %(FLAGS.epoch))
-    #print("Modality: %s" %(model_param['modality']))
     print("----------\n")
 
     # For repeatability
     torch.manual_seed(0)
     np.random.seed(0)
 
-    ###################################################################### 
 
-    # The development has been made on different PCs, each has some custom settings
-    # e.g the root path to the dataset;
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    ######################################################################
+    loader = dataloader_handler(FLAGS.dataset_root,
+                                FLAGS.network,
+                                FLAGS.dataset,
+                                FLAGS.val_set,
+                                SESSION,
+                                roi = FLAGS.roi,
+                                pcl_norm = False)
+     
+    from place_recognition import PlaceRecognition 
 
-    root_dir = pc_config[device_name]
+    loop_range = FLAGS.monitor_loop_range
     
-    # Build the model and the loader
-    model = model_handler(FLAGS.network,
-                            num_points=SESSION['max_points'],
-                            output_dim=256,
-                            feat_dim=FLAGS.feat_dim,
-                            device = FLAGS.device,
-                            loss = SESSION['loss'], # Loss is required to build the model name correctly (change this in the future)
-                            modelwrapper = SESSION['modelwrapper']
-                            )
-
-    print("*"*30)
-    print("Model: %s" %(str(model)))
-    print("*"*30)
-
-
-    loader = dataloader_handler(root_dir,FLAGS.network,FLAGS.dataset,SESSION, roi = FLAGS.roi)
-
-    run_name = {'dataset': '-'.join(str(SESSION['val_loader']['sequence'][0]).split('/')),
-                'experiment':os.path.join(FLAGS.experiment,FLAGS.triplet_file,str(FLAGS.max_points)), 
-                'model': str(model)
-            }
-
-    val_loader = loader.get_val_loader()
-    trainer = Trainer(
-            model        = model,
-            train_loader = None,#loader.get_train_loader(),
-            val_loader   = val_loader,
-            monitor_range= SESSION['loop_range'],
-            resume       = FLAGS.resume,
-            config       = SESSION,
-            device       = FLAGS.device,
-            run_name     = run_name,
-            train_epoch_zero = False,
-            debug = False,
-            eval_protocol='relocalization',
-            )
-    
-    topk=1
-    
-    loop_range = SESSION['loop_range']
-    #trainer.eval_approach.load_descriptors()
-    
-    if trainer.eval_approach.load_predictions_pkl() == None:
-        best_model_filename = trainer.save_best_model_filename 
-    # Generate descriptors, predictions and performance for the best weights
-        print(f'\nLoading best model: {best_model_filename}\n')
-        trainer.eval_approach.load_pretrained_model(best_model_filename)
-        trainer.eval_approach.run(loop_range = loop_range)
-        trainer.eval_approach.save_predictions_pkl()
+    import logging
+    log_file = os.path.join('logs',f'{FLAGS.experiment}.log')
+    logger = logging.getLogger(__name__)
+    log_handler = logging.FileHandler(log_file)
         
-    predictions = trainer.eval_approach.get_predictions()
+    eval_approach = PlaceRecognition(None,
+                                        loader,
+                                        top_cand = FLAGS.topk,
+                                        logger = logger,
+                                        window = FLAGS.eval_roi_window,
+                                        warmup_window = FLAGS.eval_warmup_window,
+                                        device = FLAGS.device,
+                                        eval_protocol = FLAGS.eval_protocol,
+                                        logdir =  FLAGS.experiment,
+                                        monitor_range = loop_range,
+                                        sim_func='L2'
+                                    )
     
-    poses = val_loader.dataset.get_pose()
-    from dataloader.utils import rotate_poses
-    from dataloader import row_segments
+
     
-    sequence = '_'.join(SESSION['val_loader']['sequence'][0].split('/')[:-1])
-    dataset_raws = row_segments.__dict__[sequence]
+    
+    resume = FLAGS.resume
+    predictions = os.path.join(resume,'relocalization','predictions.pkl')
+    
+    if not os.path.exists(predictions):
+        
+        descriptor_file = os.path.join(resume,'descriptors.pkl')
+
+        eval_approach.load_descriptors(descriptor_file)        
+        eval_approach.run(loop_range = loop_range)
+        eval_approach.save_predictions_pkl()
+        
+    predictions = eval_approach.get_predictions()
+    
+    poses = eval_approach.dataset.get_pose()
+    sequence = FLAGS.val_set
+    
     # Load aline rotation
-    rotation_angle = dataset_raws['angle']
-    # Rotate poses to match the image frame
-    rotated_poses = rotate_poses(poses.copy(),rotation_angle)
-    xy = rotated_poses[:,:2]
+    xy = poses[:,:2]
     min_xy = np.min(xy,axis=0)
     xy -= min_xy
+    
+    
     # Save gif
-    file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower().replace('/','-'),FLAGS.network.lower(),f'top{topk}'])
-    
-
-    
-    
+    file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower(),FLAGS.network.lower(),f'topk{FLAGS.topk}'])
+ 
     root2save = os.path.join('results','retrieval_on_map',f'range{loop_range}m')
     os.makedirs(root2save,exist_ok=True)
     print("Saving to: ",root2save)
@@ -453,7 +377,7 @@ if __name__ == '__main__':
     #file =  
     
     save_itrs = list(range(1,len(predictions.keys()),10))
-    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=topk,record_gif=True,gif_name=file_name,save_dir = root2save,save_step_itr=save_itrs)
+    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=FLAGS.topk,record_gif=True,gif_name=file_name,save_dir = root2save,save_step_itr=save_itrs)
     
     
     
