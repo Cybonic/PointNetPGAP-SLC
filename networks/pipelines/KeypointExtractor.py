@@ -13,6 +13,9 @@ https://colab.research.google.com/drive/1oO-Raqge8oGXGNkZQOYTH-je4Xi1SFVI?usp=sh
 
 """
 
+def _l2norm(x):
+        x = nn.functional.normalize(x, p=2, dim=-1)
+        return x
 
 def flatten(x):
     return x.view(x.size(0), -1)
@@ -157,41 +160,39 @@ class PointNetKeypoint(nn.Module):
 
 
 class PointNetKeypointNET(nn.Module):
-    def __init__(self):
+    def __init__(self,in_dim=3, dim_k=1024, scale=1):
         super(PointNetKeypointNET, self).__init__()
         
-        mlp_h1 = [int(32/scale), int(64/scale)]
-        mlp_h2 = [int(64/scale), int(128/scale)]
-        mlp_h3 = [int(128 + 64), int(256),dim_k]
+        mlp_h1 = [int(64/scale),int(256/scale)]
+        mlp_h2 = [int(512/scale),dim_k]
+        #mlp_h3 = [int(128 + 64), int(256),dim_k]
         
         self.h1 = MLPNet(in_dim, mlp_h1, b_shared=True).layers
         self.h2 = MLPNet(mlp_h1[-1], mlp_h2, b_shared=True).layers
-        self.h3 = MLPNet(mlp_h3[0], mlp_h3, b_shared=True).layers
-        
-        # Define a PointConv layer for feature extraction
-        self.backbone = PointNet_features(in_dim=3, dim_k=512, scale=1)
-        # Define fully connected layers for keypoint prediction
-        self.fc1 = nn.LazyLinear(512)
-        self.fc2 = nn.LazyLinear(256)  # Output keypoint coordinates
+
+        self.fc1 = nn.LazyLinear(256)
         self.d = None
     
     def __str__(self):
-        return "KeypointExtractor_S011"
+        return "PointNetKeypointNET"
     
     
     def forward(self, x):
         # Apply PointConv layers for feature extraction
         #x = x.permute(0, 2, 1)
-        x = points.transpose(1, 2) # [B, 3, N]
+        x = x.transpose(1, 2) # [B, 3, N]
         x2 = self.h1(x)
         self.t_out_h1 = x2 # local features
         x3 = self.h2(x2)
         
-        x_norm = torch.Sigmoid(x3, dim=1)
-        self.d = torch.mean(x,dim=2)
+        att = torch.matmul(x3,x2.transpose(2,1))
+        x_norm = torch.softmax(att,dim=2)
         
-        x1 = torch.relu(self.fc1(self.d))
-        x1 = self.fc2(x1)
+        self.d = torch.mean(x3,dim=2)
+        
+        self.d = torch.matmul(torch.unsqueeze_copy(self.d,1),x_norm)
+        
+        x1 = _l2norm(self.fc1(self.d).squeeze())
         
         return x1
         

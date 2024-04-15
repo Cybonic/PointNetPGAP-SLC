@@ -56,12 +56,6 @@ class ResNet50MAC(nn.Module):
         x = x['out']
         x = self.head(x)
         return x
-    
-    def get_backbone_params(self):
-        return self.point_net.parameters()
-
-    def get_classifier_params(self):
-        return self.net_vlad.parameters()
   
     def __str__(self):
         return "ResNet50MAC"
