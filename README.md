@@ -22,6 +22,10 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 
 6. Install sparse ``` pip install --upgrade git+https://github.com/mit-han-lab/torchsparse.git@v1.4.0 ```
 
+6.1 ```sudo apt-get install g++ ```
+
+6.2 ```sudo apt-get install libsparsehash-dev ```
+
 7. Install other dependencies  ``` pip install -r requirements.txt```
 
 
