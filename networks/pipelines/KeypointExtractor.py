@@ -163,18 +163,18 @@ class PointNetKeypointNET(nn.Module):
     def __init__(self,in_dim=3, dim_k=1024, scale=1):
         super(PointNetKeypointNET, self).__init__()
         
-        mlp_h1 = [int(64/scale),int(256/scale)]
-        mlp_h2 = [int(512/scale),dim_k]
+        self.mlp_h1 = [int(64/scale),int(128/scale),int(512/scale)]
+        self.mlp_h2 = [int(512/scale),dim_k]
         #mlp_h3 = [int(128 + 64), int(256),dim_k]
         
-        self.h1 = MLPNet(in_dim, mlp_h1, b_shared=True).layers
-        self.h2 = MLPNet(mlp_h1[-1], mlp_h2, b_shared=True).layers
+        self.h1 = MLPNet(in_dim, self.mlp_h1, b_shared=True).layers
+        self.h2 = MLPNet(self.mlp_h1[-1], self.mlp_h2, b_shared=True).layers
 
         self.fc1 = nn.LazyLinear(256)
         self.d = None
     
     def __str__(self):
-        return "PointNetKeypointNET"
+        return f"PointNetKeypointNET_{self.mlp_h1[-1]}_{self.mlp_h2[-1]}"
     
     
     def forward(self, x):
