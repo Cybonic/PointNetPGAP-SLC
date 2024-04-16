@@ -147,12 +147,12 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         roi['ymin'] = -args['roi']
         roi['ymax'] = args['roi']
 
-    if network in ['overlap_transformer']:
+    if network.startswith('overlap_transformer'):
         # These networks use proxy representation to encode the point clouds
-        if network == "overlap_transformer":
-            modality = BEVProjection(width=256,height=256,square_roi=roi)
-        elif session['modality'] == "spherical" or network != "overlap_transformer":
-            modality = SphericalProjection(256,256,square_roi=roi)
+        #if network == "overlap_transformer":
+        modality = BEVProjection(width=256,height=256,square_roi=roi)
+        #elif session['modality'] == "spherical" or network != "overlap_transformer":
+        #    modality = SphericalProjection(256,256,square_roi=roi)
             
     elif network.startswith('LOGG3D') or network.startswith("SPV"):
         # Get sparse (voxelized) point cloud based modality
