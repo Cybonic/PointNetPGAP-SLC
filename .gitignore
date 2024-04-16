@@ -22,5 +22,6 @@ Worklog.md
 *.pcd
 *.png
 *.DS_Store
+script_train_shogun.py
 
 
