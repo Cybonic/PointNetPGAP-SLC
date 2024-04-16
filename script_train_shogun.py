@@ -19,7 +19,7 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 test_sequences = ['OJ22','OJ23','SJ23','ON22']
 
-stages = ['LOGG3DLoss']#,'PointNetVLADLoss','overlap_transformerLoss',]
+stages = ['LOGG3D']#,'PointNetVLADLoss','overlap_transformerLoss',]
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
@@ -36,6 +36,7 @@ for stage_conf in stages:
                         f'--experiment MSGAP', 
                         f'--feat_dim 1024',
                         f'--eval_batch_size {10}',
+                        f'--mini_batch_size {1000}',
                         input_preprocessing
                 ]
                         
