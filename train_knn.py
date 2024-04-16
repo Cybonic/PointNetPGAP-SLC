@@ -349,8 +349,11 @@ if __name__ == '__main__':
 
     if FLAGS.train:
         loop_range = [1,5,10,20]
-        best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
-    
+        try:
+            best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
+        except KeyboardInterrupt:
+            print("Training stopped by user")
+            #best_model_filename = trainer.save_best_model_filename
     
     if FLAGS.save_predictions:
         
