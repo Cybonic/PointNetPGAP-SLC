@@ -382,7 +382,7 @@ class ModelWrapperLoss(nn.Module):
             
             if self.sec_loss != None:
                 # Remove unwanted class (e.g -1 )
-                class_pred =torch.cat((class_pred[0:a_idx],class_pred[a_idx:p_idx],class_pred[p_idx:n_idx]))
+                class_pred =torch.cat((pred[0:a_idx],pred[a_idx:p_idx],pred[p_idx:n_idx]))
                 target = torch.cat((self.row_labels[0:a_idx],self.row_labels[a_idx:p_idx],self.row_labels[p_idx:n_idx]))
                 
                 pred = pred.to(torch.float32)
