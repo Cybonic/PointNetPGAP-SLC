@@ -19,7 +19,7 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 test_sequences = ['OJ22','OJ23','SJ23','ON22']
 
-stages = ['LOGG3DLoss']#,'PointNetVLADLoss','PointNetMACLoss','PointNetGeMLoss','overlap_transformerLoss',]
+stages = ['PointNetVLADLoss','PointNetMACLoss','PointNetGeMLoss','overlap_transformerLoss',]
 for stage_conf in stages:
         for seq in test_sequences:
                 func_arg = [
