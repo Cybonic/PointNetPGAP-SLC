@@ -41,7 +41,7 @@ class PointCloudNet(nn.Module):
         print(num_points)
         
         self.GLOBAL_module = nn.Sequential(
-            nn.Conv1d(in_channels=input_channels, out_channels=32, kernel_size=1),
+            nn.Conv1d(in_channels=3, out_channels=32, kernel_size=1),
             #nn.Conv1d(in_channels=input_channels + 3, out_channels=32, kernel_size=1),
             nn.BatchNorm1d(32),
             nn.ReLU(),
@@ -169,6 +169,7 @@ class PointCloudNet(nn.Module):
         num_points = pointcloud.shape[1]
         
         g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
+        #g_features = nn.AvgPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
         #print("Global Features Shape, ", g_features.shape)
         
         xyz, features = self._break_up_pc(pointcloud)
@@ -190,5 +191,5 @@ class PointCloudNet(nn.Module):
         c_features = torch.cat([ip_features, l0_features, g_features.repeat(1, 1, num_points)], dim=1)
         #print("Concat Features Shape, ", c_features.shape)
         
-        return self.UPSAMPLING_module(c_features).permute(0, 2, 1)
+        return c_features
 

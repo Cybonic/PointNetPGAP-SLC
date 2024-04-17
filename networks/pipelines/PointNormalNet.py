@@ -13,52 +13,41 @@ https://github.com/IAmSuyogJadhav/PointNormalNet/blob/main/main/README.md
 
 from .normal_estimation.code.model import PointCloudNet,PointnetSAModuleMSG
 import torch.nn as nn
+from  ..aggregators import GAP
+from ..aggregators import SoAP
 
 
 
 class PointNormalNet(nn.Module):
-    def __init__(self,input_channels = 3, num_points = 10000, use_xyz = True, **argv):
+    def __init__(self,input_channels = 3, num_points = 10000, use_xyz = False, **argv):
         super(PointNormalNet, self).__init__()
         
         
         num_points = int(num_points)
         
-        self.SA_modules = nn.ModuleList()
-        c_in = input_channels
+        from .normal_estimation.code.model import PointCloudNet
+        self.model = PointCloudNet(input_channels = 0, output_channels = 6, num_points = num_points)
+        self.head  =  GAP.GAP()
+        #self.head  =  SoAP.SoAP(input_dim = 256, 
+        #                   output_dim = 256, 
+        #                   do_fc = False, 
+        #                   do_log = True, 
+        #                   do_pn = False, 
+        #                   do_pnl = False, 
+        #                   do_epn = False)
         
-        self.SA_modules.append(
-            PointnetSAModuleMSG(
-                npoint=num_points,
-                radii=[0.1,],
-                nsamples=[32,],
-                mlps=[[c_in, 32, 32, 64]],
-                use_xyz=use_xyz,
-            )
-        )
-        
-        c_out_0 = 64
-        num_points = int(num_points / 4)
-        c_in = c_out_0
-        #self.SA_modules.append(
-        #    PointnetSAModuleMSG(
-        #        npoint=num_points,
-        #        radii=[0.2,],
-        #        nsamples=[32,],
-        #        mlps=[[c_in, 64, 64, 128]],
-        #        use_xyz=use_xyz,
-        #    )
-        #)
-        
+    
         
     def get_pipeline(self):
         return self.pipeline
     
     def forward(self, x):
         
-        self.SA_modules[0](x)
+        l = x.contiguous()
+        s = self.model(l)
         
-    
-        return self.pipeline(x)
+        return self.head(s)
+       
     
     def __str__(self):
-        return "PointNormalNet"
+        return f"PointNormalNet_MAX_{self.head}"

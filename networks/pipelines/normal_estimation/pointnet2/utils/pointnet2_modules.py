@@ -45,9 +45,11 @@ class _PointnetSAModuleBase(nn.Module):
         new_features_list = []
 
         xyz_flipped = xyz.transpose(1, 2).contiguous()
+        sampled_points = pointnet2_utils.furthest_point_sample(xyz, self.npoint)
         new_xyz = (
             pointnet2_utils.gather_operation(
-                xyz_flipped, pointnet2_utils.furthest_point_sample(xyz, self.npoint)
+                xyz_flipped, 
+                sampled_points
             )
             .transpose(1, 2)
             .contiguous()
@@ -88,7 +90,7 @@ class PointnetSAModuleMSG(_PointnetSAModuleBase):
         Use batchnorm
     """
 
-    def __init__(self, npoint, radii, nsamples, mlps, bn=True, use_xyz=True):
+    def __init__(self, npoint, radii, nsamples, mlps, bn=True, use_xyz=False):
         # type: (PointnetSAModuleMSG, int, List[float], List[int], List[List[int]], bool, bool) -> None
         super(PointnetSAModuleMSG, self).__init__()
 
