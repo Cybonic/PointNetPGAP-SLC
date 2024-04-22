@@ -41,27 +41,10 @@ class PointCloudNet(nn.Module):
         super(PointCloudNet, self).__init__()
         print(num_points)
         
-        self.GLOBAL_module = nn.Sequential(
-            nn.Conv1d(in_channels=3, out_channels=32, kernel_size=1),
-            #nn.Conv1d(in_channels=input_channels + 3, out_channels=32, kernel_size=1),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=64, out_channels=128, kernel_size=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=256, out_channels=512, kernel_size=1),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-        )
+        
+        from ..pointnet import PointNet_features
+        
+        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 1024, use_tnet = False, scale = 1)
 
         num_points = int(num_points)
         self.SA_modules = nn.ModuleList()
@@ -157,7 +140,7 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
+        g_features = self.GLOBAL_module(pointcloud)
         g_features = self.head1(g_features)
         #print("Global Features Shape, ", g_features.shape)
         
@@ -165,7 +148,7 @@ class PointCloudNet(nn.Module):
         l0_xyz, l0_features = xyz, features
         ip_features = torch.cat((l0_xyz.permute(0, 2, 1), l0_features), dim=1)
         
-        self.RBF_l0_xyz(l0_xyz)
+        #self.RBF_l0_xyz(l0_xyz)
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
         l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)

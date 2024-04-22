@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_mena_gouping_descriptor"
+        return f"PointNormalNet_mean_gouping_pointnet_descriptor"
