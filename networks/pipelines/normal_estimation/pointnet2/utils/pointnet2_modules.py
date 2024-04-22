@@ -63,9 +63,15 @@ class _PointnetSAModuleBase(nn.Module):
             )  # (B, C, npoint, nsample)
 
             new_features = self.mlps[i](new_features)  # (B, mlp[-1], npoint, nsample)
-            new_features = F.max_pool2d(
-                new_features, kernel_size=[1, new_features.size(3)]
-            )  # (B, mlp[-1], npoint, 1)
+            # ========================\
+            # Changed here
+            new_features = torch.mean(new_features, dim=-1, keepdim=True)
+            #new_features = F.max_pool2d(
+            #    new_features, kernel_size=[1, new_features.size(3)]
+            #)  # (B, mlp[-1], npoint, 1)
+            
+            # Changed here
+            # ========================\
             new_features = new_features.squeeze(-1)  # (B, mlp[-1], npoint)
 
             new_features_list.append(new_features)

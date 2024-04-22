@@ -8,6 +8,7 @@ from __future__ import (
 import torch
 import torch.nn as nn
 
+from ..torch_rbf import RBF, gaussian
 from ..pointnet2.utils.pointnet2_modules import PointnetFPModule, PointnetSAModuleMSG
 
 class Upsample(nn.Module):
@@ -104,8 +105,8 @@ class PointCloudNet(nn.Module):
         self.SA_modules.append(
             PointnetSAModuleMSG(
                 npoint=num_points,
-                radii=[0.4],
-                nsamples=[32],
+                radii=[0.4,],
+                nsamples=[32,],
                 mlps=[[c_in, 256, 256, 512]],
                 use_xyz=use_xyz,
             )
@@ -117,33 +118,19 @@ class PointCloudNet(nn.Module):
         self.FP_modules.append(PointnetFPModule(mlp=[256 + c_out_1, 128, 128]))
         self.FP_modules.append(PointnetFPModule(mlp=[128 + c_out_0, 128, 128]))
         self.FP_modules.append(PointnetFPModule(mlp=[128 + input_channels + 3, 128, 256]))
-
-        self.UPSAMPLING_module = nn.Sequential(
-            # in_channels = 512 (global_channels) + (256) (Local Features) + 6 (xyz + input_channels)
-            nn.Conv1d(in_channels=512 + 256 + 6, out_channels=512, kernel_size=1),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=512, out_channels=256, kernel_size=1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            # Upsampling by factor 2
-            Upsample(),
-            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=64, out_channels=32, kernel_size=1),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            # Upsampling by factor 2
-            Upsample(),
-            nn.Conv1d(in_channels=16, out_channels=16, kernel_size=1),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=16, out_channels=output_channels, kernel_size=1),
-        )
+        
+        from ....aggregators.GAP import GAP
+        
+        self.head1 = GAP()
+        self.head2 = GAP()
+        
+        self.fc = nn.LazyLinear(1024, 256)
+        
+        self.kernel = gaussian
+        self.RBF_l0_xyz = RBF(3, 256, self.kernel)
+        self.RBFs2 = RBF(256, 256, self.kernel)
+        self.RBFs3 = RBF(256, 256, self.kernel)
+        self.RBFs4 = RBF(256, 256, self.kernel)
 
 
     def _break_up_pc(self, pc):
@@ -168,18 +155,26 @@ class PointCloudNet(nn.Module):
         #print(pointcloud.shape)
         num_points = pointcloud.shape[1]
         
-        g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        #g_features = nn.AvgPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
+        
+        #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
+        g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
+        g_features = self.head1(g_features)
         #print("Global Features Shape, ", g_features.shape)
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
         ip_features = torch.cat((l0_xyz.permute(0, 2, 1), l0_features), dim=1)
         
+        self.RBF_l0_xyz(l0_xyz)
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
         l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
         l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
+        
+        
+        #local_features = self.head2(g_features)
+        #output = self.fc(torch.cat([g_features, local_features], dim=1))
+        
 
         l3_features = self.FP_modules[0](l3_xyz, l4_xyz, l3_features, l4_features)
         l2_features = self.FP_modules[1](l2_xyz, l3_xyz, l2_features, l3_features)
@@ -187,8 +182,13 @@ class PointCloudNet(nn.Module):
         l0_features = self.FP_modules[3](l0_xyz, l1_xyz, ip_features, l1_features)
         #print("Local Features Shape, ", l0_features.shape)
         
+        #output = {'global': g_features, '1': l0_features, '2': l1_features, '3': l2_features, '4': l3_features}
+        #return output
+    
         #c_features = torch.cat([ip_features, l0_features], dim=1)
-        c_features = torch.cat([ip_features, l0_features, g_features.repeat(1, 1, num_points)], dim=1)
+        g_features = g_features.unsqueeze(-1)
+        global_feat = g_features.repeat(1, 1, num_points)
+        c_features = torch.cat([ip_features, l0_features,global_feat], dim=1)
         #print("Concat Features Shape, ", c_features.shape)
         
         return c_features
