@@ -87,12 +87,12 @@ class PointNormalNet(nn.Module):
     def forward(self, x):
         
         l = x.contiguous()
-        s = self.model(l)
+        d = self.model(l)
         #gd = s.pop('global')
         
         #out = s['1'].contiguous()
         
-        d = torch.mean(s, dim = -1)
+        #d = torch.mean(s, dim = -1)
         #s = compute_similarity_matrix(out)
         #d = s
         #d = vectorized_euclidean_distance(s)
@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_max_gouping_pointnet_GAP_descriptor"
+        return f"PointNormalNet_max_gouping_pointnet_GAP_RBF_1024_descriptor"

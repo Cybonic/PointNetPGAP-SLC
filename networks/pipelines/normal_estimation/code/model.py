@@ -103,18 +103,20 @@ class PointCloudNet(nn.Module):
         self.FP_modules.append(PointnetFPModule(mlp=[128 + input_channels + 3, 128, 256]))
         
         from ....aggregators.GAP import GAP
-        
+        from ....aggregators.NetVLAD import NetVLADLoupe
         self.head1 = GAP()
-        self.head2 = GAP()
+        #self.head2 = NetVLADLoupe(num_clusters = 64, dim = 1024, alpha = 1.0)
         
         self.fc = nn.LazyLinear(1024, 256)
         
         self.kernel = gaussian
-        self.RBF_l0_xyz = RBF(3, 256, self.kernel)
-        self.RBFs2 = RBF(256, 256, self.kernel)
-        self.RBFs3 = RBF(256, 256, self.kernel)
-        self.RBFs4 = RBF(256, 256, self.kernel)
-
+        
+        kernels  = 1024
+        self.RBF_l0_xyz = RBF(3, kernels, self.kernel)
+        self.RBF_l1_xyz = RBF(3, kernels//2, self.kernel)
+        self.RBF_l2_xyz = RBF(3, kernels//4, self.kernel)
+        self.RBF_l3_xyz = RBF(3, kernels//8, self.kernel)
+        self.RBF_l4_xyz = RBF(3, kernels//16, self.kernel)
 
     def _break_up_pc(self, pc):
         xyz = pc[..., 0:3].contiguous()
@@ -146,32 +148,42 @@ class PointCloudNet(nn.Module):
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
-        ip_features = torch.cat((l0_xyz.permute(0, 2, 1), l0_features), dim=1)
+        #ip_features = torch.cat((l0_xyz.permute(0, 2, 1), l0_features), dim=1)
         
-        #self.RBF_l0_xyz(l0_xyz)
+        rfb_features_l0 = torch.mean(self.RBF_l0_xyz(l0_xyz), dim=1)
+        
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
-        l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
+        rfb_features_l1 = torch.mean(self.RBF_l1_xyz(l1_xyz),dim=1)
         
+        l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
+        rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_xyz),dim=1)
+        
+        l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
+        rfb_features_l3 = torch.mean(self.RBF_l3_xyz(l3_xyz),dim=1)
+        
+        l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
+        rfb_features_l4 = torch.mean(self.RBF_l4_xyz(l4_xyz),dim=1)
+        
+        features = torch.mean(l4_features, dim=2)
+        rfb = torch.cat([rfb_features_l2,rfb_features_l3,rfb_features_l4], dim=1)
         
         #local_features = self.head2(g_features)
         #output = self.fc(torch.cat([g_features, local_features], dim=1))
         
 
-        l3_features = self.FP_modules[0](l3_xyz, l4_xyz, l3_features, l4_features)
-        l2_features = self.FP_modules[1](l2_xyz, l3_xyz, l2_features, l3_features)
-        l1_features = self.FP_modules[2](l1_xyz, l2_xyz, l1_features, l2_features)
-        l0_features = self.FP_modules[3](l0_xyz, l1_xyz, ip_features, l1_features)
+        #l3_features = self.FP_modules[0](l3_xyz, l4_xyz, l3_features, l4_features)
+        #l2_features = self.FP_modules[1](l2_xyz, l3_xyz, l2_features, l3_features)
+        #l1_features = self.FP_modules[2](l1_xyz, l2_xyz, l1_features, l2_features)
+        #l0_features = self.FP_modules[3](l0_xyz, l1_xyz, ip_features, l1_features)
         #print("Local Features Shape, ", l0_features.shape)
         
         #output = {'global': g_features, '1': l0_features, '2': l1_features, '3': l2_features, '4': l3_features}
         #return output
-    
+        c_features = torch.cat([g_features, rfb], dim=1)
         #c_features = torch.cat([ip_features, l0_features], dim=1)
-        g_features = g_features.unsqueeze(-1)
-        global_feat = g_features.repeat(1, 1, num_points)
-        c_features = torch.cat([ip_features, l0_features,global_feat], dim=1)
+        #g_features = g_features.unsqueeze(-1)
+        #global_feat = g_features.repeat(1, 1, num_points)
+        #c_features = torch.cat([ip_features, l0_features,global_feat], dim=1)
         #print("Concat Features Shape, ", c_features.shape)
         
         return c_features
