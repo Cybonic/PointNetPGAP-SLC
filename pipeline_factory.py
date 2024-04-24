@@ -56,7 +56,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = PointNetMAC(output_dim=output_dim,feat_dim=feat_dim,num_points=num_points)
     elif pipeline_name.startswith('PointNetGeM'):
         from networks.pipelines.GeMNet import PointNetGeM
-        pipeline = PointNetGeM(output_dim=output_dim,feat_dim=feat_dim,num_points=num_points)
+        pipeline = PointNetGeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
     elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
         from networks.pipelines.KeypointExtractor import PointNetKeypointNET
         pipeline = PointNetKeypointNET()

@@ -36,6 +36,7 @@ for stage_conf in stages:
                         f'--experiment MSGAP', 
                         f'--feat_dim 1024',
                         f'--eval_batch_size {10}',
+                        f'--mini_batch_size {1000}',
                         input_preprocessing
                 ]
                         
