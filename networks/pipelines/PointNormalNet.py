@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_max_gouping_pointnet_GAP_RBF_1024_descriptor"
+        return f"PointNormalNet_pointnet_GAP"
