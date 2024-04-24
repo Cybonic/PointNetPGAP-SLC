@@ -130,7 +130,7 @@ class SoAP(nn.Module):
         x = x.float()
         
         if self.do_fc:
-            assert x.shape[1] == 256
+            #assert x.shape[1] == 256
             x =  self.fc(x)
         
         x = _l2norm(x)
