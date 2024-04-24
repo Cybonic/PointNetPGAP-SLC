@@ -45,9 +45,11 @@ class _PointnetSAModuleBase(nn.Module):
         new_features_list = []
 
         xyz_flipped = xyz.transpose(1, 2).contiguous()
+        sampled_points = pointnet2_utils.furthest_point_sample(xyz, self.npoint)
         new_xyz = (
             pointnet2_utils.gather_operation(
-                xyz_flipped, pointnet2_utils.furthest_point_sample(xyz, self.npoint)
+                xyz_flipped, 
+                sampled_points
             )
             .transpose(1, 2)
             .contiguous()
@@ -61,9 +63,15 @@ class _PointnetSAModuleBase(nn.Module):
             )  # (B, C, npoint, nsample)
 
             new_features = self.mlps[i](new_features)  # (B, mlp[-1], npoint, nsample)
+            # ========================\
+            # Changed here
+            #new_features = torch.mean(new_features, dim=-1, keepdim=True)
             new_features = F.max_pool2d(
                 new_features, kernel_size=[1, new_features.size(3)]
             )  # (B, mlp[-1], npoint, 1)
+            
+            # Changed here
+            # ========================\
             new_features = new_features.squeeze(-1)  # (B, mlp[-1], npoint)
 
             new_features_list.append(new_features)
@@ -88,7 +96,7 @@ class PointnetSAModuleMSG(_PointnetSAModuleBase):
         Use batchnorm
     """
 
-    def __init__(self, npoint, radii, nsamples, mlps, bn=True, use_xyz=True):
+    def __init__(self, npoint, radii, nsamples, mlps, bn=True, use_xyz=False):
         # type: (PointnetSAModuleMSG, int, List[float], List[int], List[List[int]], bool, bool) -> None
         super(PointnetSAModuleMSG, self).__init__()
 

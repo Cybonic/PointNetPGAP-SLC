@@ -91,6 +91,20 @@ class SoAP(nn.Module):
             
         return x
     
+    def __str__(self):
+        
+        pn_str = "pn:{:.2f}".format(self.p)  if not self.do_pnl else "pnl" 
+        if self.do_epn and not self.do_pn:
+            pn_str = "epn"
+        elif not self.do_epn and (not self.do_pn and not self.do_pnl):
+            pn_str = "no_pn"
+        
+        stack = ["SoAP" ,
+                 "log" if self.do_log else "no_log",
+                 pn_str,
+                  "fc" if self.do_fc else "no_fc",
+                 ]
+        return '-'.join(stack)
     
     def forward(self, x):
             
@@ -116,7 +130,7 @@ class SoAP(nn.Module):
         x = x.float()
         
         if self.do_fc:
-            assert x.shape[1] == 256
+            #assert x.shape[1] == 256
             x =  self.fc(x)
         
         x = _l2norm(x)

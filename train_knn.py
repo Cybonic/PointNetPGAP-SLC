@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetKeypoint',
+        default='PointNormalNet',
         help='Directory to get the trained model.'
     )
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='None',
+        default='best_model',
         help='Directory to get the trained model.'
     )
 
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         '--roi',
         type=float,
         required=False,
-        default = 20,
+        default = 0,
     )
     parser.add_argument(
         '--model_evaluation',
