@@ -294,7 +294,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'SJ23',
+        default = 'OJ23',
         help = 'Validation set'
     )
 
@@ -477,7 +477,8 @@ if __name__ == '__main__':
         eval_approach.save_params()
         eval_approach.save_results_csv()
         #prediction_file = eval_approach.prediction_file
-        
+    
+    
     predictions = eval_approach.load_predictions_pkl(prediction_file)
     
     poses = eval_approach.poses
