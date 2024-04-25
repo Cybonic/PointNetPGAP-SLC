@@ -73,8 +73,8 @@ GTJ23 = {'angle':88, # Angle to aline the rows with the image frame
 
 orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
         'rows': # From left to right
-        [[-5.5,-4,-45,0], # first vertial row
-         [-2,1,-45,0], # second vertical row
+        [[-5.5,-2.5,-45,0], # first vertial row
+         [-2.5,2.5,-45,0], # second vertical row
          [2.5,5.5,-45,0],  # third vertical row
          [-5.5, 5.5,-50,-45], # bottom horizontal row
          [-5.5, 5.5, 0,10]]   # top horizontal row
