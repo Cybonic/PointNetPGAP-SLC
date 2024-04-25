@@ -48,21 +48,21 @@ def conv_to_positions(poses,map_local_frame = False,rotation_angle= 0):
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/Dropbox/SHARE/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'GreenHouse',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "e3/extracted",type = str)
-    parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
+    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str)
+    parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['positions','gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
     parser.add_argument('--save_data',default  = True ,type = bool,
                         help='save evaluation data to a pickle file')
-    parser.add_argument('--rot_anlge',default  = 88 ,type = int,
+    parser.add_argument('--rot_anlge',default  = 27 ,type = int,
                         help='rotation angle in degrees to rotate the path. the path is rotated at the goemtrical center, ' + 
                         "positive values rotate anti-clockwise, negative values rotate clockwise")
     
@@ -84,9 +84,9 @@ if __name__ == "__main__":
     print("Opening session config file: %s" % session_cfg_file)
     log.append("Opening session config file: %s" % session_cfg_file)
     
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
-    root_dir = pc_config[device_name]
+    #device_name = os.uname()[1]
+    #pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    root_dir = root
 
     print("[INF] Root directory: %s\n"% root_dir)
     log.append("[INF] Root directory: %s\n"% root_dir)
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     print("[INF] Loading data from directory: %s\n" % dir_path)
     log.append("[INF] Loading data from directory: %s\n" % dir_path)
     
-    save_root_dir  = dir_path
+    save_root_dir  = os.path.join(dir_path,'tempv2')
     if args.debug_mode:
         save_root_dir = os.path.join("temp",dataset,seq)
         os.makedirs(save_root_dir,exist_ok=True)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     print("[INF] Saving data to directory: %s\n" % save_root_dir)
     log.append("[INF] Saving data to directory: %s\n" % save_root_dir)
     
-    assert args.pose_data_source in ['gps','poses'], "Invalid pose data source"
+    assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
     
     poses     = load_positions(pose_file)

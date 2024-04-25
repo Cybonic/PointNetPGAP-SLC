@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = "Convert bag dataset to files!")
-    parser.add_argument('--root', type=str, default='/home/deep/Dropbox/SHARE/DATASET', help='path to the data directory')
+    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET', help='path to the data directory')
     parser.add_argument('--dataset',
-                                    default = 'GEORGIA-FR',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "husky/orchards/10nov23/00/extracted",type = str, 
+    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str, 
                         help='path to the data of the sequence')
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument("--kitti_format",default=True,type=bool,help="Expects that poses.txt file to be kitti format")

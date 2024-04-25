@@ -8,7 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
     # Loading DATA
-from dataloader.agro3d.agro3d_dataset import load_positions
+from dataloader.horto3dlm.dataset import load_positions
 from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
 from dataloader import row_segments
     
@@ -73,15 +73,15 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/deep/Dropbox/SHARE/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'GreenHouse',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "e3/extracted",type = str)
+    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str)
     parser.add_argument('--plot_path',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
@@ -109,10 +109,10 @@ if __name__ == "__main__":
     log.append("[INF] Plotting Flag:   " + str(plotting_flag))
     log.append("[INF] record gif Flag: " + str(record_gif_flag))
  
-    ground_truth = {'pos_range': 2,
-                    'warmupitrs': 300, # Number of frames to ignore at the beguinning
-                    'roi': 200,
-                    'anchor_range': 0}
+    ground_truth = {'pos_range': 10,
+                    'warmupitrs': 600, # Number of frames to ignore at the beguinning
+                    'roi': 600,
+                    'anchor_range': 0.5}
     
     
     # log ground truth data 
@@ -123,12 +123,12 @@ if __name__ == "__main__":
     log.append("[INF] Anchor Range: " + str(ground_truth['anchor_range']))
     
     # LOAD DEFAULT SESSION PARAM
-    session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
-    print("Opening session config file: %s" % session_cfg_file)
+    #session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
+    #print("Opening session config file: %s" % session_cfg_file)
     
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
-    root_dir = pc_config[device_name]
+    #device_name = os.uname()[1]
+    #pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    root_dir = root
 
     print("[INF] Root directory: %s\n"% root_dir)
     log.append("[INF] Root directory: %s\n"% root_dir)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     log.append("[INF] Saving data to directory: %s\n" % save_root_dir)
     
     # Create Save Directory
-    save_root_dir  = os.path.join(root_dir,dataset,seq,"eval")
+    save_root_dir  = os.path.join(root_dir,dataset,seq,"eval_v2")
     if args.debug_mode:
         save_root_dir = os.path.join('temp',dataset,seq,"eval")
     

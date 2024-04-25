@@ -8,7 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
 
-from dataloader.agro3d.agro3d_dataset import load_positions
+from dataloader.horto3dlm.dataset import load_positions
 from utils.viz import myplot
 from dataloader.utils import extract_points_in_rectangle_roi
 import yaml
@@ -93,15 +93,15 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/deep/Dropbox/SHARE/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'GreenHouse',
+                                    default = 'uk',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "e3/extracted",type = str)
+    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
@@ -125,12 +125,12 @@ if __name__ == "__main__":
     print("[INF] Plotting Flag:   " + str(show))
     
     # LOAD DEFAULT SESSION PARAM
-    session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
-    print("Opening session config file: %s" % session_cfg_file)
+    #session_cfg_file = os.path.join('sessions',f'{dataset}.yaml')
+    #print("Opening session config file: %s" % session_cfg_file)
     
-    device_name = os.uname()[1]
-    pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
-    root_dir = pc_config[device_name]
+    #device_name = os.uname()[1]
+    #pc_config = yaml.safe_load(open("sessions/pc_config.yaml", 'r'))
+    root_dir = root
 
     print("[INF] Root directory: %s\n"% root_dir)
 
@@ -172,6 +172,8 @@ if __name__ == "__main__":
     unique_labels = np.unique(labels)
     n_points      = poses.shape[0]
 
+    print("[INF] Number of unique labels: ")
+    print(unique_labels)
     # Generate Ground-truth Table
     if args.save_data:
         file = os.path.join(save_root_dir,'point_row_labels.pkl')
