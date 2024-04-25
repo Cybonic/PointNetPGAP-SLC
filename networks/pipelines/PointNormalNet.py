@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_pointnet_GAP"
+        return f"PointNormalNet_pointnet_GAP_RBF_l1_xyz_max_l1_features_mean"
