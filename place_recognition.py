@@ -277,7 +277,7 @@ class PlaceRecognition():
         return self.predictions
     
     
-    def load_predictions_pkl(self,save_dir=None):
+    def load_predictions_pkl(self,file=None):
         '''
         Save the predictions in a pkl file
         params:
@@ -289,20 +289,18 @@ class PlaceRecognition():
         # prediction is a dictionary
         # assert isinstance(self.predictions,dict), 'Predictions were not generated!'
         # Keys are ant array of integers
-        if save_dir == None:
+        if file == None:
             target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
-        else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
-            
-            
-        file = search_files_in_dir(target_dir,'predictions.pkl') # More then one file can be found (handle this later)
-        if len(file) == 0 or not os.path.isfile(file[0]): 
-            self.logger.error("\n ** File does not exist: ")
-            self.logger.warning("\n ** Generating predictions!")
-            return None
+            file = search_files_in_dir(target_dir,'predictions.pkl') # More then one file can be found (handle this later)
+
+            if len(file) == 0 or not os.path.isfile(file[0]): 
+                self.logger.error("\n ** File does not exist: ")
+                self.logger.warning("\n ** Generating predictions!")
+                return None
     
-        file = file[0]
+            file = file[0]
         
+               
         with open(file, 'rb') as handle:
             # Load the predictions
             self.predictions = pickle.load(handle)

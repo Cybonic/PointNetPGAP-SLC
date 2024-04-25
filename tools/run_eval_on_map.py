@@ -26,6 +26,12 @@ from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
 from utils.viz import myplot
 
+def find_file(target_file, search_path):
+    assert os.path.exists(search_path), "The search path does not exist"
+    for root, dirs, files in os.walk(search_path):
+        if target_file in files:
+            return os.path.join(root, target_file)
+    return ''
 
 
 def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,record_gif=False,**argv):
@@ -74,9 +80,9 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
         s = np.ones(query+1)*10
         
     
-        query_label = predictions[query]['label']
+        query_label = predictions[query]['segment']
         true_loops = predictions[query]['true_loops']
-        cand_loops = predictions[query]['cand_loops']
+        cand_loops = predictions[query]['pred_loops']
         
         # array of booleans
         knn = np.zeros(len(cand_loops['idx']),dtype=bool)
@@ -119,6 +125,94 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
          # save png of parts of the plot
         if itr in save_step_itrs:
             plot.save_plot(os.path.join(save_step_dir,f'{itr}.png'))
+            
+def plot_place_on_map(poses,predictions,topk=1,record_gif=False,loop_range=10,**argv):
+    # Save Similarity map
+
+    save_dir =''
+    if 'save_dir' in argv:
+        save_dir = argv['save_dir']
+        
+    file_name = f'experiment'
+    if 'gif_name' in argv:
+            file_name = argv['gif_name']
+    
+    
+    save_steps_flag = False
+    save_step_dir = ''
+    save_step_itrs = []
+    
+    if 'save_step_itr' in argv and  isinstance(argv['save_step_itr'],list):
+        save_step_itrs = argv['save_step_itr']
+        save_step_dir = os.path.join(save_dir,file_name)
+        os.makedirs(save_step_dir,exist_ok=True)
+    
+    
+    plot = myplot(delay = 0.001)
+    plot.init_plot(poses[:,0],poses[:,1],c='k',s=10)
+    plot.xlabel('m')
+    plot.ylabel('m')
+                     
+    if record_gif == True:
+        # Build the name of the file
+        name = os.path.join(save_dir,file_name+'.gif') # Only add .gif here because the name is used below as name of a dir
+        plot.record_gif(name)
+    
+    queries = np.array(list(predictions.keys()))
+    
+    plot_query_idx = list(range(0,len(queries),20))
+    
+    n_samples = poses.shape[0]
+    
+    true_positive = []
+    wrong = []
+    query_list = queries[plot_query_idx]
+    for itr,query in tqdm.tqdm(enumerate(query_list),total = len(query_list)):
+        
+        c = np.array(['k']*(query+1)) # set to gray by default
+        #c[:query] = ['k']*query
+        s = np.ones(query+1)*10
+        
+    
+        query_label = predictions[query]['segment']
+        true_loops = predictions[query]['true_loops']
+        pred_loops = predictions[query]['pred_loops']
+        
+        max_values = max(true_loops['dist'] )
+        
+        pred_idx = pred_loops['idx'][:topk]
+        pred_label = pred_loops['segment'][:topk]
+        pred_dist = pred_loops['dist'][:topk]
+        
+        pred_bool = pred_label == query_label and pred_dist < loop_range
+        
+        #loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
+
+        c[query] = 'b'
+        s[query] = 80
+        
+        
+                
+        if (pred_bool).all():
+            true_positive.extend(pred_idx)
+        else:
+            wrong.append(query)
+                
+        
+        np_true_positive = np.array(true_positive,dtype=np.int32).flatten()
+        np_wrong = np.array(wrong,dtype=np.int32).flatten()
+        
+        c[np_true_positive] = 'g'
+        s[np_true_positive] = 150
+        
+        c[np_wrong] = 'r'
+        s[np_wrong] = 50
+
+        plot.update_plot(poses[:query+1,0],poses[:query+1,1],color = c , offset= 1, zoom=-1,scale=s)
+        
+         # save png of parts of the plot
+        if itr in save_step_itrs:
+            plot.save_plot(os.path.join(save_step_dir,f'{itr}.png'))
         
  
         
@@ -128,11 +222,9 @@ def force_cudnn_initialization():
     dev = torch.device('cuda')
     torch.nn.functional.conv2d(torch.zeros(s, s, s, s, device=dev), torch.zeros(s, s, s, s, device=dev))
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("./infer.py")
 
-    
     parser.add_argument(
         '--dataset_root',type=str, required=False,
         default='/home/tiago/workspace/DATASET',
@@ -141,12 +233,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetGAPLoss', help='model to be used'
-    )
-    
-    parser.add_argument(
-        '--topk', type=int,
-        default=1, help='model to be used'
+        default='PointNetGAP', help='model to be used'
     )
 
     parser.add_argument(
@@ -180,6 +267,14 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--eval_file',
+        type=str,
+        required=False,
+        default = "eval/ground_truth_loop_range_10m.pkl",
+        help='sampling points.'
+    )
+
+    parser.add_argument(
         '--monitor_loop_range',
         type=float,
         required=False,
@@ -199,7 +294,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'OJ22',
+        default = 'SJ23',
         help = 'Validation set'
     )
 
@@ -215,7 +310,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='saved_model_data/RAL/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/PointNetGAP-LazyTripletLoss_L2-segment_lossM0.5/0.842@1',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/saved_model_data/PointNetGAP-LazyTripletLoss_L2-segment_loss-m0.5',
         help='Directory to get the trained model or descriptors.'
     )
 
@@ -230,7 +325,7 @@ if __name__ == '__main__':
         '--eval_roi_window',
         type=float,
         required=False,
-        default = 100,
+        default = 0,
         help='Number of frames to ignore in imidaite vicinity of the query frame.'
     )
     
@@ -243,19 +338,32 @@ if __name__ == '__main__':
     )
     
     parser.add_argument(
-        '--eval_file',
+        '--eval_protocol',
         type=str,
         required=False,
-        default = "eval/ground_truth_loop_range_10m.pkl",
-        help='sampling points.'
+        choices=['place'],
+        default = 'place',
     )
+    
     parser.add_argument(
         '--save_predictions',
         type=str,
         required=False,
         default = 'saved_model_data',
     )
-
+    parser.add_argument(
+        '--plot_on_map',
+        type=str,
+        required=False,
+        default = 'saved_model_data',
+    )
+    parser.add_argument(
+        '--topk',
+        type=int,
+        required=False,
+        default = 1,
+    )
+    
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
@@ -266,7 +374,6 @@ if __name__ == '__main__':
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
     SESSION['save_predictions'] = FLAGS.save_predictions
-    
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
     
@@ -307,17 +414,24 @@ if __name__ == '__main__':
     print("----------\n")
 
     # For repeatability
+    
     torch.manual_seed(0)
     np.random.seed(0)
 
-
-    ######################################################################
+    if os.path.isfile(FLAGS.resume):
+        print("Resuming form %s"%FLAGS.resume)
+        
+        resume_struct= FLAGS.resume.split('/')
+        assert FLAGS.val_set in resume_struct, "The resume file does not match the validation set"
+        assert FLAGS.network in resume_struct, "The resume file does not match the network" 
+    
+    ###################################################################### 
     loader = dataloader_handler(FLAGS.dataset_root,
                                 FLAGS.network,
                                 FLAGS.dataset,
                                 FLAGS.val_set,
-                                SESSION,
-                                roi = FLAGS.roi,
+                                SESSION, 
+                                roi = FLAGS.roi, 
                                 pcl_norm = False)
      
     from place_recognition import PlaceRecognition 
@@ -325,40 +439,48 @@ if __name__ == '__main__':
     loop_range = FLAGS.monitor_loop_range
     
     import logging
-    log_file = os.path.join('logs',f'{FLAGS.experiment}.log')
-    logger = logging.getLogger(__name__)
+    log_file    = os.path.join('logs',f'{FLAGS.experiment}.log')
+    logger      = logging.getLogger(__name__)
     log_handler = logging.FileHandler(log_file)
         
-    eval_approach = PlaceRecognition(None,
-                                        loader,
-                                        top_cand = FLAGS.topk,
-                                        logger = logger,
-                                        window = FLAGS.eval_roi_window,
-                                        warmup_window = FLAGS.eval_warmup_window,
-                                        device = FLAGS.device,
-                                        eval_protocol = FLAGS.eval_protocol,
-                                        logdir =  FLAGS.experiment,
-                                        monitor_range = loop_range,
-                                        sim_func='L2'
-                                    )
+    eval_approach = PlaceRecognition(
+        None,
+        loader.get_val_loader(),
+        top_cand = 1,
+        logger   = logger,
+        window   = FLAGS.eval_roi_window,
+        warmup_window = FLAGS.eval_warmup_window,
+        device  = FLAGS.device,
+        logdir =  FLAGS.experiment,
+        monitor_range = loop_range,
+        sim_func='L2',
+        eval_protocol = FLAGS.eval_protocol
+        )
     
 
     
     
     resume = FLAGS.resume
-    predictions = os.path.join(resume,'relocalization','predictions.pkl')
+    predictions = os.path.join(resume,f'eval-{FLAGS.val_set}')
     
-    if not os.path.exists(predictions):
-        
-        descriptor_file = os.path.join(resume,'descriptors.pkl')
-
-        eval_approach.load_descriptors(descriptor_file)        
+    prediction_file = find_file('predictions.pkl',predictions)
+    
+    
+    if not os.path.exists(prediction_file):
+        descriptors = find_file('descriptors.torch',predictions)
+        #descriptor_file = os.path.join(resume,'descriptors.torch')
+        eval_approach.load_descriptors(descriptors)        
         eval_approach.run(loop_range = loop_range)
-        eval_approach.save_predictions_pkl()
         
-    predictions = eval_approach.get_predictions()
+        prediction_file = eval_approach.save_predictions_pkl()
+        
+        eval_approach.save_params()
+        eval_approach.save_results_csv()
+        #prediction_file = eval_approach.prediction_file
+        
+    predictions = eval_approach.load_predictions_pkl(prediction_file)
     
-    poses = eval_approach.dataset.get_pose()
+    poses = eval_approach.poses
     sequence = FLAGS.val_set
     
     # Load aline rotation
@@ -377,7 +499,14 @@ if __name__ == '__main__':
     #file =  
     
     save_itrs = list(range(1,len(predictions.keys()),10))
-    plot_retrieval_on_map(xy,predictions,loop_range=loop_range,topk=FLAGS.topk,record_gif=True,gif_name=file_name,save_dir = root2save,save_step_itr=save_itrs)
+    plot_place_on_map(xy,
+                          predictions,
+                          topk = FLAGS.topk,
+                          record_gif = True,
+                          gif_name = file_name,
+                          save_dir = root2save,
+                          save_step_itr = save_itrs,
+                          loop_range = loop_range)
     
     
     
