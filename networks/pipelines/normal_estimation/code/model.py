@@ -65,6 +65,8 @@ class PointCloudNet(nn.Module):
             nn.BatchNorm1d(512),
             nn.ReLU(),
         )
+         
+        #self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 1024, use_tnet = False, scale = 1)
 
         num_points = int(num_points)
         self.SA_modules = nn.ModuleList()
@@ -133,7 +135,7 @@ class PointCloudNet(nn.Module):
         
         kernels  = 1024
         self.RBF_l0_xyz = RBF(3, kernels, self.kernel)
-        self.RBF_l1_xyz = RBF(3, kernels//2, self.kernel)
+        self.RBF_l1_xyz = RBF(3, int(kernels/2), self.kernel)
         self.RBF_l2_xyz = RBF(3, kernels//4, self.kernel)
         self.RBF_l3_xyz = RBF(3, kernels//8, self.kernel)
         self.RBF_l4_xyz = RBF(3, kernels//16, self.kernel)
@@ -162,33 +164,49 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        #g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
-        #g_features = self.head1(g_features)
+        g_features = self.GLOBAL_module(pointcloud)
+        g_features = self.head1(g_features)
         #print("Global Features Shape, ", g_features.shape)
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
         #ip_features = torch.cat((l0_xyz.permute(0, 2, 1), l0_features), dim=1)
         
-        #rfb_features_l0 = torch.max(self.RBF_l0_xyz(l0_xyz), dim=1)[0]
+        rfb_features_l0 = torch.mean(self.RBF_l0_xyz(l0_xyz), dim=1)
         
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        rfb_features_l1 = torch.max(self.RBF_l1_xyz(l1_xyz),dim=1)[0]
+        rfb_features_l1 = torch.mean(self.RBF_l1_xyz(l1_xyz),dim=1)
         
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        rfb_features_l2 = torch.max(self.RBF_l2_xyz(l2_xyz),dim=1)[0]
+        rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_xyz),dim=1)
         
         l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
-        rfb_features_l3 = torch.max(self.RBF_l3_xyz(l3_xyz),dim=1)[0]
+        rfb_features_l3 = torch.mean(self.RBF_l3_xyz(l3_xyz),dim=1)
         
         l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
-        rfb_features_l4 = torch.max(self.RBF_l4_xyz(l4_xyz),dim=1)[0]
+        rfb_features_l4 = torch.mean(self.RBF_l4_xyz(l4_xyz),dim=1)
         
         features = torch.mean(l4_features, dim=2)
+        rfb = torch.cat([rfb_features_l2,rfb_features_l3,rfb_features_l4], dim=1)
         
-        rfb = torch.cat([rfb_features_l1,rfb_features_l2,rfb_features_l3,rfb_features_l4], dim=1)
+        #local_features = self.head2(g_features)
+        #output = self.fc(torch.cat([g_features, local_features], dim=1))
         
-        c_features = torch.cat([rfb], dim=1)
+
+        #l3_features = self.FP_modules[0](l3_xyz, l4_xyz, l3_features, l4_features)
+        #l2_features = self.FP_modules[1](l2_xyz, l3_xyz, l2_features, l3_features)
+        #l1_features = self.FP_modules[2](l1_xyz, l2_xyz, l1_features, l2_features)
+        #l0_features = self.FP_modules[3](l0_xyz, l1_xyz, ip_features, l1_features)
+        #print("Local Features Shape, ", l0_features.shape)
+        
+        #output = {'global': g_features, '1': l0_features, '2': l1_features, '3': l2_features, '4': l3_features}
+        #return output
+        c_features = torch.cat([g_features, rfb], dim=1)
+        #c_features = torch.cat([ip_features, l0_features], dim=1)
+        #g_features = g_features.unsqueeze(-1)
+        #global_feat = g_features.repeat(1, 1, num_points)
+        #c_features = torch.cat([ip_features, l0_features,global_feat], dim=1)
+        #print("Concat Features Shape, ", c_features.shape)
         
         return c_features
 
