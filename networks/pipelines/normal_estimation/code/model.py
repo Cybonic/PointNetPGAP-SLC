@@ -164,23 +164,23 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
-        g_features = self.head1(g_features)
+        #g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
+        #g_features = self.head1(g_features)
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
         
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        #rfb_features_l1 = torch.max(self.RBF_l1_xyz(l1_xyz),dim=1)[0]
+        rfb_features_l1 = torch.max(self.RBF_l1_xyz(l1_xyz),dim=1)[0]
         
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        rfb_features_l2 = torch.max(self.RBF_l2_xyz(l2_xyz),dim=1)[0]
+        rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_xyz),dim=1)
         
         
         
         features = torch.mean(l2_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        rfb = torch.cat([rfb_features_l2,g_features,features], dim=1)
+        rfb = torch.cat([rfb_features_l2,features], dim=1)
         
         return rfb
         
