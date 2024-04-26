@@ -28,26 +28,28 @@ class RBF(nn.Module):
             distances.
     """
 
-    def __init__(self, in_features, out_features, basis_func):
+    def __init__(self, in_features, out_features, basis_func,init_log_sigmas = 20):
         super(RBF, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.centres = nn.Parameter(torch.Tensor(out_features, in_features))
         self.log_sigmas = nn.Parameter(torch.Tensor(out_features))
+        self.init_log_sigmas = init_log_sigmas
         self.basis_func = basis_func
         self.epsilon = 1e-8
         self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.normal_(self.centres, 0, 1)
-        nn.init.constant_(self.log_sigmas, 0)
+        nn.init.constant_(self.log_sigmas, self.init_log_sigmas)
 
     def forward(self, input):
     
         x = input#.unsqueeze(1).expand(size)
         c = self.centres.unsqueeze(0)#.expand(size)
         d = torch.cdist(x,c)
-        distances = d / (self.log_sigmas+self.epsilon)
+        #print(d.mean())
+        distances = d / torch.pow((self.log_sigmas.unsqueeze(0)+self.epsilon),2)
         return self.basis_func(distances)
 
 
@@ -55,7 +57,7 @@ class RBF(nn.Module):
 # RBFs
 
 def gaussian(alpha):
-    phi = torch.exp(-1*alpha.pow(2))
+    phi = torch.exp(-1*alpha)
     return phi
 
 def linear(alpha):

@@ -11,6 +11,21 @@ import torch.nn as nn
 from ..torch_rbf import RBF, gaussian
 from ..pointnet2.utils.pointnet2_modules import PointnetFPModule, PointnetSAModuleMSG
 
+class GAP(nn.Module):
+    def __init__(self, input = 1024,outdim=256,**argv):
+        super().__init__()
+        self.fc = nn.Linear(input,outdim)
+
+    def __str__(self):
+        return "GAP"
+    
+    def forward(self, x):
+        # Return (batch_size, n_features) tensor
+        x = x.view(x.shape[0],x.shape[1],-1)
+        x = self.fc(torch.mean(x, dim=-1, keepdim=False)) # Return (batch_size, n_features) tensor
+        return nn.functional.normalize(x, p=2, dim=-1)
+
+
 class Upsample(nn.Module):
     def __init__(self):
         super(Upsample, self).__init__()
@@ -74,7 +89,7 @@ class PointCloudNet(nn.Module):
         self.SA_modules.append(
             PointnetSAModuleMSG(
                 npoint=num_points,
-                radii=[0.1,],
+                radii=[0.2,],
                 nsamples=[32,],
                 mlps=[[c_in, 32, 32, 64]],
                 use_xyz=use_xyz,
@@ -86,7 +101,7 @@ class PointCloudNet(nn.Module):
         self.SA_modules.append(
             PointnetSAModuleMSG(
                 npoint=num_points,
-                radii=[0.2,],
+                radii=[0.4,],
                 nsamples=[32,],
                 mlps=[[c_in, 64, 64, 128]],
                 use_xyz=use_xyz,
@@ -98,7 +113,7 @@ class PointCloudNet(nn.Module):
         self.SA_modules.append(
             PointnetSAModuleMSG(
                 npoint=num_points,
-                radii=[0.3,],
+                radii=[0.5,],
                 nsamples=[32,],
                 mlps=[[c_in, 128, 128, 256]],
                 use_xyz=use_xyz,
@@ -110,7 +125,7 @@ class PointCloudNet(nn.Module):
         self.SA_modules.append(
             PointnetSAModuleMSG(
                 npoint=num_points,
-                radii=[0.4,],
+                radii=[0.6,],
                 nsamples=[32,],
                 mlps=[[c_in, 256, 256, 512]],
                 use_xyz=use_xyz,
@@ -124,19 +139,22 @@ class PointCloudNet(nn.Module):
         self.FP_modules.append(PointnetFPModule(mlp=[128 + c_out_0, 128, 128]))
         self.FP_modules.append(PointnetFPModule(mlp=[128 + input_channels + 3, 128, 256]))
         
-        from ....aggregators.GAP import GAP
-        from ....aggregators.NetVLAD import NetVLADLoupe
-        self.head1 = GAP()
-        #self.head2 = NetVLADLoupe(num_clusters = 64, dim = 1024, alpha = 1.0)
+        #from ....aggregators.GAP import GAP
+        #from ....aggregators.NetVLAD import NetVLADLoupe
         
-        self.fc = nn.LazyLinear(1024, 256)
+        self.head_global = GAP(512, 256)
+        self.head_rbf = GAP(512,64)
+        self.head_l2 = GAP(128,16)
+        
+        #self.head2 = NetVLADLoupe(num_clusters = 64, dim = 1024, alpha = 1.0)
+    
         
         self.kernel = gaussian
         
-        kernels  = 1024
-        self.RBF_l0_xyz = RBF(3, kernels, self.kernel)
-        self.RBF_l1_xyz = RBF(64, int(kernels/2), self.kernel)
-        self.RBF_l2_xyz = RBF(128, int(kernels/4), self.kernel)
+        kernels  = 512
+        self.RBF_l0_xyz = RBF(3, kernels, self.kernel, init_log_sigmas = 20)
+        self.RBF_l1_xyz = RBF(3, kernels, self.kernel, init_log_sigmas = 20)
+        self.RBF_l2_xyz = RBF(3, kernels, self.kernel)
         self.RBF_l3_xyz = RBF(256, int(kernels/8), self.kernel)
         self.RBF_l4_xyz = RBF(3, kernels//16, self.kernel)
 
@@ -164,28 +182,33 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        #g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
-        #g_features = self.head1(g_features)
+        x = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
+        dl = self.head_global(x)
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
         
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        #rfb_features_l1 = torch.mean(self.RBF_l1_xyz(l1_features.permute(0,2,1)),dim=1)
-        
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        #rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_features.permute(0,2,1)),dim=1)
         
-        l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
+        dg = self.head_l2(l2_features)
+        
+        rfb_features_l2 = self.RBF_l1_xyz(l2_xyz).permute(0,2,1)
+        dr = self.head_rbf(rfb_features_l2)
+        
+        #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
+        #features2 = torch.mean(rfb_features_l2,dim=1)
+        
+        #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
         #rfb_features_l2 = torch.mean(self.RBF_l3_xyz(l2_features.permute(0,2,1)),dim=1)
         
-        l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
+        #l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
         
-        features = torch.mean(l4_features, dim=2)
+        #features = torch.mean(l4_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        #rfb = torch.cat([rfb_features_l2,features], dim=1)
+        rfb = torch.cat([dl,dr,dg], dim=1)
         
-        return features
+        return rfb
         
         #local_features = self.head2(g_features)
         #output = self.fc(torch.cat([g_features, local_features], dim=1))
