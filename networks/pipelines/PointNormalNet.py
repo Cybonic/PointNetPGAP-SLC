@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_RBF_l2_xyz_mean_l2_features_mean"
+        return f"PointNormalNet_RBF_l2_features_mean_l2_features_mean"
