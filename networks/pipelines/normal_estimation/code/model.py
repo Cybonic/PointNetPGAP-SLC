@@ -137,7 +137,7 @@ class PointCloudNet(nn.Module):
         self.RBF_l0_xyz = RBF(3, kernels, self.kernel)
         self.RBF_l1_xyz = RBF(64, int(kernels/2), self.kernel)
         self.RBF_l2_xyz = RBF(128, int(kernels/4), self.kernel)
-        self.RBF_l3_xyz = RBF(3, kernels//8, self.kernel)
+        self.RBF_l3_xyz = RBF(256, int(kernels/8), self.kernel)
         self.RBF_l4_xyz = RBF(3, kernels//16, self.kernel)
 
     def _break_up_pc(self, pc):
@@ -164,8 +164,8 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
-        g_features = self.head1(g_features)
+        #g_features = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
+        #g_features = self.head1(g_features)
         
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
@@ -174,15 +174,18 @@ class PointCloudNet(nn.Module):
         #rfb_features_l1 = torch.mean(self.RBF_l1_xyz(l1_features.permute(0,2,1)),dim=1)
         
         l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_features.permute(0,2,1)),dim=1)
+        #rfb_features_l2 = torch.mean(self.RBF_l2_xyz(l2_features.permute(0,2,1)),dim=1)
         
+        l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
+        #rfb_features_l2 = torch.mean(self.RBF_l3_xyz(l2_features.permute(0,2,1)),dim=1)
         
+        l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
         
-        features = torch.mean(l2_features, dim=2)
+        features = torch.mean(l4_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        rfb = torch.cat([rfb_features_l2,features], dim=1)
+        #rfb = torch.cat([rfb_features_l2,features], dim=1)
         
-        return rfb
+        return features
         
         #local_features = self.head2(g_features)
         #output = self.fc(torch.cat([g_features, local_features], dim=1))
