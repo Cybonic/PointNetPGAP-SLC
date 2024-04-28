@@ -59,29 +59,9 @@ class PointCloudNet(nn.Module):
         
         from ..pointnet import PointNet_features
         
-        self.GLOBAL_module = nn.Sequential(
-            nn.Conv1d(in_channels=3, out_channels=32, kernel_size=1),
-            #nn.Conv1d(in_channels=input_channels + 3, out_channels=32, kernel_size=1),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=64, out_channels=128, kernel_size=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=256, out_channels=512, kernel_size=1),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-        )
+        
          
-        #self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 1024, use_tnet = False, scale = 1)
+        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 1024, use_tnet = False, scale = 1)
 
         num_points = int(num_points)
         self.SA_modules = nn.ModuleList()
@@ -142,9 +122,9 @@ class PointCloudNet(nn.Module):
         #from ....aggregators.GAP import GAP
         #from ....aggregators.NetVLAD import NetVLADLoupe
         
-        self.head_global = GAP(512, 256)
+        self.head_global = GAP(1024, 256)
         self.head_rbf = GAP(512,64)
-        self.head_l2 = GAP(128,16)
+        self.head_l2 = GAP(64,16)
         
         #self.head2 = NetVLADLoupe(num_clusters = 64, dim = 1024, alpha = 1.0)
     
@@ -182,18 +162,19 @@ class PointCloudNet(nn.Module):
         
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
-        x = self.GLOBAL_module(pointcloud.permute(0, 2, 1))
-        dl = self.head_global(x)
+        x = self.GLOBAL_module(pointcloud)
+        dl = torch.mean(x, dim=-1)
+        #dl = self.head_global(x)
         
+        #return dl
         xyz, features = self._break_up_pc(pointcloud)
         l0_xyz, l0_features = xyz, features
         
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
+        #l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
+        dg = self.head_l2(l1_features)
         
-        dg = self.head_l2(l2_features)
-        
-        rfb_features_l2 = self.RBF_l1_xyz(l2_xyz).permute(0,2,1)
+        rfb_features_l2 = self.RBF_l1_xyz(l1_xyz).permute(0,2,1)
         dr = self.head_rbf(rfb_features_l2)
         
         #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
