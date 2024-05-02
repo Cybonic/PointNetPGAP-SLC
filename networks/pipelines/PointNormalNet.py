@@ -70,7 +70,7 @@ class PointNormalNet(nn.Module):
         from .normal_estimation.code.model import PointCloudNet
         self.model = PointCloudNet(input_channels = 0, output_channels = 6, num_points = num_points)
 
-        self.fc_out = nn.Linear(1024,256)
+        self.fc_out = nn.LazyLinear(256)
         #self.head  =  SoAP.SoAP(input_dim = 20, 
         #                   output_dim = 256, 
         #                   do_fc = True, 
@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_PointNet_1204_256"
+        return f"PointNormalNet_PointNet_1204_256_RBF_l1_xyz_64"

@@ -172,7 +172,7 @@ class PointCloudNet(nn.Module):
         
         l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
         #l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        dg = self.head_l2(l1_features)
+        #dg = self.head_l2(l1_features)
         
         rfb_features_l2 = self.RBF_l1_xyz(l1_xyz).permute(0,2,1)
         dr = self.head_rbf(rfb_features_l2)
@@ -187,7 +187,7 @@ class PointCloudNet(nn.Module):
         
         #features = torch.mean(l4_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        rfb = torch.cat([dl,dr,dg], dim=1)
+        rfb = torch.cat([dl,dr], dim=1)
         
         return rfb
         
