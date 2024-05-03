@@ -131,9 +131,9 @@ class PointCloudNet(nn.Module):
         
         self.kernel = gaussian
         
-        kernels  = 512
+        kernels  = 16
         self.RBF_l0_xyz = RBF(3, kernels, self.kernel, init_log_sigmas = 20)
-        self.RBF_l1_xyz = RBF(3, kernels, self.kernel, init_log_sigmas = 20)
+        self.RBF = RBF(1024, kernels, self.kernel, init_log_sigmas = 20)
         self.RBF_l2_xyz = RBF(3, kernels, self.kernel)
         self.RBF_l3_xyz = RBF(256, int(kernels/8), self.kernel)
         self.RBF_l4_xyz = RBF(3, kernels//16, self.kernel)
@@ -164,18 +164,23 @@ class PointCloudNet(nn.Module):
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
         x = self.GLOBAL_module(pointcloud)
         dl = torch.mean(x, dim=-1)
+        
+        y = self.RBF(x.permute(0,2,1))
+        
+        
+        dr = torch.mean(x, dim=1)
         #dl = self.head_global(x)
         
         #return dl
-        xyz, features = self._break_up_pc(pointcloud)
-        l0_xyz, l0_features = xyz, features
+        #xyz, features = self._break_up_pc(pointcloud)
+        #l0_xyz, l0_features = xyz, features
         
-        l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
+        #l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
         #l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
         #dg = self.head_l2(l1_features)
         
-        rfb_features_l2 = self.RBF_l1_xyz(l1_xyz).permute(0,2,1)
-        dr = self.head_rbf(rfb_features_l2)
+        #rfb_features_l2 = self.RBF_l1_xyz(l1_xyz).permute(0,2,1)
+        #dr = self.head_rbf(rfb_features_l2)
         
         #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
         #features2 = torch.mean(rfb_features_l2,dim=1)
