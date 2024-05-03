@@ -11,6 +11,27 @@ import torch.nn as nn
 from ..torch_rbf import RBF, gaussian
 from ..pointnet2.utils.pointnet2_modules import PointnetFPModule, PointnetSAModuleMSG
 
+def compute_moments(pointcloud,dim=-1, eps=1e-8):
+    # Assume pointcloud is of shape (num_points, 3)
+    mean = torch.mean(pointcloud, dim=dim).unsqueeze(dim)
+    dmean = (pointcloud - mean)
+    # Compute the moments
+    
+    variance = torch.var(pointcloud, dim=dim).unsqueeze(dim)
+    
+    #aux = torch.pow(torch.sqrt(variance),3)
+    #aux1 = torch.pow(variance,2)
+    std = torch.sqrt(variance + eps)
+    skewness = torch.mean(torch.pow(dmean,3), dim=dim).unsqueeze(dim) 
+    skewness = skewness/(torch.pow(std,3))
+    
+    kurtosis = torch.mean(torch.pow(dmean,4), dim=dim).unsqueeze(dim) # / aux1 - 3
+    kurtosis = kurtosis / (torch.pow(std,4))
+    kurtosis = kurtosis - 3
+    return torch.cat([mean.squeeze(), variance.squeeze(), skewness.squeeze(), kurtosis.squeeze()], dim=dim)
+
+
+
 class GAP(nn.Module):
     def __init__(self, input = 1024,outdim=256,**argv):
         super().__init__()
@@ -61,7 +82,7 @@ class PointCloudNet(nn.Module):
         
         
          
-        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 1024, use_tnet = False, scale = 1)
+        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 256, use_tnet = False, scale = 1)
 
         num_points = int(num_points)
         self.SA_modules = nn.ModuleList()
@@ -163,12 +184,24 @@ class PointCloudNet(nn.Module):
         
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
         x = self.GLOBAL_module(pointcloud)
-        dl = torch.mean(x, dim=-1)
         
-        y = self.RBF(x.permute(0,2,1))
+        #xmean = torch.mean(x, dim=1)
+        #x = x - xmean.unsqueeze(1)
+        #x = x.unsqueeze(-1)
+        #x = x.matmul(x.transpose(2, 1))/(num_points-1)
+
+        features = compute_moments(x.permute(0,2,1),dim=1)
+        #dl = x.flatten(start_dim=1)
+        # 
+        # Averaging over the points
+        #x = torch.mean(x, 1) 
+        
+        #dl = torch.mean(x, dim=-1)
+        
+        #y = self.RBF(x.permute(0,2,1))
         
         
-        dr = torch.mean(x, dim=1)
+        #dr = torch.mean(x, dim=1)
         #dl = self.head_global(x)
         
         #return dl
@@ -192,9 +225,9 @@ class PointCloudNet(nn.Module):
         
         #features = torch.mean(l4_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        rfb = torch.cat([dl,dr], dim=1)
+        #rfb = torch.cat([dl,dr], dim=1)
         
-        return rfb
+        return features
         
         #local_features = self.head2(g_features)
         #output = self.fc(torch.cat([g_features, local_features], dim=1))

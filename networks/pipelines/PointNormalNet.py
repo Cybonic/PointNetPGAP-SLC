@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_PointNet_1204_256_RBF_1024_16"
+        return f"PointNormalNet_PointNet_256_moments"
