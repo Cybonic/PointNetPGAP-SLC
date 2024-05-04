@@ -108,4 +108,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_PointNet_256_moments"
+        return f"PointNormalNet_PointNet_16_cov_avg"

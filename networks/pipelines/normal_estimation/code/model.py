@@ -82,7 +82,7 @@ class PointCloudNet(nn.Module):
         
         
          
-        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 256, use_tnet = False, scale = 1)
+        self.GLOBAL_module  = PointNet_features(in_dim = 3, dim_k = 16, use_tnet = False, scale = 1)
 
         num_points = int(num_points)
         self.SA_modules = nn.ModuleList()
@@ -185,12 +185,13 @@ class PointCloudNet(nn.Module):
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
         x = self.GLOBAL_module(pointcloud)
         
-        #xmean = torch.mean(x, dim=1)
-        #x = x - xmean.unsqueeze(1)
+        xmean = torch.mean(x, dim=-1)
+        x = x #- xmean.unsqueeze(-1)
         #x = x.unsqueeze(-1)
-        #x = x.matmul(x.transpose(2, 1))/(num_points-1)
+        x = x.matmul(x.transpose(2, 1))/(num_points-1)
 
-        features = compute_moments(x.permute(0,2,1),dim=1)
+        x_cov = x.flatten(start_dim=1)
+        #features = compute_moments(x.permute(0,2,1),dim=1)
         #dl = x.flatten(start_dim=1)
         # 
         # Averaging over the points
@@ -225,9 +226,9 @@ class PointCloudNet(nn.Module):
         
         #features = torch.mean(l4_features, dim=2)
         #print("Global Features Shape, ", g_features.shape)
-        #rfb = torch.cat([dl,dr], dim=1)
+        rfb = torch.cat([xmean.squeeze(),x_cov], dim=-1)
         
-        return features
+        return rfb
         
         #local_features = self.head2(g_features)
         #output = self.fc(torch.cat([g_features, local_features], dim=1))
