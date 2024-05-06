@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNormalNet',
+        default='PointNormalNetLoss',
         help='Directory to get the trained model.'
     )
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'ON22',
+        default = 'OJ22',
     )
     parser.add_argument(
         '--device',
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         '--eval_batch_size',
         type=int,
         required=False,
-        default=10,
+        default=15,
         help='Directory to get the trained model.'
     )
     parser.add_argument(
@@ -228,6 +228,16 @@ if __name__ == '__main__':
         required=False,
         default = '010',
     )
+    
+    parser.add_argument(
+        '--loss_alpha',
+        type=float,
+        required=False,
+        default = 0.5,
+    )
+    
+    
+    
     FLAGS, unparsed = parser.parse_known_args()
 
     torch.cuda.empty_cache()
@@ -258,6 +268,8 @@ if __name__ == '__main__':
     
     SESSION['trainer']['epochs'] =  FLAGS.epochs
     SESSION['loss']['type'] = FLAGS.loss
+    SESSION['loss']['alpha'] = FLAGS.loss_alpha
+    
     SESSION['max_points']= FLAGS.max_points
     SESSION['memory']= FLAGS.memory
     
@@ -315,7 +327,8 @@ if __name__ == '__main__':
                             trainer = SESSION['trainer'],
                             stage_1 = bool(int(FLAGS.stages[0])),
                             stage_2 = bool(int(FLAGS.stages[1])),
-                            stage_3 = bool(int(FLAGS.stages[2]))
+                            stage_3 = bool(int(FLAGS.stages[2])),
+                            alpha = FLAGS.loss_alpha
                             )
     
     loader = dataloader_handler(FLAGS.dataset_root,
