@@ -187,45 +187,13 @@ class PointCloudNet(nn.Module):
         
         xmean = torch.mean(x, dim=-1)
         x = x #- xmean.unsqueeze(-1)
-        #x = x.unsqueeze(-1)
-        x = x.matmul(x.transpose(2, 1))/(num_points-1)
 
-        x_cov = x.flatten(start_dim=1)
-        #features = compute_moments(x.permute(0,2,1),dim=1)
-        #dl = x.flatten(start_dim=1)
-        # 
-        # Averaging over the points
-        #x = torch.mean(x, 1) 
-        
-        #dl = torch.mean(x, dim=-1)
-        
-        #y = self.RBF(x.permute(0,2,1))
+        return xmean 
+        #x = x.matmul(x.transpose(2, 1))/(num_points-1)
+
+        #x_cov = x.flatten(start_dim=1)
         
         
-        #dr = torch.mean(x, dim=1)
-        #dl = self.head_global(x)
-        
-        #return dl
-        #xyz, features = self._break_up_pc(pointcloud)
-        #l0_xyz, l0_features = xyz, features
-        
-        #l1_xyz, l1_features = self.SA_modules[0](l0_xyz, l0_features)
-        #l2_xyz, l2_features = self.SA_modules[1](l1_xyz, l1_features)
-        #dg = self.head_l2(l1_features)
-        
-        #rfb_features_l2 = self.RBF_l1_xyz(l1_xyz).permute(0,2,1)
-        #dr = self.head_rbf(rfb_features_l2)
-        
-        #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
-        #features2 = torch.mean(rfb_features_l2,dim=1)
-        
-        #l3_xyz, l3_features = self.SA_modules[2](l2_xyz, l2_features)
-        #rfb_features_l2 = torch.mean(self.RBF_l3_xyz(l2_features.permute(0,2,1)),dim=1)
-        
-        #l4_xyz, l4_features = self.SA_modules[3](l3_xyz, l3_features)
-        
-        #features = torch.mean(l4_features, dim=2)
-        #print("Global Features Shape, ", g_features.shape)
         rfb = torch.cat([xmean.squeeze(),x_cov], dim=-1)
         
         return rfb
