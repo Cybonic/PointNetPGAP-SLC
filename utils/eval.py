@@ -236,7 +236,7 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
     est_loop_cand_idx = np.argsort(embed_dist)[:n_top_cand]
     
     pred_loop_dist = embed_dist[est_loop_cand_idx]
-    pred_loop_L2 = gt_euclid_dist[est_loop_cand_idx]
+    pred_loop_L2   = gt_euclid_dist[est_loop_cand_idx]
     pred_loop_labels = selected_map_labels[est_loop_cand_idx]
 
     if not (query_label == gt_loop_labels).any():

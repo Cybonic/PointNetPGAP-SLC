@@ -36,7 +36,7 @@ ON23 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
  } 
 
 
-orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
+ON22 = {'angle':1, # Angle to aline the rows with the image frame
         'rows':
             [ 
              [ -15,-9,-49, -1],
@@ -49,7 +49,7 @@ orchards_aut22 = {'angle':1, # Angle to aline the rows with the image frame
  } 
 
 
-orchards_sum22 = {'angle':87, # -3, # Angle to aline the rows with the image frame
+OJ22 = {'angle':87, # -3, # Angle to aline the rows with the image frame
         'rows':
             [
             [ -8,-6,-39,-1],#, # row 3
@@ -71,7 +71,7 @@ GTJ23 = {'angle':88, # Angle to aline the rows with the image frame
          }
 
 
-orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
+OJ23 = {'angle':27, # Angle to aline the rows with the image frame
         'rows': # From left to right
         [[-5.5,-2.5,-45,0], # first vertial row
          [-2.5,2.5,-45,0], # second vertical row
@@ -80,7 +80,7 @@ orchards_june23 = {'angle':27, # Angle to aline the rows with the image frame
          [-5.5, 5.5, 0,10]]   # top horizontal row
          }
 
-strawberry_june23 = {'angle':26, # Angle to aline the rows with the image frame
+SJ23 = {'angle':26, # Angle to aline the rows with the image frame
         'rows':
         [[2,5,-105,-2],
          [10,15,-105,-2],

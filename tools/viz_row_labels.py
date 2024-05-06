@@ -96,12 +96,12 @@ if __name__ == "__main__":
     parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'uk',
+                                    default = 'HORTO-3DLM',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str)
+    parser.add_argument('--seq',default  = "ON22",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
    
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
-    pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
+    pose_file = os.path.join(dir_path,f'extracted/{args.pose_data_source}.txt')
     poses = load_positions(pose_file)
 
     print("[INF] Reading poses from: %s"% pose_file)
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         ax.scatter(poses[:,0],poses[:,1],s=10,c=point_color)
         ax.set_aspect('equal')
         plt.savefig(os.path.join(save_root_dir,'point_row_labels.png'))
-        plt.savefig('point_row_labels.png')
+        #plt.savefig('point_row_labels.png')
         print("[INF] Saved figure to: %s"% os.path.join(save_root_dir,'point_row_labels.png'))
         plt.show()
 

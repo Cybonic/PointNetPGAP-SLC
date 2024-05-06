@@ -142,7 +142,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='LOGG3D', help='model to be used'
+        default='PointNetGAP', help='model to be used'
     )
 
     parser.add_argument(
@@ -349,6 +349,7 @@ if __name__ == '__main__':
                                         logdir = FLAGS.experiment,
                                         monitor_range = FLAGS.monitor_loop_range,
                                         sim_func= 'L2'
+                                        
                                         )
     
     # Define a set of loop ranges to be evaluated
@@ -371,3 +372,12 @@ if __name__ == '__main__':
     eval_approach.save_descriptors()
     eval_approach.save_predictions_pkl()
     eval_approach.save_results_csv()
+    
+    poses = loader.get_poses()
+    predictions = eval_approach.predictions
+    
+    plot_retrieval_on_map(poses,
+                          predictions,
+                          loop_range=FLAGS.monitor_loop_range,
+                          topk=topk,
+                          save_dir=FLAGS.save_predictions)
