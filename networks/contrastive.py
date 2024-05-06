@@ -270,7 +270,7 @@ class ModelWrapperLoss(nn.Module):
                         loss        = None,
                         aux_loss    = None,
                         minibatch_size = 3, 
-                        margin = 0.5,
+                        alpha = 0.5,
                         **args,
                         ):
                         
@@ -285,7 +285,7 @@ class ModelWrapperLoss(nn.Module):
         self.batch_counter = 0 
         self.model = model
         self.device = 'cpu'
-        self.loss_margin = margin
+        self.loss_margin = alpha
         
         # Check if loss is defined
         # check if loss is None or not
@@ -387,11 +387,14 @@ class ModelWrapperLoss(nn.Module):
                 
                 pred = pred.to(torch.float32)
                 class_loss_value = self.sec_loss( pred, target)
-                info['class_loss'] = class_loss_value.detach()
+                #info['class_loss'] = class_loss_value.detach()
             
             # Final loss
             loss_value =  self.loss_margin * loss_value + (1-self.loss_margin)*class_loss_value
-            info['class_loss'] = class_loss_value
+            
+            # detach is made at the upper layer
+            info['class_loss'] = class_loss_value#.detach().item() 
+            info['triplet_loss'] = loss_value#.detach().item()
             
             # compute the gradients
             loss_value.backward() # Backpropagate gradients and free graph

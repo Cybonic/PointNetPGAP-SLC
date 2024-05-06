@@ -64,7 +64,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         from networks.pipelines.PointPillars import PointPillarsGAP
         pipeline = PointPillarsGAP()
         
-    elif pipeline_name == 'PointNormalNet':
+    elif pipeline_name.startswith('PointNormalNet'):
         
         from networks.pipelines.PointNormalNet import PointNormalNet
         pipeline = PointNormalNet(input_channels=3, output_channels=6, use_xyz=True, num_points=num_points)
@@ -110,7 +110,9 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
                                              loss = loss,
                                              aux_loss = 'segment_loss', # 'segment_loss', # ['segment_loss',None]
                                              device = device,
-                                             **argv['trainer'])
+                                             **argv['trainer'],
+                                             alpha=0.5 if 'alpha' not in argv else argv['alpha'])
+        
     elif pipeline_name.startswith('PointNormalNet'):
         from networks import regression
         model = regression.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
@@ -159,7 +161,7 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         num_points=session['max_points']
         modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
     
-    elif network in ['PointNormalNet','PointNetVLADLoss','PointNetMACLoss','PointNetVLAD','PointNetGAP','PointNetGAPLoss','PointPillarsGAP'] or network.startswith("PointNet"):
+    elif network in ['PointNormalNet','PointNormalNetLoss','PointNetVLADLoss','PointNetMACLoss','PointNetVLAD','PointNetGAP','PointNetGAPLoss','PointPillarsGAP'] or network.startswith("PointNet"):
         # Get point cloud based modality
         num_points = session['max_points']
         modality = Scan(max_points=num_points,square_roi=roi, pcl_norm=pcl_norm,clean_zeros=False)
