@@ -377,6 +377,8 @@ class ModelWrapperLoss(nn.Module):
             if self.loss != None:
                 loss_value,info = self.loss(descriptor = descriptor, poses = pose)
             
+            info['triplet_loss'] = loss_value#.detach().item()
+            
             # Auxilary loss: Segment loss
             class_loss_value = torch.tensor(0) 
             
@@ -394,7 +396,7 @@ class ModelWrapperLoss(nn.Module):
             
             # detach is made at the upper layer
             info['class_loss'] = class_loss_value#.detach().item() 
-            info['triplet_loss'] = loss_value#.detach().item()
+            
             
             # compute the gradients
             loss_value.backward() # Backpropagate gradients and free graph
