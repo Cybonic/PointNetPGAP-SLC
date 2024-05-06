@@ -131,7 +131,7 @@ class Triplet():
         indices = list(range(self.num_samples))
         self.data_on_ram = []
         for idx in tqdm(indices,"Load to RAM"):
-            plt = self.modality(self.plc_files[idx],self.augmentation,self.shuffle_points)
+            plt = self.modality(self.plc_files[idx],self.augmentation,set_shuffle_points= self.shuffle_points)
             self.data_on_ram.append(plt)
                 
     def load_split(self,split):
@@ -158,9 +158,9 @@ class Triplet():
         an_idx,pos_idx,neg_idx  = self.anchors[idx],self.positives[idx], self.negatives[idx]
 
         if self.memory == "DISK":
-            plt_anchor = self.modality(self.plc_files[an_idx],self.augmentation,self.shuffle_points)
-            plt_pos = [self.modality(self.plc_files[i],self.augmentation,self.shuffle_points ) for i in pos_idx]
-            plt_neg = [self.modality(self.plc_files[i],self.augmentation,self.shuffle_points) for i in neg_idx]
+            plt_anchor = self.modality(self.plc_files[an_idx],self.augmentation, set_shuffle_points = self.shuffle_points)
+            plt_pos = [self.modality(self.plc_files[i],self.augmentation, set_shuffle_points = self.shuffle_points ) for i in pos_idx]
+            plt_neg = [self.modality(self.plc_files[i],self.augmentation, set_shuffle_points = self.shuffle_points) for i in neg_idx]
         else:
             plt_anchor = self.data_on_ram[an_idx]
             plt_pos = [self.data_on_ram[i] for i in pos_idx]
