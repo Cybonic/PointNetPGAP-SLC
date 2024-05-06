@@ -26,6 +26,8 @@ from pipeline_factory import model_handler,dataloader_handler
 import numpy as np
 from utils.viz import myplot
 
+from plotting_settings import SETTINGS
+
 def find_file(target_file, search_path):
     assert os.path.exists(search_path), "The search path does not exist"
     for root, dirs, files in os.walk(search_path):
@@ -33,6 +35,174 @@ def find_file(target_file, search_path):
             return os.path.join(root, target_file)
     return ''
 
+
+def plot_sim_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_range=1,topk=1,**argv):
+    import matplotlib.pyplot as plt
+
+    vertical_scale = argv['scale'] if 'scale' in argv else 1
+    descriptors = argv['descriptors']
+    
+    np_descriptors = np.array([descriptor['d'] for descriptor in descriptors.values()])
+    
+    x = poses[:,0]
+    y = poses[:,1]
+    z = poses[:,2]
+    
+    # Plot a subset of points, equally distributed
+    num_points = poses.shape[0]  # Number of points to plot
+    indices = np.linspace(0, len(x)-1, num_points, dtype=int)  # Equally spaced indices
+
+    
+    x_subset = x#[indices]
+    y_subset = y#[indices]
+    z_subset = vertical_scale*indices * (z[-1] - z[0]) / (len(x) - 1) + z[0]
+    
+    # Create a 2D path plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Colorize points based on label
+    colors = plt.cm.get_cmap('viridis', 7)
+    
+    queries = np.array(list(predictions.keys()))
+    # select randomly 1 query out of all queries
+    
+    plot_idx = np.random.randint(0,len(queries),1)
+
+    plot_idx = [2000]
+    query = queries[plot_idx][0]
+    print(f'Plotting query {query}')
+    
+    query_descriptor = descriptors[query]['d']
+        
+    sim = np.linalg.norm(query_descriptor - np_descriptors,axis=1)
+    
+    # Rescale exp the similarity
+    sigma = 0.3
+    sim = 1-np.exp(-sim/sigma)
+    # Colorize points based on similarity
+    ax.scatter(x_subset, y_subset, z_subset, c=sim, cmap='YlGn',s=5)
+    ax.scatter(x_subset[query], y_subset[query], z_subset[query], c='k',s=30)
+        
+    ax.axis('equal')  # Equal aspect ratio
+    ax.set_axis_off()  # Turn off the axis
+    plt.show()
+    
+    
+
+def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_range=1,topk=1,**argv):
+    import matplotlib.pyplot as plt
+
+    vertical_scale = argv['scale'] if 'scale' in argv else 1
+    
+    segment_labels = argv['segment_labels']
+    
+    x = poses[:,0]
+    y = poses[:,1]
+    z = poses[:,2]
+    
+    # Plot a subset of points, equally distributed
+    num_points = poses.shape[0]  # Number of points to plot
+    indices = np.linspace(0, len(x)-1, num_points, dtype=int)  # Equally spaced indices
+
+    
+    x_subset = x#[indices]
+    y_subset = y#[indices]
+    z_subset = vertical_scale*indices * (z[-1] - z[0]) / (len(x) - 1) + z[0]
+    
+    # Create a 2D path plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Colorize points based on label
+    colors = plt.cm.get_cmap('viridis', 7)
+    #colors = plt.cm.get_cmap('viridis', len(unique_labels))
+    ax.scatter(x_subset, y_subset, z_subset, color='k',s=5)
+    
+    queries = np.array(list(predictions.keys()))
+    
+    plot_query_idx = list(range(0,len(queries),20))
+    
+    n_samples = poses.shape[0]
+    
+    true_positive = []
+    wrong = []
+    query_list = queries[plot_query_idx]
+    
+    for itr,query in tqdm.tqdm(enumerate(query_list),total = len(query_list)):
+        
+        c = np.array(['k']*(query+1)) # set to gray by default
+        #c[:query] = ['k']*query
+        s = np.ones(query+1)*10
+        
+    
+        query_label = predictions[query]['segment']
+        true_loops = predictions[query]['true_loops']
+        pred_loops = predictions[query]['pred_loops']
+        
+        max_values = max(true_loops['dist'] )
+        
+        pred_idx = pred_loops['idx'][:topk]
+        pred_label = pred_loops['segment'][:topk]
+        #pred_dist = pred_loops['dist'][:topk]
+        
+        # True Positive 
+        query_label_gt = segment_labels[query]
+        pred_labels_gt = segment_labels[pred_idx]
+        
+        #assert (query_label == query_label_gt).all(), "The query label is not the same as the ground truth"
+        
+        pred_bool =  (query_label == pred_label) # * (pred_dist < loop_range)
+        # pred_bool_dis = pred_dist < loop_range
+        
+        
+        if (pred_bool).any():
+            color = 'g'
+        else:
+            continue
+            #color = 'r'
+        
+        pred_idx = pred_idx[pred_bool]
+        
+        # Double check if the distance is within the range
+        dist = np.linalg.norm(poses[query,:2] - poses[pred_idx,:2],axis=1)
+        
+        in_range_bool = dist < loop_range
+        
+        plot_idx = np.argsort(dist)#[in_range_bool]
+        
+        if len(plot_idx) == 0:
+            continue
+        
+        plot_idx = plot_idx[0]
+        
+        
+        #if (in_range_bool).any():
+        #    color = 'b'
+            #continue
+        
+        
+        
+        plt.plot([x_subset[query],x_subset[pred_idx[plot_idx]]],
+                 [y_subset[query],y_subset[pred_idx[plot_idx]]],
+                 [z_subset[query],z_subset[pred_idx[plot_idx]]],color)
+        #loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
+
+        #c[query] = 'b'
+        #s[query] = 80
+        
+        
+        
+    ax.axis('equal')  # Equal aspect ratio
+    ax.set_axis_off()  # Turn off the axis
+    plt.show()
+    
+    
+    
+
+
+
+ 
 
 def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,record_gif=False,**argv):
     # Save Similarity map
@@ -125,7 +295,9 @@ def plot_retrieval_on_map(poses,predictions,sim_thresh=0.5,loop_range=1,topk=1,r
          # save png of parts of the plot
         if itr in save_step_itrs:
             plot.save_plot(os.path.join(save_step_dir,f'{itr}.png'))
-            
+
+
+
 def plot_place_on_map(poses,predictions,topk=1,record_gif=False,loop_range=10,**argv):
     # Save Similarity map
 
@@ -182,9 +354,9 @@ def plot_place_on_map(poses,predictions,topk=1,record_gif=False,loop_range=10,**
         
         pred_idx = pred_loops['idx'][:topk]
         pred_label = pred_loops['segment'][:topk]
-        pred_dist = pred_loops['dist'][:topk]
+        #pred_dist = pred_loops['dist'][:topk]
         
-        pred_bool = pred_label == query_label and pred_dist < loop_range
+        pred_bool = pred_label == query_label #and pred_dist < loop_range
         
         #loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
 
@@ -194,9 +366,13 @@ def plot_place_on_map(poses,predictions,topk=1,record_gif=False,loop_range=10,**
         
                 
         if (pred_bool).all():
-            true_positive.extend(pred_idx)
+            #true_positive.extend(pred_idx)
+            true_positive = pred_idx
+            wrong = []
         else:
-            wrong.append(query)
+            #wrong.append(query)
+            true_positive = []
+            wrong = query
                 
         
         np_true_positive = np.array(true_positive,dtype=np.int32).flatten()
@@ -233,7 +409,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetGAP', help='model to be used'
+        default='PointNetVLADLoss', help='model to be used'
     )
 
     parser.add_argument(
@@ -310,7 +486,10 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/saved_model_data/PointNetGAP-LazyTripletLoss_L2-segment_loss-m0.5',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/#PointNetGAP-LazyTripletLoss_L2-segment_loss-m0.5',
+        # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
+        # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
+        # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
         help='Directory to get the trained model or descriptors.'
     )
 
@@ -465,11 +644,13 @@ if __name__ == '__main__':
     
     prediction_file = find_file('predictions.pkl',predictions)
     
+    descriptors_file = find_file('descriptors.torch',predictions)
+    eval_approach.load_descriptors(descriptors_file)
     
     if not os.path.exists(prediction_file):
-        descriptors = find_file('descriptors.torch',predictions)
+       
         #descriptor_file = os.path.join(resume,'descriptors.torch')
-        eval_approach.load_descriptors(descriptors)        
+            
         eval_approach.run(loop_range = loop_range)
         
         prediction_file = eval_approach.save_predictions_pkl()
@@ -478,16 +659,17 @@ if __name__ == '__main__':
         eval_approach.save_results_csv()
         #prediction_file = eval_approach.prediction_file
     
-    
+    descriptors = eval_approach.descriptors
     predictions = eval_approach.load_predictions_pkl(prediction_file)
     
     poses = eval_approach.poses
+    segment_labels = eval_approach.row_labels
     sequence = FLAGS.val_set
     
     # Load aline rotation
-    xy = poses[:,:2]
-    min_xy = np.min(xy,axis=0)
-    xy -= min_xy
+    xy = poses#[:,:2]
+    #min_xy = np.min(xy,axis=0)
+    #xy -= min_xy
     
     
     # Save gif
@@ -500,14 +682,28 @@ if __name__ == '__main__':
     #file =  
     
     save_itrs = list(range(1,len(predictions.keys()),10))
-    plot_place_on_map(xy,
+    
+    #plot_place_on_map(xy, predictions,topk = FLAGS.topk, record_gif = True, gif_name = file_name,save_dir = root2save, 
+    #                  save_step_itr = save_itrs,loop_range = loop_range)
+    
+    
+    #plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
+    #                     save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
+    #                      )
+
+
+    plot_sim_on_3D_map(xy,
                           predictions,
                           topk = FLAGS.topk,
                           record_gif = True,
                           gif_name = file_name,
                           save_dir = root2save,
                           save_step_itr = save_itrs,
-                          loop_range = loop_range)
+                          loop_range = loop_range,
+                          segment_labels = segment_labels,
+                          scale = SETTINGS[FLAGS.val_set]['scale'],
+                          descriptors = descriptors
+                          )
     
     
     
