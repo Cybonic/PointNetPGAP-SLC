@@ -185,14 +185,15 @@ class PointCloudNet(nn.Module):
         #g_features = nn.MaxPool1d(num_points)(self.GLOBAL_module(pointcloud.permute(0, 2, 1)))
         x = self.GLOBAL_module(pointcloud)
         
-        xmean = torch.mean(x, dim=-1)
+        #xmean = torch.mean(x, dim=-1)
         x = x #- xmean.unsqueeze(-1)
 
-        return xmean 
-        #x = x.matmul(x.transpose(2, 1))/(num_points-1)
+         
+        x = x.matmul(x.transpose(2, 1))/(num_points-1)
 
-        #x_cov = x.flatten(start_dim=1)
+        x_cov = x.flatten(start_dim=1)
         
+        return x_cov
         
         rfb = torch.cat([xmean.squeeze(),x_cov], dim=-1)
         
