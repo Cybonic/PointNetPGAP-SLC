@@ -97,6 +97,8 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     
     segment_labels = argv['segment_labels']
     
+    ground_true = argv['ground_true'] if 'ground_true' in argv else False
+    
     x = poses[:,0]
     y = poses[:,1]
     z = poses[:,2]
@@ -138,12 +140,17 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     
         query_label = predictions[query]['segment']
         true_loops = predictions[query]['true_loops']
+        
         pred_loops = predictions[query]['pred_loops']
         
         max_values = max(true_loops['dist'] )
         
-        pred_idx = pred_loops['idx'][:topk]
-        pred_label = pred_loops['segment'][:topk]
+        if ground_true == False:
+            pred_idx = pred_loops['idx'][:topk]
+            pred_label = pred_loops['segment'][:topk]
+        else:
+            pred_idx = true_loops['idx'][:topk]
+            pred_label = true_loops['segment'][:topk]
         #pred_dist = pred_loops['dist'][:topk]
         
         # True Positive 
@@ -409,7 +416,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetVLADLoss', help='model to be used'
+        default='PointNetPGAPLoss', help='model to be used'
     )
 
     parser.add_argument(
@@ -486,7 +493,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/#PointNetGAP-LazyTripletLoss_L2-segment_loss-m0.5',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/#overlap_transformer-LazyTripletLoss_L2',
         # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
         # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
         # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
@@ -687,23 +694,24 @@ if __name__ == '__main__':
     #                  save_step_itr = save_itrs,loop_range = loop_range)
     
     
-    #plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
-    #                     save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
-    #                      )
-
-
-    plot_sim_on_3D_map(xy,
-                          predictions,
-                          topk = FLAGS.topk,
-                          record_gif = True,
-                          gif_name = file_name,
-                          save_dir = root2save,
-                          save_step_itr = save_itrs,
-                          loop_range = loop_range,
-                          segment_labels = segment_labels,
-                          scale = SETTINGS[FLAGS.val_set]['scale'],
-                          descriptors = descriptors
+    plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
+                         save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
+                         ground_true = True
                           )
+
+
+    #plot_sim_on_3D_map(xy,
+    #                      predictions,
+    #                      topk = FLAGS.topk,
+    #                      record_gif = True,
+    #                      gif_name = file_name,
+    #                      save_dir = root2save,
+    #                      save_step_itr = save_itrs,
+    #                      loop_range = loop_range,
+    #                      segment_labels = segment_labels,
+    #                      scale = SETTINGS[FLAGS.val_set]['scale'],
+    #                      descriptors = descriptors
+    #                      )
     
     
     
