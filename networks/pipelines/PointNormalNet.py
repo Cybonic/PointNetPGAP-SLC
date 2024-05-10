@@ -67,8 +67,9 @@ class PointNormalNet(nn.Module):
         
         num_points = int(num_points)
         
+        self.feat =  argv['output_channels']
         from .normal_estimation.code.model import PointCloudNet
-        self.model = PointCloudNet(input_channels = 0, output_channels = 6, num_points = num_points)
+        self.model = PointCloudNet(input_channels = 0, output_channels = argv['output_channels'], num_points = num_points)
 
         self.fc_out = nn.LazyLinear(256)
         #self.head  =  SoAP.SoAP(input_dim = 20, 
@@ -108,4 +109,4 @@ class PointNormalNet(nn.Module):
        
     
     def __str__(self):
-        return f"PointNormalNet_PointNet_16_cov_avg_ablation_cov"
+        return f"PointNormalNet_PointNet-{self.feat}_cov_avg"
