@@ -67,7 +67,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name.startswith('PointNormalNet'):
         
         from networks.pipelines.PointNormalNet import PointNormalNet
-        pipeline = PointNormalNet(input_channels=3, output_channels=6, use_xyz=True, num_points=num_points)
+        pipeline = PointNormalNet(input_channels=3, output_channels=feat_dim, use_xyz=True, num_points=num_points)
     elif pipeline_name.startswith('PointNetHGAP'):
         pipeline = PointNetHGAP(use_tnet=False, output_dim=256, num_points = num_points, feat_dim = feat_dim,
                                 stage_1 = argv['stage_1'], 
