@@ -54,7 +54,7 @@ if __name__ == '__main__':
         '--experiment', '-e',
         type=str,
         required=False,
-        default='RAL',
+        default='RAL/FEAT_DIM',
         help='Directory to get the trained model.'
     )
 

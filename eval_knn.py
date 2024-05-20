@@ -219,7 +219,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/predictions_RALv1/LOGG3D/ON22/descriptors.torch',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/overlap_transformer/ON22/descriptors.torch',
         help='Directory to get the trained model or descriptors.'
     )
 
@@ -325,8 +325,8 @@ if __name__ == '__main__':
         print("Resuming form %s"%FLAGS.resume)
         
         resume_struct= FLAGS.resume.split('/')
-        assert FLAGS.val_set in resume_struct, "The resume file does not match the validation set"
-        assert FLAGS.network in resume_struct, "The resume file does not match the network" 
+        assert np.sum([field.endswith(FLAGS.val_set) for field in resume_struct])>0, "The resume file does not match the validation set"
+        #assert np.sum([field.endswith(FLAGS.network) for field in resume_struct])>0, "The resume file does not match the network" 
     
     ###################################################################### 
     loader = dataloader_handler(FLAGS.dataset_root,
@@ -373,11 +373,3 @@ if __name__ == '__main__':
     eval_approach.save_predictions_pkl()
     eval_approach.save_results_csv()
     
-    poses = loader.get_poses()
-    predictions = eval_approach.predictions
-    
-    plot_retrieval_on_map(poses,
-                          predictions,
-                          loop_range=FLAGS.monitor_loop_range,
-                          topk=topk,
-                          save_dir=FLAGS.save_predictions)

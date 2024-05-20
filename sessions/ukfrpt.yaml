@@ -56,7 +56,7 @@ trainer:
   monitor: "max recall" # [off, max mIoU]
   val_per_epochs: 1
   eval_metric: 'L2'
-  early_stop: 50 #epochs 
+  early_stop: 1000 #epochs 
   minibatch_size: 10
 
 

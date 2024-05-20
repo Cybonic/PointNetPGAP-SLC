@@ -17,14 +17,15 @@ density = '10000'
 
 input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
-test_sequences = ['OJ23']#,'SJ23','ON22','OJ22']
+test_sequences = ['SJ23','ON22','OJ22']
 
-#test_sequences = ['OJ23']
+test_sequences = ['OJ23']
 
-stages = ['PointNormalNetLoss','PointNetVLADLoss']
+stages = ['PointNormalNetLoss']
 for stage_conf in stages:
         for seq in test_sequences:
-                for alpha in [0,1]:
+                for alpha in [15000,20000,30000]:
+                #for alpha in [100,500,1000,3000,5000,10000,15000,20000,30000]:
                         func_arg = [
                                 f'--network {stage_conf}', # Network
                                 '--train 1', # Train or test
@@ -35,12 +36,13 @@ for stage_conf in stages:
                                 '--device cuda', # Device
                                 f'--save_predictions {save_path}', # Save predictions
                                 f'--epochs {epochs}',
+                                f'--max_points {alpha}',
                                 #f'--stages {stage_conf}',
-                                f'--experiment MSGAP', 
-                                f'--feat_dim 1024',
+                                f'--experiment RAL/POINT_DENSITY', 
+                                f'--feat_dim 16',
                                 f'--eval_batch_size {15}',
                                 f'--mini_batch_size {1000}',
-                                f'--loss_alpha {alpha}',
+                                f'--loss_alpha 0.5',
                                 input_preprocessing
                         ]
                         
