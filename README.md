@@ -29,13 +29,18 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 
 # Train
 
-Model Training
+### Default training script
+```
+python script_train.py
+```
+
+
+### Costum training/testing
 ```
 python train_knn.py  
         --network PointNetPGAPLoss # networl_name
         --train 1 # [1,0] [Train,Test] Train or test
         --dataset_root path/to/dataset/root # path to Dataset 
-        --resume best_model, # [best_model]
         --val_set 
         --memory RAM # [DISK, RAM] 
         --device cuda # Device
@@ -47,6 +52,23 @@ python train_knn.py
         --eval_batch_size 15
         --mini_batch_size 1000
         --loss_alpha 0.5
+```
+
+# Testing on generated descriptors 
+
+### Default training script:
+
+In the ```script_eval.py```, edit:
+
+```dataset_root = path/to/dataset/root```
+
+
+```resume_root = path/to/descriptors```
+
+
+Then, Run:
+```
+python script_eval.py
 ```
 
 ### Download Descriptors and Predictions [here](https://nas-greenbotics.isr.uc.pt/drive/d/s/yqEsJo2CzrFVr8lAQmRhSpftw2dBnIoh/B8IXnvGfsnqGC_BABb7n9qggaw4HhFGD-ZrhgM00gbgs)

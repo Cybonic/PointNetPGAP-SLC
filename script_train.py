@@ -22,7 +22,7 @@ test_sequences = ['SJ23','ON22','OJ22','ON23']
 stages = ['PointNetPGAP']
 for stage_conf in stages:
         for seq in test_sequences:
-                for alpha in [15000,20000,30000]:
+                for alpha in [10000]:
                 #for alpha in [100,500,1000,3000,5000,10000,15000,20000,30000]:
                         func_arg = [
                                 f'--network {stage_conf}', # Network

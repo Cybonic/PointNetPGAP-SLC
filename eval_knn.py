@@ -19,12 +19,7 @@ import argparse
 import yaml
 import os
 import torch 
-
-#from networks.orchnet import *
-from trainer import Trainer
-from networks import contrastive
-from utils import loss as losses
-from pipeline_factory import model_handler,dataloader_handler
+from pipeline_factory import dataloader_handler
 import numpy as np
 import tqdm
 from utils.viz import myplot
@@ -142,7 +137,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetGAP', help='model to be used'
+        default='PointNetPGAP', help='model to be used'
     )
 
     parser.add_argument(
@@ -219,7 +214,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/overlap_transformer/ON22/descriptors.torch',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper_descriptor_and_predictions/#PointNetPGAP-LazyTripletLoss_L2/eval-ON22/descriptors.torch',
         help='Directory to get the trained model or descriptors.'
     )
 
