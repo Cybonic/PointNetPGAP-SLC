@@ -12,7 +12,7 @@ https://github.com/IAmSuyogJadhav/PointNormalNet/blob/main/main/README.md
 
 import torch.nn as nn
 import torch
-from backbones.pointnet import PointNet_features
+from ..backbones.pointnet import PointNet_features
 
 def _l2norm(x):
         x = nn.functional.normalize(x, p=2, dim=-1)

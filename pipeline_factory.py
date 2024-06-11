@@ -55,7 +55,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name.startswith('PointNetGeM'):
         from networks.pipelines.GeMNet import PointNetGeM
         pipeline = PointNetGeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
-    elif pipeline_name.startswith('PoinNetPGAP'):
+    elif pipeline_name.startswith('PointNetPGAP'):
         from networks.pipelines.PointNetPGAP import PointNetPGAP
         pipeline = PointNetPGAP(input_channels=3, output_channels=feat_dim, use_xyz=True, num_points=num_points)
     elif pipeline_name.startswith('PointNetVLAD'):

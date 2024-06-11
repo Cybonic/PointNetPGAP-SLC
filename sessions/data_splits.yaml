@@ -1,0 +1,25 @@
+cross_validation:
+            'OJ22': ['OJ23','ON22','SJ23']
+            'OJ23': ['OJ22','ON22','SJ23']
+            'ON22': ['OJ22','OJ23','SJ23']
+            'SJ23': ['OJ22','OJ23','ON22']
+
+
+
+
+
+ground_truth:
+
+  SJ23:
+    pos_range: 2 # Loop Threshold [m]
+    neg_range: 10
+    warmupitrs: 200 # Number of frames to ignore at the beguinning
+    roi: 100
+    triplet_files: 'ground_truth_ar2m_nr20m_pr2m.npz'
+
+  OJ22:
+    pos_range: 2 # Loop Threshold [m]
+    neg_range: 10
+    warmupitrs: 500 # Number of frames to ignore at the beguinning
+    roi: 400
+  

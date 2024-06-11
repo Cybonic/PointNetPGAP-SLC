@@ -1,0 +1,15 @@
+
+StepLR:
+  step_size: 20 
+  gamma: 0.1
+
+CosineAnnealingWarmRestarts:
+  T_0: 5
+  T_mult: 2
+  eta_min: 0.00001 # Min learning rate
+
+ReduceLROnPlateau:
+  mode: 'min' #['min','max'] (str)
+  factor: 0.01
+  patience: 10 # Number of epochs with no improvement after which learning rate will be reduced. 
+  min_lr: 0.000001
