@@ -17,11 +17,9 @@ density = '10000'
 
 input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
-test_sequences = ['SJ23','ON22','OJ22']
+test_sequences = ['SJ23','ON22','OJ22','ON23']
 
-test_sequences = ['OJ23']
-
-stages = ['PointNormalNetLoss']
+stages = ['PointNetPGAP']
 for stage_conf in stages:
         for seq in test_sequences:
                 for alpha in [15000,20000,30000]:
@@ -37,7 +35,6 @@ for stage_conf in stages:
                                 f'--save_predictions {save_path}', # Save predictions
                                 f'--epochs {epochs}',
                                 f'--max_points {alpha}',
-                                #f'--stages {stage_conf}',
                                 f'--experiment RAL/POINT_DENSITY', 
                                 f'--feat_dim 16',
                                 f'--eval_batch_size {15}',

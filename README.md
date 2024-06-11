@@ -27,10 +27,32 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 7. Install other dependencies  ``` pip install -r requirements.txt```
 
 
+# Train
+
+Model Training
+```
+python train_knn.py  
+        --network PointNetPGAPLoss # networl_name
+        --train 1 # [1,0] [Train,Test] Train or test
+        --dataset_root path/to/dataset/root # path to Dataset 
+        --resume best_model, # [best_model]
+        --val_set 
+        --memory RAM # [DISK, RAM] 
+        --device cuda # Device
+        --save_predictions path/to/dir # To save the predictions
+        --epochs 200
+        --max_points 10000
+        --experiment experiment_name
+        --feat_dim 16
+        --eval_batch_size 15
+        --mini_batch_size 1000
+        --loss_alpha 0.5
+```
+
+### Download Descriptors and Predictions [here](https://nas-greenbotics.isr.uc.pt/drive/d/s/yqEsJo2CzrFVr8lAQmRhSpftw2dBnIoh/B8IXnvGfsnqGC_BABb7n9qggaw4HhFGD-ZrhgM00gbgs)
 
 
-
-# HORTO-3DLM Dataset
+## HORTO-3DLM Dataset
 
 The HORTO-3DLM dataset comprises four sequences OJ22, OJ23, ON22, and SJ23;  Three sequences from orchards, namely from apples and cherries; and one sequence from strawberries;
 
