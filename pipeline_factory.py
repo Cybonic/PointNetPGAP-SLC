@@ -7,8 +7,6 @@ from dataloader.horto3dlm.loader import cross_validation
 
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
-from networks.pipelines.PointNetGAP import PointNetGAP
-from networks.pipelines.PointNetHGAP import PointNetHGAP
 from networks.pipelines.LOGG3D import LOGG3D
 
 from networks.pipelines.overlap_transformer import featureExtracter
@@ -57,28 +55,11 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name.startswith('PointNetGeM'):
         from networks.pipelines.GeMNet import PointNetGeM
         pipeline = PointNetGeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
-    elif pipeline_name in ['PointNetKeypoint','PointNetKeypointLoss']:
-        from networks.pipelines.KeypointExtractor import PointNetKeypointNET
-        pipeline = PointNetKeypointNET()
-    elif pipeline_name == 'PointPillarsGAP':
-        from networks.pipelines.PointPillars import PointPillarsGAP
-        pipeline = PointPillarsGAP()
-        
-    elif pipeline_name.startswith('PointNormalNet'):
-        
-        from networks.pipelines.PointNormalNet import PointNormalNet
-        pipeline = PointNormalNet(input_channels=3, output_channels=feat_dim, use_xyz=True, num_points=num_points)
-    elif pipeline_name.startswith('PointNetHGAP'):
-        pipeline = PointNetHGAP(use_tnet=False, output_dim=256, num_points = num_points, feat_dim = feat_dim,
-                                stage_1 = argv['stage_1'], 
-                                stage_2 = argv['stage_2'], 
-                                stage_3 = argv['stage_3'],
-                                n_classes = 6)
-        
+    elif pipeline_name.startswith('PoinNetPGAP'):
+        from networks.pipelines.PointNetPGAP import PointNetPGAP
+        pipeline = PointNetPGAP(input_channels=3, output_channels=feat_dim, use_xyz=True, num_points=num_points)
     elif pipeline_name.startswith('PointNetVLAD'):
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
-    elif pipeline_name in ['PointNetGAP','PointNetGAPLoss']:
-        pipeline = PointNetGAP(use_tnet=False, output_dim=output_dim, num_points = num_points, feat_dim = feat_dim)
     elif pipeline_name.startswith('overlap_transformer'):
         pipeline = featureExtracter(channels=3,height=256, width=256, output_dim=output_dim, use_transformer = True,
                                     feature_size=1024, max_samples=num_points)
@@ -108,12 +89,12 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     elif pipeline_name.endswith('Loss'):
         model = contrastive.ModelWrapperLoss(pipeline,
                                              loss = loss,
-                                             aux_loss = 'segment_loss', # 'segment_loss', # ['segment_loss',None]
+                                             aux_loss = 'segment_loss',
                                              device = device,
                                              **argv['trainer'],
                                              alpha=0.5 if 'alpha' not in argv else argv['alpha'])
         
-    elif pipeline_name.startswith('PointNormalNet'):
+    elif pipeline_name.startswith('PoinNetPGAP'):
         from networks import regression
         model = regression.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
     else: 
@@ -150,18 +131,14 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         roi['ymax'] = args['roi']
 
     if network.startswith('overlap_transformer'):
-        # These networks use proxy representation to encode the point clouds
-        #if network == "overlap_transformer":
         modality = BEVProjection(width=256,height=256,square_roi=roi)
-        #elif session['modality'] == "spherical" or network != "overlap_transformer":
-        #    modality = SphericalProjection(256,256,square_roi=roi)
             
     elif network.startswith('LOGG3D') or network.startswith("SPV"):
         # Get sparse (voxelized) point cloud based modality
         num_points=session['max_points']
         modality = SparseLaserScan(voxel_size=0.1,max_points=num_points, pcl_norm = False)
     
-    elif network in ['PointNormalNet','PointNormalNetLoss','PointNetVLADLoss','PointNetMACLoss','PointNetVLAD','PointNetGAP','PointNetGAPLoss','PointPillarsGAP'] or network.startswith("PointNet"):
+    elif network in ['PoinNetPGAP','PoinNetPGAPLoss','PointNetVLADLoss','PointNetMACLoss','PointNetVLAD'] or network.startswith("PointNet"):
         # Get point cloud based modality
         num_points = session['max_points']
         modality = Scan(max_points=num_points,square_roi=roi, pcl_norm=pcl_norm,clean_zeros=False)

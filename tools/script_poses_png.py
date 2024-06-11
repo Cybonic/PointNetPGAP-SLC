@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-SETTINGS = {'ON22': {'scale':350},
+SETTINGS = {'ON22': {'scale':250},
             'SJ23': {'scale':0.2},
             'OJ22': {'scale':10},
             'OJ23': {'scale':1},
@@ -95,7 +95,7 @@ if __name__ == '__main__':
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "OJ22",type = str, 
+    parser.add_argument('--seq',default  = "ON22",type = str, 
                         help='path to the data of the sequence')
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument("--kitti_format",default=True,type=bool,help="Expects that poses.txt file to be kitti format")
