@@ -78,24 +78,37 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print("*"*30)
 
     if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV"):
+        # Voxelized point cloud based model
+        
         if pipeline_name.endswith('Loss'):
-            model = contrastive.SparseModelWrapperLoss(pipeline,loss = loss,
+            # with SLC loss 
+            model = contrastive.SparseModelWrapperLoss(pipeline,
+                                                       loss = loss,
                                                        aux_loss = 'segment_loss',
                                                        device = device,
-                                                       **argv['trainer'])
+                                                       **argv['trainer'],
+                                                       n_classes = argv['n_classes'],
+                                                       loss_margin=0.5 if 'alpha' not in argv else argv['alpha'])
         else:
+            # without SLC loss
             model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
         #model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
+    
     elif pipeline_name.endswith('Loss'):
+        # Point cloud based model with contrastive loss
+        # with SLC loss
         model = contrastive.ModelWrapperLoss(pipeline,
                                              loss = loss,
                                              aux_loss = 'segment_loss',
                                              device = device,
                                              **argv['trainer'],
-                                             alpha=0.5 if 'alpha' not in argv else argv['alpha'])
+                                             n_classes = argv['n_classes'],
+                                             loss_margin=0.5 if 'alpha' not in argv else argv['alpha'])
         
     elif pipeline_name.startswith('PoinNetPGAP'):
         from networks import regression
+        # Point cloud based model         
+        # No SLC loss
         model = regression.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
     else: 
         model = contrastive.ModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
@@ -114,12 +127,12 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,**args):
 
     # Load the predefined data splits 
-    datasplits = yaml.load(open("sessions/data_splits.yaml", 'r'),Loader=yaml.FullLoader)
+    datasplits = yaml.load(open("sessions/full_data_splits.yaml", 'r'),Loader=yaml.FullLoader)
     # Get the training and validation sequences based on VAL_SET
     session['train_loader']['sequence'] = datasplits['cross_validation'][val_set] # Get the training sequences for val_set
     session['val_loader']['sequence']   = [val_set]
     
-    sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
+    #sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
 
     roi = None
     if 'roi' in args and args['roi'] > 0:
@@ -130,7 +143,9 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         roi['ymin'] = -args['roi']
         roi['ymax'] = args['roi']
 
+    # Select the modality based on the network
     if network.startswith('overlap_transformer'):
+        # BEV based modality
         modality = BEVProjection(width=256,height=256,square_roi=roi)
             
     elif network.startswith('LOGG3D') or network.startswith("SPV"):
@@ -156,8 +171,8 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
     if model_evaluation == "cross_validation":
         loader = cross_validation( root = root_dir,
                                     dataset = dataset,
-                                    modality = modality,
-                                    memory   = session['memory'],
+                                    modality = modality,    
+                                    memory   = session['memory'], # DISK or RAM
                                     train_loader  = session['train_loader'],
                                     val_loader    = session['val_loader'],
                                     max_points    = session['max_points']

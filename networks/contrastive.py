@@ -81,7 +81,8 @@ class SparseModelWrapperLoss(nn.Module):
                         device = 'cuda',
                         aux_loss_on = 'pairloss',
                         representation = 'descriptors',
-                        class_loss_margin = 0.1,
+                        loss_margin = 0.5,
+                        n_classes = 6,
                         **args,
                         ):
                         
@@ -95,12 +96,12 @@ class SparseModelWrapperLoss(nn.Module):
         self.model             = model
         #self.pooling           = args['pooling']
         
-        self.class_loss_margin = class_loss_margin
+        self.class_loss_margin = loss_margin
         self.device = 'cpu'
         
         self.loss_on = aux_loss_on
         
-        self.sec_loss = segment_loss()
+        self.sec_loss = segment_loss(n_classes=n_classes, feat_dim=256)
  
         self.representation = representation
             
@@ -270,7 +271,8 @@ class ModelWrapperLoss(nn.Module):
                         loss        = None,
                         aux_loss    = None,
                         minibatch_size = 3, 
-                        alpha = 0.5,
+                        loss_margin = 0.5,
+                        n_classes = 6,
                         **args,
                         ):
                         
@@ -285,7 +287,7 @@ class ModelWrapperLoss(nn.Module):
         self.batch_counter = 0 
         self.model = model
         self.device = 'cpu'
-        self.loss_margin = alpha
+        self.loss_margin = loss_margin
         
         # Check if loss is defined
         # check if loss is None or not
@@ -302,7 +304,7 @@ class ModelWrapperLoss(nn.Module):
         if aux_loss == None:
             self.loss_margin = 1
         elif aux_loss == 'segment_loss':
-            self.sec_loss = segment_loss(n_classes=6,feat_dim=256) 
+            self.sec_loss = segment_loss(n_classes=n_classes,feat_dim=256) 
         else:
             raise ValueError('No aux loss specified')
         
