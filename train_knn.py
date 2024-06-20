@@ -329,12 +329,12 @@ if __name__ == '__main__':
     
     # Build the model and the loader
     model_ = model_handler(FLAGS.network,
-                            num_points=SESSION['max_points'], # Max number of points
+                            num_points = SESSION['max_points'], # Max number of points
                             output_dim = 256,           # Dim of the descriptor
                             feat_dim  = FLAGS.feat_dim, # Dim of the hidden state
                             device    = FLAGS.device,    # Device (cuda or cpu)
                             loss      = SESSION['loss'], # Contrastive Loss function
-                            trainer = SESSION['trainer'],
+                            trainer   = SESSION['trainer'],
                             alpha = FLAGS.loss_alpha, # margin value to combine Contrastive + SLC loss
                             n_classes = 7 # Nº of segments in the dataset ( For SLC loss only)
                             )

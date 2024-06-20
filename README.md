@@ -2,6 +2,14 @@
 
 ### Authors:  T. Barros, L. Garrote, P. Conde, M.J. Coombes, C. Liu, C. Premebida, U.J. Nunes
 
+
+# Changelog
+
+**June 2024**: Added training and testing conditions for the six sequences. 
+
+**May 2024**: First results on 4 sequences of HORTO-3DLM.
+
+
 # Installation
 
 You can install PointNetGAP locally in your machine.  We provide an complete installation guide for conda.
