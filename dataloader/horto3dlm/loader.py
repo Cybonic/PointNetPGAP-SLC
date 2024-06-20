@@ -22,28 +22,29 @@ class cross_validation():
         
 
     def get_train_loader(self,debug=False):
-        sequence  = self.train_cfg['sequence']
-        triplet_files = self.train_cfg['triplet_file']
-        augmentation = self.train_cfg['augmentation'] if 'augmentation' in self.train_cfg else 0
+        sequence       = self.train_cfg['sequence']
+        triplet_files  = self.train_cfg['triplet_file']
+        augmentation   = self.train_cfg['augmentation'] if 'augmentation' in self.train_cfg else 0
         shuffle_points = self.train_cfg['shuffle_points'] if 'shuffle_points' in self.train_cfg else 0
    
         
         #max_points = self.max_points
-        print(self.modality)
+        #print(self.modality)
+        
+        # Define the collation function based on the modality
         if str(self.modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("torch_tuple",voxel_size = 0.05, num_points=10000)
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
         train_loader = Triplet(root       = self.root,
-                                    dataset     = self.dataset,
-                                    sequences   = sequence,
-                                    triplet_file = triplet_files,
-                                    modality = self.modality,
-                                    #ground_truth = self.train_cfg['ground_truth'],
-                                    memory= self.memory,
-                                    augmentation = augmentation,
-                                    shuffle_points = shuffle_points
+                                dataset    = self.dataset,
+                                sequences   = sequence,
+                                triplet_file = triplet_files,
+                                modality = self.modality,
+                                memory= self.memory,
+                                augmentation = augmentation,
+                                shuffle_points = shuffle_points
                                     
                                                 )
         
@@ -56,6 +57,8 @@ class cross_validation():
                                     drop_last  =True,
                                     collate_fn = self.collation_fn
                                     )
+            
+            
         else:
             indices = np.random.randint(0,len(train_loader),20)
             np.random.shuffle(indices)
@@ -88,14 +91,17 @@ class cross_validation():
             self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
         elif "sparse" in str(self.modality).lower() :
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
-
+        else:
+            raise NotImplementedError(f"Modality not implemented!")
+        
+        
         val_loader = Eval( root = self.root,
                                 dataset = self.dataset,
                                 sequence = sequence[0],
                                 modality = self.modality,
-                                memory= self.memory,
-                                ground_truth_file = ground_truth_files,
-                                augmentation = augmentation
+                                memory  = self.memory, # DISK or RAM
+                                ground_truth_file = ground_truth_files, # Ground truth file (not used)
+                                augmentation = augmentation # Augmentation (not used)
                                 )
 
         valloader  = DataLoader(val_loader,
