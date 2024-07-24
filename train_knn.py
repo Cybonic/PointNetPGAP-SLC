@@ -38,7 +38,7 @@ if __name__ == '__main__':
         '--dataset_root',
         type=str,
         required=False,
-        default='/home/tbarros/workspace/DATASET',
+        default='/home/tiago/workspace/DATASET',
         help='Directory to get the trained model.'
     )
     
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         '--memory',
         type=str,
         required=False,
-        default='RAM',
+        default='DISK',
         choices=['DISK','RAM'],
         help='Directory to get the trained model.'
     )

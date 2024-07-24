@@ -1,7 +1,7 @@
 
 
-from dataloader.horto3dlm.eval import Eval
-from dataloader.horto3dlm.triplet import Triplet
+from dataloader.datasets.eval import Eval
+from dataloader.datasets.triplet import Triplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
 from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np

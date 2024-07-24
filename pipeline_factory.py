@@ -3,7 +3,7 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
-from dataloader.horto3dlm.loader import cross_validation
+from dataloader.datasets.loader import cross_validation
 
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
