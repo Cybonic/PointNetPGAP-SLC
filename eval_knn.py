@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--experiment',type=str,
-        default='RAL',
+        default='RALv3',
         help='Name of the experiment to be executed'
     )
 
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper_descriptor_and_predictions/#PointNetPGAP-LazyTripletLoss_L2/eval-ON22/descriptors.torch',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv3/predictions/#PointNetPGAP-LazyTripletLoss_L2/eval-ON22/descriptors.torch',
         help='Directory to get the trained model or descriptors.'
     )
 

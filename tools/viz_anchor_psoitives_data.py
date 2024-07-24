@@ -76,12 +76,12 @@ if __name__ == "__main__":
     parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'uk',
+                                    default = 'HORTO-3DLM',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str)
+    parser.add_argument('--seq',default  = "GTJ23/extracted",type = str)
     parser.add_argument('--plot_path',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
@@ -110,8 +110,8 @@ if __name__ == "__main__":
     log.append("[INF] record gif Flag: " + str(record_gif_flag))
  
     ground_truth = {'pos_range': 10,
-                    'warmupitrs': 600, # Number of frames to ignore at the beguinning
-                    'roi': 600,
+                    'warmupitrs': 100, # Number of frames to ignore at the beguinning
+                    'roi': 100,
                     'anchor_range': 0.5}
     
     
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         viz_overlap(xy,table,
                     record_gif = True,
                     file_name  = gif_file,
-                    frame_jumps= 100)
+                    frame_jumps= 20)
 
         print("[INF] Saving gif to: %s"% gif_file)
         log.append("[INF] Saving gif to: %s"% gif_file)

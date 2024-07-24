@@ -6,8 +6,8 @@ import os
 epochs = 400
 # Define the path to the checkpoints
 # Define the path to the dataset
-#dataset_root = '/home/tiago/workspace/DATASET'
-dataset_root = '/home/tbarros/workspace/DATASET'
+dataset_root = '/home/tiago/workspace/DATASET'
+#dataset_root = '/home/tbarros/workspace/DATASET'
 
 # Path to save the predictions
 save_path  = 'thesis'
@@ -28,15 +28,15 @@ test_sequences = ['SJ23',
 
 stages = [#'PointNetPGAP',
           #'PointNetPGAPLoss',
-          'PointNetVLAD',
-          #'PointNertVLADLoss',
+          #'PointNetVLAD',
+          #'PointNetVLADLoss',
           'LOGG3D',
           #'LOGG3DLoss',
-          'overlap_transformer', 
+          #'overlap_transformer', 
           #'overlap_transformerLoss',
-          'PointNetGeM',
+          #'PointNetGeM',
           #'PointNetGeMLoss',
-          'PointNetMAC',
+          #'PointNetMAC',
           #'PointNetMACLoss'
           ]
 

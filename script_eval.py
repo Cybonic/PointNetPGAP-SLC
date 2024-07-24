@@ -4,9 +4,15 @@ import os
 # Define the path to the dataset
 dataset_root = '/home/tbarros/workspace/DATASET'
 
-test_sequences = ['OJ22','OJ23','ON22','SJ23']
+test_sequences = ['SJ23',
+                  'ON22',
+                  'OJ22',
+                  'ON23',
+                  'OJ23',
+                  'GTJ23'
+                ]
 
-resume_root = "/home/tbarros/workspace/pointnetgap-RAL/RALv2/on_paper"
+resume_root = "/home/tbarros/workspace/pointnetgap-RAL/RALv3/predictions"
 
 for seq in test_sequences:
         for network in ['PointNetPGAP']:

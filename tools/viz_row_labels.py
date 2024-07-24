@@ -101,7 +101,7 @@ if __name__ == "__main__":
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "ON22",type = str)
+    parser.add_argument('--seq',default  = "GTJ23",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
