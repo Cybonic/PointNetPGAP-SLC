@@ -5,6 +5,7 @@ cross_validation:
             'OJ23': ['ON23','GTJ23','OJ22','ON22','SJ23']
             'ON22': ['ON23','GTJ23','OJ22','OJ23','SJ23']
             'SJ23': ['ON23','GTJ23','OJ22','OJ23','ON22']
+            '00': ['00']
 
 
 

@@ -20,6 +20,15 @@ The row segments are defined as a dictionary with the following structure:
 
 """
 
+kitti_00 = {'angle':0,  # GT ORCHARDS 10nov23_00
+        'rows':
+            [ 
+             [ -10000,10000,-10000, 10000],
+             
+             ]
+ } 
+
+
 ON23 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
         'rows':
             [ 
