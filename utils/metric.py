@@ -94,7 +94,7 @@ class retrieval_metrics:
     
     if self.n_segments != None:
       self.segm_metrics = {}
-      for i in range(0,self.n_segments):
+      for i in range(0,int(self.n_segments)):
         self.segm_metrics[i]={'tp': {r: [0]*(self.k_top+1) for r in self.radius},
                           'precision': {r: [0]*(self.k_top+1) for r in self.radius},
                           'recall': {r: [0]*(self.k_top+1) for r in self.radius},
@@ -151,7 +151,7 @@ class retrieval_metrics:
   def get_metrics(self):
     
     for segment,scores in self.segm_metrics.items():
-      print(f"Segment: {segment}: {scores['recall'][10][1]}")
+      print(f"Segment: {segment}: {scores['recall'][10][0]}") # 
       
     return {'global':self.global_metrics,'segment':self.segm_metrics}
     
