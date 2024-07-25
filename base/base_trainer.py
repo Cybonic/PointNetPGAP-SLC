@@ -109,7 +109,8 @@ class BaseTrainer:
         with open(config_save_path, 'w') as handle:
             json.dump(self.config, handle, indent=4, sort_keys=True)
         
-        if resume == None:
+        if resume == None or resume == 'None':
+            resume = None
             pass
             
         elif resume  == 'best_model':
@@ -127,6 +128,7 @@ class BaseTrainer:
             self.logger.info(f'No checkpoint found: {resume}\n')
         
         self.logger.info(f'Resume from: {resume}')
+        
         if resume: 
             self._resume_checkpoint(resume,name = self.model_name )
         
