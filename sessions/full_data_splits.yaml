@@ -1,14 +1,53 @@
 cross_validation:
-            'ON23':  [GTJ23,'OJ23','ON22','SJ23','OJ22']
-            'GTJ23': ['ON23','OJ23','ON22','SJ23','OJ22']
-            'OJ22': ['ON23','GTJ23','OJ23','ON22','SJ23']
-            'OJ23': ['ON23','GTJ23','OJ22','ON22','SJ23']
-            'ON22': ['ON23','GTJ23','OJ22','OJ23','SJ23']
-            'SJ23': ['ON23','GTJ23','OJ22','OJ23','ON22']
-            '00': ['00']
+  dataset: 'HORTO-3DLM'
+  seq:
+      'ON23':  [GTJ23,'OJ23','ON22','SJ23','OJ22']
+      'GTJ23': ['ON23','OJ23','ON22','SJ23','OJ22']
+      'OJ22': ['ON23','GTJ23','OJ23','ON22','SJ23']
+      'OJ23': ['ON23','GTJ23','OJ22','ON22','SJ23']
+      'ON22': ['ON23','GTJ23','OJ22','OJ23','SJ23']
+      'SJ23': ['ON23','GTJ23','OJ22','OJ23','ON22']
+           
 
+cross_domain_00:
+  train:
+    dataset: 'HORTO-3DLM'
+    seq: ['ON23','GTJ23','OJ22','OJ23','ON22','SJ23']
+  val:
+    dataset: 'kitti'
+    seq: ['00']
 
+cross_domain_02:
+  train:
+    dataset: 'HORTO-3DLM'
+    seq: ['ON23','GTJ23','OJ22','OJ23','ON22','SJ23']
+  val:
+    dataset: 'kitti'
+    seq: ['02']
 
+cross_domain_05:
+  train:
+    dataset: 'HORTO-3DLM'
+    seq: ['ON23','GTJ23','OJ22','OJ23','ON22','SJ23']
+  val:
+    dataset: 'kitti'
+    seq: ['05']
+
+cross_domain_06:
+  train:
+    dataset: 'HORTO-3DLM'
+    seq: ['ON23','GTJ23','OJ22','OJ23','ON22','SJ23']
+  val:
+    dataset: 'kitti'
+    seq: ['06']
+
+cross_domain_08:
+  train:
+    dataset: 'HORTO-3DLM'
+    seq: ['ON23','GTJ23','OJ22','OJ23','ON22','SJ23']
+  val:
+    dataset: 'kitti'
+    seq: ['08']
 
 
 ground_truth:

@@ -43,6 +43,7 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
     
 
     mplot = myplot(delay=0.2)
+    mplot.set_convas_size([min(xy[:,0]),max(xy[:,0])],[min(xy[:,1]),max(xy[:,1])])
     mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'whitesmoke')
     mplot.xlabel('m'), mplot.ylabel('m')
         
@@ -93,7 +94,7 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tbarros/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
                                     default = 'kitti',
@@ -101,7 +102,7 @@ if __name__ == "__main__":
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "00",type = str)
+    parser.add_argument('--seq',default  = "08",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 

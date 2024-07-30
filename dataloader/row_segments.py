@@ -27,7 +27,28 @@ kitti_00 = {'angle':0,  # GT ORCHARDS 10nov23_00
              
              ]
  } 
+kitti_02 = {'angle':0,  # GT ORCHARDS 10nov23_00
+        'rows':
+            [ 
+             [ -10000,10000,-10000, 10000],
+             
+             ]
+ }
 
+kitti_05 = {'angle':0,  # GT ORCHARDS 10nov23_00
+        'rows':
+            [[ -10000,10000,-10000, 10000]]
+        }
+kitti_06 = {'angle':0,  # GT ORCHARDS 10nov23_00
+        'rows':
+            [[ -10000,10000,-10000, 10000]]
+        }
+    
+kitti_08 = {'angle':0,  # GT ORCHARDS 10nov23_00
+        'rows':
+            [[ -10000,10000,-10000, 10000]]
+        }
+  
 
 ON23 = {'angle':-112.5,  # GT ORCHARDS 10nov23_00
         'rows':

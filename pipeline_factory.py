@@ -136,20 +136,25 @@ def dataloader_handler(root_dir,network,
     datasplits = yaml.load(open("sessions/full_data_splits.yaml", 'r'),Loader=yaml.FullLoader)
     # Get the training and validation sequences based on VAL_SET
     #experiment = args['experiment']
-    print(f"\n[INFO]Experiment: {model_evaluation}")
     
-    if 'cross_validation' in model_evaluation:
-        session['train_loader']['sequence'] = datasplits[model_evaluation]['seq'][val_set] # Get the training sequences for val_set
-        session['train_loader']['dataset']  = datasplits[model_evaluation]['dataset']
+    model_evaluation_exp = model_evaluation +'_'+ val_set if model_evaluation == 'cross_domain' else model_evaluation
+    
+    print(f"\n[INFO]Experiment: {model_evaluation_exp}")
+    
+    if 'cross_validation' in model_evaluation_exp:
+        session['train_loader']['sequence'] = datasplits[model_evaluation_exp]['seq'][val_set] # Get the training sequences for val_set
+        session['train_loader']['dataset']  = datasplits[model_evaluation_exp]['dataset']
         session['val_loader']['sequence'] = [val_set]
-        session['val_loader']['dataset'] = datasplits[model_evaluation]['dataset']
+        session['val_loader']['dataset'] = datasplits[model_evaluation_exp]['dataset']
         
-    elif 'cross_domain' in model_evaluation:
-        session['train_loader']['sequence'] = datasplits[model_evaluation]['train']['seq'] # Get the training sequences for val_set
-        session['train_loader']['dataset']  = datasplits[model_evaluation]['train']['dataset']
+    elif model_evaluation_exp.startswith('cross_domain'):
+        session['train_loader']['sequence'] = datasplits[model_evaluation_exp]['train']['seq'] # Get the training sequences for val_set
+        session['train_loader']['dataset']  = datasplits[model_evaluation_exp]['train']['dataset']
         
-        session['val_loader']['sequence'] = datasplits[model_evaluation]['val']['seq'] 
-        session['val_loader']['dataset'] = datasplits[model_evaluation]['val']['dataset']
+        session['val_loader']['sequence'] = datasplits[model_evaluation_exp]['val']['seq'] 
+        session['val_loader']['dataset'] = datasplits[model_evaluation_exp]['val']['dataset']
+    else:
+        raise NotImplementedError("Model Evaluation not implemented!")
         
     #sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
 

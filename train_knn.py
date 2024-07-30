@@ -62,7 +62,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='None',
+        default='best_model',
         help='Directory to get the trained model.'
     )
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = '00',
+        default = '02',
     )
     parser.add_argument(
         '--device',
