@@ -435,7 +435,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--device', type=str,
         default='cuda',
-        help='Directory to get the trained model.'
+        help='Directory to get  the trained model.'
     )
     parser.add_argument(
         '--batch_size',type=int,
