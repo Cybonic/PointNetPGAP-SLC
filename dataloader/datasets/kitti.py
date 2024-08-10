@@ -42,7 +42,7 @@ class file_structure():
         pose_file = os.path.join(self.target_dir,position_file+'.txt')
         assert os.path.isfile(pose_file),'pose file does not exist: ' + pose_file
         self.pose = utils.load_positions(pose_file)
-        
+        self.pose = self.pose[:,[0,2,1]]
         # Get point cloud files
         point_cloud_dir = os.path.join(self.target_dir,'velodyne')
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
