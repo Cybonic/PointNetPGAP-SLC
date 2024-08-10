@@ -110,28 +110,32 @@ class BaseTrainer:
             json.dump(self.config, handle, indent=4, sort_keys=True)
         
         if resume == None or resume == 'None':
-            resume = None
+            self.resume = None
             pass
             
         elif resume  == 'best_model':
-            resume = os.path.join(self.checkpoint_dir,'best_model.pth') 
-            if not os.path.isfile(resume):
-                resume = None
+            self.resume = os.path.join(self.checkpoint_dir,'best_model.pth') 
+            if not os.path.isfile(self.resume):
+                print(f'No checkpoint found: {self.resume}\n')
+                self.resume = None
         elif resume  == 'auto':
-            resume = os.path.join(self.checkpoint_dir,'checkpoint.pth') 
-            if not os.path.isfile(resume):
-                resume = None
+            self.resume = os.path.join(self.checkpoint_dir,'checkpoint.pth') 
+            if not os.path.isfile(self.resume):
+                print(f'No checkpoint found: {self.resume}\n')
+                self.resume = None
+                
         elif 'pth' == resume.split('.')[-1]:
             self.logger.info(f'Loading from external weights')
+            self.resume = resume
         else:
-            resume = None
-            self.logger.info(f'No checkpoint found: {resume}\n')
+            self.resume = None
+            self.logger.info(f'No checkpoint found: {self.resume}\n')
         
         self.logger.info(f'Resume from: {resume}')
         
-        if resume: 
-            self._resume_checkpoint(resume,name = self.model_name )
-        
+        if self.resume: 
+            self._resume_checkpoint(self.resume,name = self.model_name )
+           
         
         self.dataset_name = run_name['dataset']
         writer_run_name = os.sep.join(  [run_name['experiment'],
