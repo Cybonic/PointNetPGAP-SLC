@@ -29,7 +29,7 @@ from utils.viz import myplot
 from plotting_settings import SETTINGS
 
 def find_file(target_file, search_path):
-    assert os.path.exists(search_path), "The search path does not exist"
+    assert os.path.exists(search_path), "The search path does not exist: " + search_path
     for root, dirs, files in os.walk(search_path):
         if target_file in files:
             return os.path.join(root, target_file)
@@ -410,7 +410,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--dataset_root',type=str, required=False,
-        default='/home/tiago/workspace/DATASET',
+        default='/home/tbarros/workspace/DATASET',
         help='Directory to the dataset root'
     )
     
@@ -421,7 +421,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--experiment',type=str,
-        default='RAL',
+        default='RALv3',
         help='Name of the experiment to be executed'
     )
 
@@ -469,7 +469,7 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='HORTO-3DLM', # uk
+        default='kitti', # uk
         help='Directory to get the trained model.'
     )
     
@@ -477,7 +477,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'OJ23',
+        default = '08',
         help = 'Validation set'
     )
 
@@ -493,7 +493,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv2/on_paper/#overlap_transformer-LazyTripletLoss_L2',
+        default='/home/tbarros/workspace/pointnetgap-RAL/RALv3/kitti_predictions/#PointNetPGAP-LazyTripletLoss_L2-segment_loss-m0.5',
         # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
         # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
         # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
@@ -618,7 +618,8 @@ if __name__ == '__main__':
                                 FLAGS.val_set,
                                 SESSION, 
                                 roi = FLAGS.roi, 
-                                pcl_norm = False)
+                                pcl_norm = False,
+                                model_evaluation='cross_domain')
      
     from place_recognition import PlaceRecognition 
 
@@ -696,7 +697,7 @@ if __name__ == '__main__':
     
     plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
                          save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
-                         ground_true = True
+                         ground_true = False
                           )
 
 
