@@ -8,4 +8,10 @@ SETTINGS = {'ON22': {'scale':350},
             'SJ23': {'scale':0.2},
             'OJ22': {'scale':10},
             'OJ23': {'scale':1},
+            '00': {'scale':100},
+            '02': {'scale':20},
+            '05': {'scale':20},
+            '06': {'scale':20},
+            '08': {'scale':50},
+            
 }
