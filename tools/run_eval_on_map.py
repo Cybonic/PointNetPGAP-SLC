@@ -28,6 +28,10 @@ from utils.viz import myplot
 
 from plotting_settings import SETTINGS
 
+import matplotlib.pyplot as plt
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
 def find_file(target_file, search_path):
     assert os.path.exists(search_path), "The search path does not exist: " + search_path
     for root, dirs, files in os.walk(search_path):
@@ -88,10 +92,12 @@ def plot_sim_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_ran
     ax.set_axis_off()  # Turn off the axis
     plt.show()
     
+    for key, value in plt.rcParams.items():
+        print(f"{key}: {value}")
     
 
 def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_range=1,topk=1,**argv):
-    import matplotlib.pyplot as plt
+    
 
     vertical_scale = argv['scale'] if 'scale' in argv else 1
     
@@ -113,8 +119,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     z_subset = vertical_scale*indices * (z[-1] - z[0]) / (len(x) - 1) + z[0]
     
     # Create a 2D path plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    
 
     # Colorize points based on label
     colors = plt.cm.get_cmap('viridis', 7)
@@ -123,7 +128,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     
     queries = np.array(list(predictions.keys()))
     
-    plot_query_idx = list(range(0,len(queries),20))
+    plot_query_idx = list(range(0,len(queries),1))
     
     n_samples = poses.shape[0]
     
@@ -139,7 +144,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         
     
         query_label = predictions[query]['segment']
-        true_loops = predictions[query]['true_loops']
+        true_loops  = predictions[query]['true_loops']
         
         pred_loops = predictions[query]['pred_loops']
         
@@ -149,7 +154,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
             pred_idx = pred_loops['idx'][:topk]
             pred_label = pred_loops['segment'][:topk]
         else:
-            pred_idx = true_loops['idx'][:topk]
+            pred_idx   = true_loops['idx'][:topk]
             pred_label = true_loops['segment'][:topk]
         #pred_dist = pred_loops['dist'][:topk]
         
@@ -176,7 +181,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         
         in_range_bool = dist < loop_range
         
-        plot_idx = np.argsort(dist)#[in_range_bool]
+        plot_idx = np.argsort(dist)[in_range_bool]
         
         if len(plot_idx) == 0:
             continue
@@ -200,10 +205,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         
         
         
-    ax.axis('equal')  # Equal aspect ratio
-    ax.set_axis_off()  # Turn off the axis
-    plt.show()
-    
+   
     
     
 
@@ -416,7 +418,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetPGAPLoss', help='model to be used'
+        default='PointNetVLAD', help='model to be used'
     )
 
     parser.add_argument(
@@ -477,7 +479,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = '08',
+        default = '06',
         help = 'Validation set'
     )
 
@@ -493,7 +495,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tbarros/workspace/pointnetgap-RAL/RALv3/kitti_predictions/#PointNetPGAP-LazyTripletLoss_L2-segment_loss-m0.5',
+        default='/home/tbarros/workspace/pointnetgap-RAL/RALv3/kittiv2_predictions/#PointNetVLAD',
         # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
         # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
         # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
@@ -511,7 +513,7 @@ if __name__ == '__main__':
         '--eval_roi_window',
         type=float,
         required=False,
-        default = 0,
+        default = 300,
         help='Number of frames to ignore in imidaite vicinity of the query frame.'
     )
     
@@ -635,7 +637,7 @@ if __name__ == '__main__':
         loader.get_val_loader(),
         top_cand = 1,
         logger   = logger,
-        window   = FLAGS.eval_roi_window,
+        roi_window   = FLAGS.eval_roi_window,
         warmup_window = FLAGS.eval_warmup_window,
         device  = FLAGS.device,
         logdir =  FLAGS.experiment,
@@ -683,7 +685,7 @@ if __name__ == '__main__':
     # Save gif
     file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower(),FLAGS.network.lower(),f'topk{FLAGS.topk}'])
  
-    root2save = os.path.join('results','retrieval_on_map',f'range{loop_range}m')
+    root2save = os.path.join('plots','retrieval_on_map',f'range{loop_range}m')
     os.makedirs(root2save,exist_ok=True)
     print("Saving to: ",root2save)
     
@@ -693,6 +695,35 @@ if __name__ == '__main__':
     
     #plot_place_on_map(xy, predictions,topk = FLAGS.topk, record_gif = True, gif_name = file_name,save_dir = root2save, 
     #                  save_step_itr = save_itrs,loop_range = loop_range)
+    # Load the dictionary from the JSON file
+    
+    import json
+    import pickle
+    
+    plot_setting_dir = os.path.join("plots","settings")
+    os.makedirs(plot_setting_dir,exist_ok=True)
+    
+    plot_setting_file = os.path.join(plot_setting_dir,f'{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_matplotlibrc.json')
+    #plot_setting_file = os.path.join(plot_setting_dir,f'{file_name}_custom_matplotlibrc.pkl')
+    
+    set_equal_axis = True
+    if os.path.exists(plot_setting_file):
+        
+        with open(plot_setting_file, 'rb') as f:
+            view_settings = pickle.load(f)
+
+        print("Loading settings from: ",plot_setting_file)
+        # Apply the loaded settings
+        import matplotlib.pyplot as plt
+        ax.view_init(elev=view_settings['elev'], azim=view_settings['azim'])
+        # Restore the axis limits to achieve the same "zoom"
+        ax.set_xlim(view_settings['xlim'][0], view_settings['xlim'][1])
+        ax.set_ylim(view_settings['ylim'][0], view_settings['ylim'][1])
+        ax.set_zlim(view_settings['zlim'][0], view_settings['zlim'][1])
+        set_equal_axis = False
+        #ax.dist = view_settings['camera_distance'] * 0.01
+        # ax.dist = view_settings['dist']
+
     
     
     plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
@@ -700,8 +731,34 @@ if __name__ == '__main__':
                          ground_true = False
                           )
 
+    # only set the axis if the settings are not loaded
+    if set_equal_axis:
+        ax.axis('equal')  # Equal aspect ratio
+        
+    ax.set_axis_off()  # Turn off the axis
+    plt.show()
+   
+    # save current plot
+    plt.savefig(os.path.join(root2save,f'{file_name}.png'))
 
-    #plot_sim_on_3D_map(xy,
+    # Get the current view settings
+    view_settings = {
+            'elev': ax.elev,
+            'azim': ax.azim,
+            'xlim': ax.get_xlim(),
+            'ylim': ax.get_ylim(),
+            'zlim': ax.get_zlim(),
+            'camera_distance': ax.get_proj()[0, 0]  # Approximation for camera distance
+    }
+
+    for key, value in view_settings.items():
+        print(f"{key}: {value}")
+    
+    with open(plot_setting_file, 'wb') as f:
+        pickle.dump(view_settings, f)
+
+    print("Settings saved to: ",plot_setting_file)
+
     #                      predictions,
     #                      topk = FLAGS.topk,
     #                      record_gif = True,
