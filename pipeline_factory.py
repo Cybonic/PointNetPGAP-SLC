@@ -129,7 +129,7 @@ def dataloader_handler(root_dir,network,
                        val_set,
                        session,
                        pcl_norm=False,
-                       model_evaluation='cross_validation',
+                       eval_protocol='cross_validation',
                        **args):
 
     # Load the predefined data splits 
@@ -137,7 +137,7 @@ def dataloader_handler(root_dir,network,
     # Get the training and validation sequences based on VAL_SET
     #experiment = args['experiment']
     
-    model_evaluation_exp = model_evaluation +'_'+ val_set if model_evaluation == 'cross_domain' else model_evaluation
+    model_evaluation_exp = eval_protocol +'_'+ val_set if eval_protocol == 'cross_domain' else eval_protocol
     
     print(f"\n[INFO]Experiment: {model_evaluation_exp}")
     
@@ -190,9 +190,9 @@ def dataloader_handler(root_dir,network,
     #if "model_evaluation" in session:
     #    model_evaluation = session['model_evaluation']
 
-    print(f"\n[INFO]Model Evaluation: {model_evaluation}")
+    print(f"\n[INFO]Model Evaluation: {eval_protocol}")
 
-    if model_evaluation in ["cross_validation",'cross_domain']:
+    if eval_protocol in ["cross_validation",'cross_domain']:
         loader = cross_validation(  root = root_dir,
                                     dataset = dataset,
                                     modality = modality,    

@@ -246,13 +246,9 @@ class BaseTrainer:
             
  
             # SAVE CHECKPOINT
-            if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
-                self._save_checkpoint(epoch, save_best = self.improved)
-                #self.eval_approach.save_params()
-                #self.eval_approach.save_descriptors()
-                #self.eval_approach.save_predictions_cv()
-                #self.eval_approach.save_results_cv()
-                self.improved = False
+            #if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
+            self._save_checkpoint(epoch, save_best = self.improved)
+            self.improved = False
             
 
         # Register best scores and hyper
@@ -290,8 +286,8 @@ class BaseTrainer:
             'epoch': epoch,
             'state_dict': self.model.state_dict(),
             #'monitor_best': self.mnt_best,
-            'monitor_best': self.best_log,
-            'config': self.config
+            'monitor_best': self.best_log, # This is only valid for the best model. Must be changed for the checkpoint!
+            'config': self.config 
         }
         filename = os.path.join(self.checkpoint_dir, f'checkpoint.pth')
         self.logger.info(f'\nSaving a checkpoint: {filename} ...') 
