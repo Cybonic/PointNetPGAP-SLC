@@ -330,7 +330,8 @@ if __name__ == '__main__':
                                 FLAGS.val_set,
                                 SESSION, 
                                 roi = FLAGS.roi, 
-                                pcl_norm = False)
+                                pcl_norm = False,
+                                 model_evaluation='cross_domain')
 
     from place_recognition import PlaceRecognition
     eval_approach = PlaceRecognition(   FLAGS.network,
@@ -358,6 +359,7 @@ if __name__ == '__main__':
     root_path = os.path.dirname(FLAGS.resume)
         
     if FLAGS.resume.split('/')[-1] == 'descriptors.torch':
+        print('Loading descriptors from %s'%FLAGS.resume)
         eval_approach.load_descriptors(FLAGS.resume)
     
     # Run the evaluation

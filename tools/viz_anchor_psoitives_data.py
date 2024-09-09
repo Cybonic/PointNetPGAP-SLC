@@ -8,7 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
     # Loading DATA
-from dataloader.horto3dlm.dataset import load_positions
+from dataloader.datasets.utils import load_positions
 from dataloader.utils import gen_gt_constrained_by_rows,rotate_poses
 from dataloader import row_segments
     
@@ -26,6 +26,7 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 
     mplot = myplot(delay=0.2)
     mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'k')
+    mplot.set_convas_size([min(xy[:,0]),max(xy[:,0])],[min(xy[:,1]),max(xy[:,1])])
     mplot.xlabel('m'), mplot.ylabel('m')
         
     if record_gif == True:
@@ -73,21 +74,21 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tbarros/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'HORTO-3DLM',
+                                    default = 'kitti',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "GTJ23/extracted",type = str)
+    parser.add_argument('--seq',default  = "06",type = str)
     parser.add_argument('--plot_path',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
-    parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
+    parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
-    parser.add_argument('--save_eval_data',default  = True ,type = bool,
+    parser.add_argument('--save_eval_data',default  = False ,type = bool,
                         help='save evaluation data to a pickle file')
     
     
@@ -110,9 +111,11 @@ if __name__ == "__main__":
     log.append("[INF] record gif Flag: " + str(record_gif_flag))
  
     ground_truth = {'pos_range': 10,
-                    'warmupitrs': 100, # Number of frames to ignore at the beguinning
-                    'roi': 100,
-                    'anchor_range': 0.5}
+                    'warmupitrs': 500, # Number of frames to ignore at the beguinning
+                    'roi': 300,
+                    'anchor_range': 0.0,
+                    'segment_flag': False 
+                    }
     
     
     # log ground truth data 
@@ -166,8 +169,9 @@ if __name__ == "__main__":
     log.append("[INF] Number of poses: %d"% xy.shape[0])
     
     # Rotate poses to align with the ROI frame
-   
-    rectangle_rois = load_row_bboxs(seq)
+    if 'kitti' in dataset: xy = xy[:,[0,2,1]]
+    if dataset == 'kitti': sequence = dataset +'_' + seq
+    rectangle_rois = load_row_bboxs(sequence)
 
     anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
 

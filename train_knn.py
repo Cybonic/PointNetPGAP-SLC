@@ -86,14 +86,14 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='HORTO-3DLM', # uk
+        default='kitti', # uk
         help='Directory to get the trained model.'
     )
     parser.add_argument(
         '--val_set',
         type=str,
         required=False,
-        default = 'GTJ23',
+        default = '00',
     )
     parser.add_argument(
         '--device',
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         '--feat_dim',
         type=int,
         required=False,
-        default = 1024,
+        default = 16,
         help='number of features.'
     )
 
@@ -185,7 +185,7 @@ if __name__ == '__main__':
         default = 0,
     )
     parser.add_argument(
-        '--model_evaluation',
+        '--eval_protocol',
         type=str,
         required=False,
         default = "cross_validation",
@@ -220,13 +220,7 @@ if __name__ == '__main__':
         '--eval_roi_window',
         type=float,
         required=False,
-        default = 100,
-    )
-    parser.add_argument(
-        '--stages',
-        type=str,
-        required=False,
-        default = '010',
+        default = 500,
     )
     
     parser.add_argument(
@@ -254,9 +248,8 @@ if __name__ == '__main__':
     SESSION['trainer']['feat_dim']  = FLAGS.feat_dim
     SESSION['aug']  = FLAGS.augmentation
     # Define evaluation mode: cross_validation or split
-    SESSION['model_evaluation'] = FLAGS.model_evaluation
+    SESSION['model_evaluation'] = FLAGS.eval_protocol
     
-   
     SESSION['train_loader']['triplet_file'] = FLAGS.triplet_file
     SESSION['train_loader']['augmentation'] = FLAGS.augmentation
     SESSION['train_loader']['shuffle_points'] = FLAGS.shuffle_points
@@ -264,8 +257,6 @@ if __name__ == '__main__':
     SESSION['val_loader']['batch_size'] = FLAGS.eval_batch_size
     SESSION['val_loader']['ground_truth_file'] = FLAGS.eval_file
     SESSION['val_loader']['augmentation'] = False
-    
-    
     SESSION['trainer']['epochs'] =  FLAGS.epochs
     SESSION['loss']['type'] = FLAGS.loss
     SESSION['loss']['alpha'] = FLAGS.loss_alpha
@@ -324,7 +315,8 @@ if __name__ == '__main__':
                                 FLAGS.val_set,
                                 SESSION,
                                 roi = FLAGS.roi,
-                                pcl_norm = FLAGS.pcl_norm)
+                                pcl_norm = FLAGS.pcl_norm,
+                                eval_protocol=FLAGS.eval_protocol)
     
     
     # Build the model and the loader
@@ -354,7 +346,7 @@ if __name__ == '__main__':
             config = SESSION,
             device = FLAGS.device,
             run_name = run_name,
-            train_epoch_zero = False,
+            train_epoch_zero = True,
             monitor_range = SESSION['monitor_range'],
             roi_window    = FLAGS.eval_roi_window,
             eval_protocol = 'place',
@@ -368,11 +360,16 @@ if __name__ == '__main__':
             best_model_filename = trainer.Train(train_batch=FLAGS.batch_size,loop_range=loop_range)
         except KeyboardInterrupt:
             print("Training stopped by user")
-            #best_model_filename = trainer.save_best_model_filename
+            best_model_filename = trainer.save_best_model_filename
+            
+    else:
+        best_model_filename = trainer.resume
     
+    print("Evaluating model: %s"%best_model_filename)
+        
     if FLAGS.save_predictions:
         
-        best_model_filename = trainer.save_best_model_filename
+        
         # Generate descriptors, predictions and performance for the best weights
         trainer.eval_approach.load_pretrained_model(best_model_filename)
         loop_range = list(range(0,120,1))

@@ -1,7 +1,7 @@
 
 
-from dataloader.horto3dlm.eval import Eval
-from dataloader.horto3dlm.triplet import Triplet
+from dataloader.datasets.eval import Eval
+from dataloader.datasets.triplet import Triplet
 from torch.utils.data import DataLoader,SubsetRandomSampler
 from dataloader.batch_utils import CollationFunctionFactory
 import numpy as np
@@ -22,6 +22,7 @@ class cross_validation():
         
 
     def get_train_loader(self,debug=False):
+        dataset = self.train_cfg['dataset']
         sequence  = self.train_cfg['sequence']
         triplet_files = self.train_cfg['triplet_file']
         augmentation = self.train_cfg['augmentation'] if 'augmentation' in self.train_cfg else 0
@@ -36,7 +37,7 @@ class cross_validation():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
         train_loader = Triplet(root       = self.root,
-                                    dataset     = self.dataset,
+                                    dataset     = dataset,
                                     sequences   = sequence,
                                     triplet_file = triplet_files,
                                     modality = self.modality,
@@ -78,6 +79,7 @@ class cross_validation():
     
     
     def get_val_loader(self):
+        dataset  = self.val_cfg['dataset']
         sequence  = self.val_cfg['sequence']
         ground_truth_files = self.val_cfg['ground_truth_file']
         augmentation = self.val_cfg['augmentation']
@@ -90,7 +92,7 @@ class cross_validation():
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         val_loader = Eval( root = self.root,
-                                dataset = self.dataset,
+                                dataset = dataset,
                                 sequence = sequence[0],
                                 modality = self.modality,
                                 memory= self.memory,

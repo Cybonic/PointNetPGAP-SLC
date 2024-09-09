@@ -213,7 +213,7 @@ class PlaceRecognition():
         
         
         self.logger.warning('\n ** Loading descriptors from internal File: ' + file)
-
+        print('\n ** Loading descriptors from internal File: ' + file)
         # SAVE PREDICTIONS
     
         path_strucuture = file.split('/')
@@ -225,6 +225,7 @@ class PlaceRecognition():
         
         save_path = os.sep.join(path)
         self.logger.warning('\n ** Overwiting saving prediction path: ' + save_path)
+        print('\n ** Overwiting saving prediction path: ' + save_path)
         self.predictions_dir = save_path
         
             
@@ -232,7 +233,10 @@ class PlaceRecognition():
         self.descriptors = torch.load(file)
         self.use_load_deptrs = True # Disable descriptor generation
         self.save_deptrs     = False # Descriptors were already saved, so no need to save again
-    
+
+        print("USE LOAD DESCRIPTORS: ",self.use_load_deptrs)
+        print("SAVE DESCRIPTORS: ",self.save_deptrs)
+        print('\n')
 
 
     def save_descriptors(self,save_dir=None,):

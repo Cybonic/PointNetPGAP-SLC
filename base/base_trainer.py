@@ -109,27 +109,33 @@ class BaseTrainer:
         with open(config_save_path, 'w') as handle:
             json.dump(self.config, handle, indent=4, sort_keys=True)
         
-        if resume == None:
+        if resume == None or resume == 'None':
+            self.resume = None
             pass
             
         elif resume  == 'best_model':
-            resume = os.path.join(self.checkpoint_dir,'best_model.pth') 
-            if not os.path.isfile(resume):
-                resume = None
+            self.resume = os.path.join(self.checkpoint_dir,'best_model.pth') 
+            if not os.path.isfile(self.resume):
+                print(f'No checkpoint found: {self.resume}\n')
+                self.resume = None
         elif resume  == 'auto':
-            resume = os.path.join(self.checkpoint_dir,'checkpoint.pth') 
-            if not os.path.isfile(resume):
-                resume = None
+            self.resume = os.path.join(self.checkpoint_dir,'checkpoint.pth') 
+            if not os.path.isfile(self.resume):
+                print(f'No checkpoint found: {self.resume}\n')
+                self.resume = None
+                
         elif 'pth' == resume.split('.')[-1]:
             self.logger.info(f'Loading from external weights')
+            self.resume = resume
         else:
-            resume = None
-            self.logger.info(f'No checkpoint found: {resume}\n')
+            self.resume = None
+            self.logger.info(f'No checkpoint found: {self.resume}\n')
         
         self.logger.info(f'Resume from: {resume}')
-        if resume: 
-            self._resume_checkpoint(resume,name = self.model_name )
         
+        if self.resume: 
+            self._resume_checkpoint(self.resume,name = self.model_name )
+           
         
         self.dataset_name = run_name['dataset']
         writer_run_name = os.sep.join(  [run_name['experiment'],
@@ -240,13 +246,9 @@ class BaseTrainer:
             
  
             # SAVE CHECKPOINT
-            if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
-                self._save_checkpoint(epoch, save_best = self.improved)
-                #self.eval_approach.save_params()
-                #self.eval_approach.save_descriptors()
-                #self.eval_approach.save_predictions_cv()
-                #self.eval_approach.save_results_cv()
-                self.improved = False
+            #if self.improved: # and (epoch % self.save_period == 0 and self.save_period > 0):
+            self._save_checkpoint(epoch, save_best = self.improved)
+            self.improved = False
             
 
         # Register best scores and hyper
@@ -284,8 +286,8 @@ class BaseTrainer:
             'epoch': epoch,
             'state_dict': self.model.state_dict(),
             #'monitor_best': self.mnt_best,
-            'monitor_best': self.best_log,
-            'config': self.config
+            'monitor_best': self.best_log, # This is only valid for the best model. Must be changed for the checkpoint!
+            'config': self.config 
         }
         filename = os.path.join(self.checkpoint_dir, f'checkpoint.pth')
         self.logger.info(f'\nSaving a checkpoint: {filename} ...') 

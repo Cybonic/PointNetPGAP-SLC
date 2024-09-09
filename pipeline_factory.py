@@ -3,7 +3,7 @@
 from dataloader.projections import BEVProjection,SphericalProjection
 from dataloader.sparselaserscan import SparseLaserScan
 from dataloader.laserscan import Scan
-from dataloader.horto3dlm.loader import cross_validation
+from dataloader.datasets.loader import cross_validation
 
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
@@ -69,7 +69,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = PointNetGeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
     elif pipeline_name.startswith('PointNetPGAP'):
         from networks.pipelines.PointNetPGAP import PointNetPGAP
-        pipeline = PointNetPGAP(input_channels=3, output_channels=feat_dim, use_xyz=True, num_points=num_points)
+        pipeline = PointNetPGAP(input_channels=3, output_channels=16, use_xyz=True, num_points=num_points)
     elif pipeline_name.startswith('PointNetVLAD'):
         pipeline = PointNetVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
     elif pipeline_name.startswith('overlap_transformer'):
@@ -136,14 +136,38 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 # ======================================== DATALOADER FACTORY ======================================
 # ==================================================================================================
 
-def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,**args):
+def dataloader_handler(root_dir,network,
+                       dataset,
+                       val_set,
+                       session,
+                       pcl_norm=False,
+                       eval_protocol='cross_validation',
+                       **args):
 
     # Load the predefined data splits 
     datasplits = yaml.load(open("sessions/full_data_splits.yaml", 'r'),Loader=yaml.FullLoader)
     # Get the training and validation sequences based on VAL_SET
-    session['train_loader']['sequence'] = datasplits['cross_validation'][val_set] # Get the training sequences for val_set
-    session['val_loader']['sequence']   = [val_set]
+    #experiment = args['experiment']
     
+    model_evaluation_exp = eval_protocol +'_'+ val_set if eval_protocol == 'cross_domain' else eval_protocol
+    
+    print(f"\n[INFO]Experiment: {model_evaluation_exp}")
+    
+    if 'cross_validation' in model_evaluation_exp:
+        session['train_loader']['sequence'] = datasplits[model_evaluation_exp]['seq'][val_set] # Get the training sequences for val_set
+        session['train_loader']['dataset']  = datasplits[model_evaluation_exp]['dataset']
+        session['val_loader']['sequence'] = [val_set]
+        session['val_loader']['dataset'] = datasplits[model_evaluation_exp]['dataset']
+        
+    elif model_evaluation_exp.startswith('cross_domain'):
+        session['train_loader']['sequence'] = datasplits[model_evaluation_exp]['train']['seq'] # Get the training sequences for val_set
+        session['train_loader']['dataset']  = datasplits[model_evaluation_exp]['train']['dataset']
+        
+        session['val_loader']['sequence'] = datasplits[model_evaluation_exp]['val']['seq'] 
+        session['val_loader']['dataset'] = datasplits[model_evaluation_exp]['val']['dataset']
+    else:
+        raise NotImplementedError("Model Evaluation not implemented!")
+        
     #sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
 
     roi = None
@@ -173,15 +197,15 @@ def dataloader_handler(root_dir,network,dataset,val_set,session,pcl_norm=False,*
         raise NotImplementedError("Modality not implemented!")
 
     # Select experiment type by default is cross_validation
-    model_evaluation = "cross_validation" # Default
+    # model_evaluation = "cross_validation" # Default
 
-    if "model_evaluation" in session:
-        model_evaluation = session['model_evaluation']
+    #if "model_evaluation" in session:
+    #    model_evaluation = session['model_evaluation']
 
-    print(f"\n[INFO]Model Evaluation: {model_evaluation}")
+    print(f"\n[INFO]Model Evaluation: {eval_protocol}")
 
-    if model_evaluation == "cross_validation":
-        loader = cross_validation( root = root_dir,
+    if eval_protocol in ["cross_validation",'cross_domain']:
+        loader = cross_validation(  root = root_dir,
                                     dataset = dataset,
                                     modality = modality,    
                                     memory   = session['memory'], # DISK or RAM

@@ -12,8 +12,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory and add it to the Python path
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
-from dataloader.horto3dlm.dataset import file_structure
-
+#from dataloader.horto3dlm.dataset import file_structure
+from dataloader import datasets
 import pickle
 
 PREPROCESSING = Tr.Compose([Tr.ToTensor()])
@@ -39,7 +39,15 @@ class Eval:
         #self.num_samples = self.num_samples
         self.sequence = sequence
         self.device   = device
-        kitti_struct = file_structure(root,dataset, sequence)
+        # clean name
+        clean_dataset_name = dataset.lower()
+        # remove "_" and "-" from dataset name
+        clean_dataset_name = clean_dataset_name.replace("_","")
+        clean_dataset_name = clean_dataset_name.replace("-","")
+        
+        dataset_structure = datasets.__dict__[clean_dataset_name].file_structure
+        
+        kitti_struct = dataset_structure(root,dataset, sequence)
             
         self.files,name = kitti_struct._get_point_cloud_file_()
         self.poses = kitti_struct._get_pose_()

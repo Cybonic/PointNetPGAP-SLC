@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 from utils.viz import myplot
 
 from dataloader.utils import gen_gt_constrained_by_rows
-from dataloader.horto3dlm.dataset import load_positions
+from dataloader.datasets.utils import load_positions
 from dataloader import row_segments
 
 def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.gif',frame_jumps=50):
@@ -30,6 +30,7 @@ def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
     
 
     mplot = myplot(delay=0.2)
+    mplot.set_convas_size([min(xy[:,0]),max(xy[:,0])],[min(xy[:,1]),max(xy[:,1])])
     mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'k')
     mplot.xlabel('m'), mplot.ylabel('m')
         
@@ -77,15 +78,15 @@ def viz_triplet(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET', help='path to the data directory')
+    parser.add_argument('--root', type=str, default='/home/tbarros/workspace/DATASET', help='path to the data directory')
     parser.add_argument('--dataset',
-                                    default = 'uk',
+                                    default = 'kitti',
                                     type= str,
                                     help='dataset root directory.'
                                     )
-    parser.add_argument('--seq',default  = "orchards/june23/extracted",type = str, 
+    parser.add_argument('--seq',default  = "08",type = str, 
                         help='path to the data of the sequence')
-    parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
+    parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--show_static_plot',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--save_triplet_data',default  = True ,type = bool)
@@ -101,13 +102,14 @@ if __name__ == "__main__":
     record_gif_flag = args.record_gif
     save_triplet_data = args.save_triplet_data
     log = []
-    ground_truth = {'pos_range':2, # Loop Threshold [m]
-                    'neg_range':10,
+    ground_truth = {'pos_range':10, # Loop Threshold [m]
+                    'neg_range':100,
                     'num_neg':20,
                     'num_pos':1,
-                    'warmupitrs': 200, # Number of frames to ignore at the beguinning
-                    'roi':100, # Region of interest [m]
-                    'anchor_range':0.5 # Range to search for the anchor
+                    'warmupitrs': 500, # Number of frames to ignore at the beguinning
+                    'roi':300, # Region of interest [m]
+                    'anchor_range':0.5, # Range to search for the anchor
+                    'segment_flag': False # Flag to segment the data
                     }
     
     # log ground truth parameters
@@ -181,6 +183,9 @@ if __name__ == "__main__":
     pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
     xy = load_positions(pose_file)
 
+    if 'kitti' in dataset: xy = xy[:,[0,2,1]]
+    if dataset == 'kitti': seq = dataset +'_' + sequence
+    
     print("[INF] Reading poses from: %s"% pose_file)
     log.append("[INF] Reading poses from: %s"% pose_file)
     print("[INF] Number of poses: %d"% xy.shape[0])
@@ -188,7 +193,7 @@ if __name__ == "__main__":
 
     from viz_row_labels import load_row_bboxs
     
-    rectangle_rois = load_row_bboxs(sequence)
+    rectangle_rois = load_row_bboxs(seq)
     
     anchors,positives,negatives  = gen_gt_constrained_by_rows(xy,rectangle_rois,**ground_truth)
 

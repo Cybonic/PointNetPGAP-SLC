@@ -12,15 +12,17 @@ def get_files(target_dir):
     return(files[idx],fullfiles[idx])
 
 
-def gen_gt_constrained_by_rows(   poses,
+
+def gen_gt_constrained_by_rows( poses,
                                 retangle_rois, 
-                                pos_range= 0.05, # Loop Threshold [m]
-                                neg_range=10,
-                                num_neg = 10,
-                                num_pos = 10,
+                                pos_range = 0.05, # Loop Threshold [m]
+                                neg_range = 10,
+                                num_neg   = 10,
+                                num_pos   = 10,
                                 warmupitrs= 10, # Number of frames to ignore at the beguinning
                                 roi       = 5, # Window):
-                                anchor_range = 0
+                                anchor_range = 0,
+                                segment_flag = True
                     ):
     """
     Generate ground truth for loop closure detection    
@@ -48,11 +50,12 @@ def gen_gt_constrained_by_rows(   poses,
     negatives = []
 
     n_coord=  poses[0].shape[0]
-    last_anchor_pose =poses[0,:].reshape((1,-1))
-    all_idnices = np.array(range(poses.shape[0]-1))
+    last_anchor_pose = poses[0,:].reshape((1,-1))
+    all_indices = np.array(range(poses.shape[0]-1))
+    
     for i in indices:
     
-        pose    = poses[i,:].reshape((1,-1))
+        pose = poses[i,:].reshape((1,-1))
         # Compute the Euclidean distance between the anchor point and the last anchor
         dist_meter  = np.sqrt(np.sum((pose -last_anchor_pose)**2,axis=1))
         # If the distance is greater than anchor_range, then the current pose is an anchor
@@ -64,10 +67,10 @@ def gen_gt_constrained_by_rows(   poses,
         # Compute the Euclidean distance between the anchor point and the map
         dist_meter  = np.sqrt(np.sum((pose - _map_)**2,axis=1))
         
-        exlude_window = np.arange(i-roi,i)
+        # positive_window = np.arange(i-roi,i)
         # Remove window indices from the list of all indices
-        pos_indices_of_interest = all_idnices[:i-roi].copy()
-        neg_indices_of_interest = all_idnices
+        pos_indices_of_interest = all_indices[:i-roi].copy()
+        neg_indices_of_interest = all_indices
 
         last_anchor_pose = pose
         pos_dis_   = dist_meter[pos_indices_of_interest]
@@ -75,6 +78,10 @@ def gen_gt_constrained_by_rows(   poses,
         
         # Select the points within the positive range
         pos_idx_in_range = np.where(pos_dis_ <= float(pos_range))[0]
+        
+        if len(pos_idx_in_range) == 0:
+            continue
+        
         pos_idx_in_range = pos_indices_of_interest[pos_idx_in_range]
 
         # Select the points outside the negative range
@@ -89,17 +96,22 @@ def gen_gt_constrained_by_rows(   poses,
             pos_labels = extract_points_in_rectangle_roi(all_pos_poses,retangle_rois)
             neg_labels = extract_points_in_rectangle_roi(all_neg_poses,retangle_rois)
 
-            pos_idx_in_same_row = []
+            pos_idx_in_same_row  = []
             neg_idx_out_same_row = []
 
             if an_labels[0]== -1:
                 continue
             
-            # Anchor and positives must be in the same row
-            pos_idx_in_same_row  = np.where(an_labels[0] == pos_labels)[0]
-            # Negatives must be in a different row
-            neg_idx_out_same_row = np.where(an_labels[0] != neg_labels)[0]
+            if segment_flag:
+                pos_idx_in_same_row  = np.where(an_labels[0] == pos_labels)[0]
+                neg_idx_out_same_row = np.where(an_labels[0] != neg_labels)[0]
+            else:
+                # Anchor and positives must be in the same row
+                pos_idx_in_same_row  = np.arange(len(pos_labels))
+                # Negatives must be in a different row
+                neg_idx_out_same_row = np.arange(len(neg_labels))
 
+            
             if len(pos_idx_in_same_row) and len(neg_idx_out_same_row):
 
                 pos_map_idx = np.array(pos_idx_in_range[pos_idx_in_same_row]) # Select the points in the same row
