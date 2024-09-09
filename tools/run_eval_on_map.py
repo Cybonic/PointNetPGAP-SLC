@@ -103,7 +103,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     
     segment_labels = argv['segment_labels']
     
-    ground_true = argv['ground_true'] if 'ground_true' in argv else False
+    ground_truth = argv['ground_truth'] if 'ground_truth' in argv else False
     
     x = poses[:,0]
     y = poses[:,1]
@@ -150,7 +150,7 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         
         max_values = max(true_loops['dist'] )
         
-        if ground_true == False:
+        if ground_truth == False:
             pred_idx = pred_loops['idx'][:topk]
             pred_label = pred_loops['segment'][:topk]
         else:
@@ -412,7 +412,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--dataset_root',type=str, required=False,
-        default='/home/tbarros/workspace/DATASET',
+        default='/home/tiago/workspace/DATASET',
         help='Directory to the dataset root'
     )
     
@@ -423,7 +423,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--experiment',type=str,
-        default='RALv3',
+        default='kitti_test_predictions',
         help='Name of the experiment to be executed'
     )
 
@@ -495,7 +495,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tbarros/workspace/pointnetgap-RAL/RALv3/kittiv2_predictions/#PointNetVLAD',
+        default='/home/tiago/workspace/pointnetgap-RAL/RALv3',
         # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
         # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
         # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
@@ -550,6 +550,24 @@ if __name__ == '__main__':
         type=int,
         required=False,
         default = 1,
+    )
+    parser.add_argument(
+        '--ground_truth',
+        type=bool,
+        required= False,
+        default = False,
+    )
+    parser.add_argument(
+        '--show_plot',
+        type=bool,
+        required=False,
+        default = False,
+    )
+    parser.add_argument(
+        '--save_plot_settings',
+        type=bool,
+        required=False,
+        default = False,
     )
     
     FLAGS, unparsed = parser.parse_known_args()
@@ -631,7 +649,8 @@ if __name__ == '__main__':
     log_file    = os.path.join('logs',f'{FLAGS.experiment}.log')
     logger      = logging.getLogger(__name__)
     log_handler = logging.FileHandler(log_file)
-        
+    
+    # LOAD PLACE RECOGNITION
     eval_approach = PlaceRecognition(
         None,
         loader.get_val_loader(),
@@ -650,40 +669,46 @@ if __name__ == '__main__':
     
     
     resume = FLAGS.resume
-    predictions = os.path.join(resume,f'eval-{FLAGS.val_set}')
+    predictions = os.path.join(resume,FLAGS.experiment,f'#{FLAGS.network}',f'eval-{FLAGS.val_set}')
+    
+    print("*"*50)
+    print("\nLoading predictions from: ",predictions)
+    print("*"*50)
+    
     
     prediction_file = find_file('predictions.pkl',predictions)
-    
     descriptors_file = find_file('descriptors.torch',predictions)
     eval_approach.load_descriptors(descriptors_file)
     
+    # if the prediction file does not exist, generate the predictions
     if not os.path.exists(prediction_file):
-       
-        #descriptor_file = os.path.join(resume,'descriptors.torch')
-            
+        # Generate descriptors and predictions  
         eval_approach.run(loop_range = loop_range)
-        
+        # Save the predictions
         prediction_file = eval_approach.save_predictions_pkl()
-        
+        # Save the parameters
         eval_approach.save_params()
+        # Save the results
         eval_approach.save_results_csv()
-        #prediction_file = eval_approach.prediction_file
     
+    # Load the predictions and descriptors
     descriptors = eval_approach.descriptors
     predictions = eval_approach.load_predictions_pkl(prediction_file)
     
+    # Load the poses and segment labels
     poses = eval_approach.poses
     segment_labels = eval_approach.row_labels
     sequence = FLAGS.val_set
     
-    # Load aline rotation
-    xy = poses#[:,:2]
-    #min_xy = np.min(xy,axis=0)
-    #xy -= min_xy
+    # Load aligned rotation
+    xy = poses
+
     
     
     # Save gif
-    file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower(),FLAGS.network.lower(),f'topk{FLAGS.topk}'])
+    
+    model_name = FLAGS.network.lower() if FLAGS.ground_truth == False else "GroundTruth"
+    file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower(),model_name,f'topk{FLAGS.topk}'])
  
     root2save = os.path.join('plots','retrieval_on_map',f'range{loop_range}m')
     os.makedirs(root2save,exist_ok=True)
@@ -700,11 +725,14 @@ if __name__ == '__main__':
     import json
     import pickle
     
+    # Create a directory to save the plot settings 
     plot_setting_dir = os.path.join("plots","settings")
     os.makedirs(plot_setting_dir,exist_ok=True)
     
+    
+    # File name for the plot settings
     plot_setting_file = os.path.join(plot_setting_dir,f'{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_matplotlibrc.json')
-    #plot_setting_file = os.path.join(plot_setting_dir,f'{file_name}_custom_matplotlibrc.pkl')
+    
     
     set_equal_axis = True
     if os.path.exists(plot_setting_file):
@@ -728,7 +756,7 @@ if __name__ == '__main__':
     
     plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
                          save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
-                         ground_true = False
+                         ground_truth = FLAGS.ground_truth
                           )
 
     # only set the axis if the settings are not loaded
@@ -736,11 +764,16 @@ if __name__ == '__main__':
         ax.axis('equal')  # Equal aspect ratio
         
     ax.set_axis_off()  # Turn off the axis
-    plt.show()
+    if FLAGS.show_plot:
+        plt.show()
    
     # save current plot
-    plt.savefig(os.path.join(root2save,f'{file_name}.png'))
-
+    plt.savefig(os.path.join(root2save,f'{file_name}.png'),transparent=True,bbox_inches='tight')
+    
+    print("*"*50)
+    print("Plot saved to: ",os.path.join(root2save,f'{file_name}.png'))
+    print("*"*50)
+    
     # Get the current view settings
     view_settings = {
             'elev': ax.elev,
@@ -754,22 +787,11 @@ if __name__ == '__main__':
     for key, value in view_settings.items():
         print(f"{key}: {value}")
     
-    with open(plot_setting_file, 'wb') as f:
-        pickle.dump(view_settings, f)
+    if FLAGS.save_plot_settings:
+        with open(plot_setting_file, 'wb') as f:
+            pickle.dump(view_settings, f)
 
     print("Settings saved to: ",plot_setting_file)
-
-    #                      predictions,
-    #                      topk = FLAGS.topk,
-    #                      record_gif = True,
-    #                      gif_name = file_name,
-    #                      save_dir = root2save,
-    #                      save_step_itr = save_itrs,
-    #                      loop_range = loop_range,
-    #                      segment_labels = segment_labels,
-    #                      scale = SETTINGS[FLAGS.val_set]['scale'],
-    #                      descriptors = descriptors
-    #                      )
     
     
     

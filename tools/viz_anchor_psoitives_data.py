@@ -82,13 +82,13 @@ if __name__ == "__main__":
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "08",type = str)
+    parser.add_argument('--seq',default  = "06",type = str)
     parser.add_argument('--plot_path',default  = True ,type = bool)
     parser.add_argument('--record_gif',default  = True ,type = bool)
     parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
-    parser.add_argument('--save_eval_data',default  = True ,type = bool,
+    parser.add_argument('--save_eval_data',default  = False ,type = bool,
                         help='save evaluation data to a pickle file')
     
     
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     ground_truth = {'pos_range': 10,
                     'warmupitrs': 500, # Number of frames to ignore at the beguinning
                     'roi': 300,
-                    'anchor_range': 0.5,
+                    'anchor_range': 0.0,
                     'segment_flag': False 
                     }
     
