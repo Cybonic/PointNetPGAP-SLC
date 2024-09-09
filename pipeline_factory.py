@@ -50,7 +50,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name.startswith('LOGG3D'):
         pipeline = LOGG3D(output_dim=output_dim)
-    elif pipeline_name == 'SPVSoAP3D':
+    elif pipeline_name.startswith('SPVSoAP3D'):
         pipeline = SPVSoAP3D(output_dim=output_dim,
                            local_feat_dim=16,
                            do_fc  = True, # use fully connected layer
@@ -89,7 +89,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f'Loss: {loss}')
     print("*"*30)
 
-    if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV") or "SPVSoAP3D" == pipeline_name:
+    if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV"):
         # Voxelized point cloud based model
         
         if pipeline_name.endswith('Loss'):
