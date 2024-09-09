@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='PointNetPGAPLoss',
+        default='SPVSoAP3D',
         help='Directory to get the trained model.'
     )
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         '--memory',
         type=str,
         required=False,
-        default='RAM',
+        default='DISK',
         choices=['DISK','RAM'],
         help='Directory to get the trained model.'
     )

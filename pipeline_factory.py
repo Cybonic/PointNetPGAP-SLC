@@ -8,6 +8,7 @@ from dataloader.horto3dlm.loader import cross_validation
 
 from networks.pipelines.PointNetVLAD import PointNetVLAD
 from networks.pipelines.LOGG3D import LOGG3D
+from networks.pipelines.SPVSoAP3D import SPVSoAP3D
 
 from networks.pipelines.overlap_transformer import featureExtracter
 import yaml
@@ -49,6 +50,17 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name.startswith('LOGG3D'):
         pipeline = LOGG3D(output_dim=output_dim)
+    elif pipeline_name == 'SPVSoAP3D':
+        pipeline = SPVSoAP3D(output_dim=output_dim,
+                           local_feat_dim=16,
+                           do_fc  = True, # use fully connected layer
+                           do_epn = False, # use spectral power-norm
+                           do_log = True, # use log
+                           do_pn  = True, # use power-norm 
+                           do_pnl = True, # trainable pwer-norm param (during training)
+                           pres   = 0.1, # voxelization 
+                           vres   = 0.1, # voxelization
+                           )
     elif pipeline_name.startswith('PointNetMAC'):
         from networks.pipelines.MACNet import PointNetMAC
         pipeline = PointNetMAC(output_dim=output_dim,feat_dim=feat_dim,num_points=num_points)
@@ -77,7 +89,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
     print(f'Loss: {loss}')
     print("*"*30)
 
-    if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV"):
+    if pipeline_name.startswith('LOGG3D') or pipeline_name.startswith("SPV") or "SPVSoAP3D" == pipeline_name:
         # Voxelized point cloud based model
         
         if pipeline_name.endswith('Loss'):
