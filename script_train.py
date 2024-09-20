@@ -36,18 +36,18 @@ test_sequences_horto = ['ON23','OJ22','OJ23','ON22','SJ23','GTJ23']
 
 stages = [#'PointNetPGAP',
           #'PointNetPGAPLoss',
-          #'PointNetVLAD',
+          'PointNetVLAD',
           #'PointNetVLADLoss',
-          'SPVSoAP3D',
-          'SPVSoAP3DLoss',
-          'LOGG3D',
+          #'SPVSoAP3D',
+          #'SPVSoAP3DLoss',
+          #'LOGG3D',
           #'LOGG3DLoss',
-          'overlap_transformer', 
+          #'overlap_transformer', 
           #'overlap_transformerLoss',
-          #'PointNetGeM',
-          #'PointNetGeMLoss',
-          #'PointNetMAC',
-          #'PointNetMACLoss'
+          'PointNetGeM',
+          'PointNetGeMLoss',
+          'PointNetMAC',
+          'PointNetMACLoss'
           ]
 
 test_batchsize = [
