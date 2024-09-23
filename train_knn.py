@@ -38,7 +38,7 @@ if __name__ == '__main__':
         '--dataset_root',
         type=str,
         required=False,
-        default='/home/tbarros/workspace/DATASET',
+        default='/home/tiago/workspace/DATASET',
         help='Directory to get the trained model.'
     )
     
@@ -46,7 +46,7 @@ if __name__ == '__main__':
         '--network', '-m',
         type=str,
         required=False,
-        default='SPVSoAP3D',
+        default='PointNetMAC',
         help='Directory to get the trained model.'
     )
 
@@ -86,14 +86,14 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='kitti', # uk
+        default='HORTO-3DLM', # uk
         help='Directory to get the trained model.'
     )
     parser.add_argument(
         '--val_set',
         type=str,
         required=False,
-        default = '00',
+        default = 'ON22',
     )
     parser.add_argument(
         '--device',
