@@ -66,7 +66,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = PointNetMAC(output_dim=output_dim,feat_dim=1024,num_points=num_points)
     elif pipeline_name.startswith('ResNet50MAC'):
         from networks.pipelines.MACNet import ResNet50MAC
-        pipeline = ResNet50MAC(output_dim=output_dim,feat_dim=1024,num_points=num_points)
+        pipeline = ResNet50MAC(output_dim=output_dim,feat_dim=2048,num_points=num_points)
     elif pipeline_name.startswith('SPVMAC'):
         from networks.pipelines.MACNet import SPVMAC
         pipeline = SPVMAC(output_dim=output_dim,feat_dim=16,num_points=num_points)
@@ -75,7 +75,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = PointNetGeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
     elif pipeline_name.startswith('ResNet50GeM'):
         from networks.pipelines.GeMNet import ResNet50GeM
-        pipeline = ResNet50GeM(output_dim=output_dim,feat_dim=1024,num_points=num_points)
+        pipeline = ResNet50GeM(output_dim=output_dim,feat_dim=2048,num_points=num_points)
     elif pipeline_name.startswith('SPVGeM'):
         from networks.pipelines.GeMNet import SPVGeM
         pipeline = SPVGeM(output_dim=output_dim,feat_dim=16,num_points=num_points)
@@ -86,7 +86,7 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
         pipeline = SPVVLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 16)
     elif pipeline_name.startswith('ResNet50VLAD'):
         from networks.pipelines.PointNetVLAD import ResNet50VLAD
-        pipeline = ResNet50VLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 1024)
+        pipeline = ResNet50VLAD(use_tnet=True, output_dim=output_dim, num_points = num_points, feat_dim = 2048)
     elif pipeline_name.startswith('PointNetPGAP'):
         from networks.pipelines.PointNetPGAP import PointNetPGAP
         pipeline = PointNetPGAP(input_channels=3, output_channels=16, use_xyz=True, num_points=num_points)
