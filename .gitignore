@@ -23,6 +23,7 @@ Worklog.md
 *.png
 *.DS_Store
 script_train_shogun.py
+sequence_matching/*
 
 
 
