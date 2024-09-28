@@ -32,22 +32,22 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 
 #test_sequences_kitti = ['00','02','05','06','08']
 #test_sequences_kitti = ['02','05','06','08']
-test_sequences_horto = ['ON23','OJ22','OJ23','ON22','SJ23','GTJ23']
-
+test_sequences_horto = ['ON23']#,'OJ22','OJ23','ON22','SJ23','GTJ23']
+#test_sequences_horto = ['-']
 stages = [#'PointNetPGAP',
           #'PointNetPGAPLoss',
-          'SPVVLAD',
+          #'SPVVLAD',
           'ResNet50VLAD',
-          'SPVGeM',
+          #'SPVGeM',
           'ResNet50GeM',
           'SPVMAC',
           'ResNet50MAC',
-          'SPVVLADLoss',
-          'ResNet50VLADLoss',
-          'SPVGeMLoss',
-          'ResNet50GeMLoss',
-          'SPVMACLoss',
-          'ResNet50MACLoss',
+          #'SPVVLADLoss',
+          #'ResNet50VLADLoss',
+          #'SPVGeMLoss',
+          #'ResNet50GeMLoss',
+          #'SPVMACLoss',
+          #'ResNet50MACLoss',
           #'PointNetVLADLoss',
           #'SPVSoAP3D',
           #'SPVSoAP3DLoss',
