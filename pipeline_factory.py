@@ -184,7 +184,7 @@ def dataloader_handler(root_dir,network,
         session['val_loader']['sequence'] = datasplits[model_evaluation_exp]['val']['seq'] 
         session['val_loader']['dataset'] = datasplits[model_evaluation_exp]['val']['dataset']
     else:
-        raise NotImplementedError("Model Evaluation not implemented!")
+        raise NotImplementedError("Evaluation protocol not implemented!")
         
     #sensor_pram = yaml.load(open("dataloader/sensor-cfg.yaml", 'r'),Loader=yaml.FullLoader)
 
