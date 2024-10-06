@@ -21,14 +21,21 @@ test_sequrnces = [
         '08',
 ]
 
+test_sequences = ['ON23',
+                  'OJ22',
+                  'ON22',
+                  'SJ23',
+                  'OJ23',
+                  'GTJ23'
+                ]
 
-for seq in test_sequrnces:
+for seq in test_sequences:
         test_seq = '--val_set ' + seq
         # Run ground truth 
         #os.system('python3 tools/run_eval_on_map.py ' + test_seq + ' --ground_truth 1')
         for net in args:
                 
-                func_arg = net + ' ' + test_seq  #+ ' show_plot 0'
+                func_arg = net + ' ' + test_seq + ' ' + ' --ground_truth 1' #+ ' show_plot 0'
                 #print(func_arg)
                 os.system('python3 tools/run_eval_on_map.py ' + func_arg)
         
