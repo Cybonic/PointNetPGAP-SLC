@@ -95,14 +95,63 @@ def plot_sim_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_ran
     for key, value in plt.rcParams.items():
         print(f"{key}: {value}")
     
+def comp_loop_overlap(pose:np.ndarray,segment_labels:np.ndarray,window:int,rth:float):
+    """Computes the loops 
 
-def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_range=1,topk=1,**argv):
+    Args:
+        pose (np.ndarray): nx3 array of positions
+        segment_labels (np.ndarray): nx1 array of segment labels
+        window (_type_): _description_
+        rth (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
+    
+    labels = np.zeros(pose.shape[0])
+    for i,p in enumerate(pose):
+        
+        if i < window+10:
+            continue
+        
+        query_segment_label = segment_labels[i]
+        
+        upper_bound = i-window
+        map_idx = np.linspace(1,upper_bound,upper_bound,dtype=np.int32)
+        
+        p = pose[i].reshape(1,-1)
+        range = np.linalg.norm(p-pose[map_idx,:],axis=1)
+        
+        map_segment_labels = segment_labels[map_idx]
+        
+        i_sort = np.argsort(range)
+        loop_bool = range[i_sort[0]]<rth 
+        
+        segment_match = query_segment_label == map_segment_labels[i_sort[0]]
+        labels[i]=labels[i-1]
+        if np.sum(loop_bool)>0 and np.sum(segment_match):
+            labels[i]= labels[i-1] +1 
+    
+    print(np.unique(labels))
+    return labels
+    
+    
+#class plot_on_3d_map():
+#    def __init__(self,):
+        # Input parameters 
+        
+#        pass
+        
+    
+    
+
+
+def plot_place_on_3D_map(poses,predictions,loop_range=1,topk=1,**argv):
     
 
     vertical_scale = argv['scale'] if 'scale' in argv else 1
-    
     segment_labels = argv['segment_labels']
-    
     ground_truth = argv['ground_truth'] if 'ground_truth' in argv else False
     
     x = poses[:,0]
@@ -110,30 +159,35 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     z = poses[:,2]
     
     # Plot a subset of points, equally distributed
-    num_points = poses.shape[0]  # Number of points to plot
+    num_points = int(poses.shape[0])  # Number of points to plot
     indices = np.linspace(0, len(x)-1, num_points, dtype=int)  # Equally spaced indices
 
+    lebels = comp_loop_overlap(poses,segment_labels,50,loop_range)
     
     x_subset = x#[indices]
     y_subset = y#[indices]
-    z_subset = vertical_scale*indices * (z[-1] - z[0]) / (len(x) - 1) + z[0]
     
-    # Create a 2D path plot
     
-
-    # Colorize points based on label
-    colors = plt.cm.get_cmap('viridis', 7)
-    #colors = plt.cm.get_cmap('viridis', len(unique_labels))
+    z_subset = np.zeros_like(y_subset)
+    # Compute z coordinate
+    z_scores = np.linspace(0,10,len(np.unique(lebels))) #vertical_scale*indices * (z[-1] - z[0]) / (len(x) - 1) + z[0]
+    
+    unique_lables = np.unique(lebels)
+    
+    for score,lable in zip(z_scores,unique_lables):
+        idx = np.where(lebels==lable)[0]
+        z_subset[idx] = score
+    
     ax.scatter(x_subset, y_subset, z_subset, color='k',s=5)
     
+
     queries = np.array(list(predictions.keys()))
     
-    plot_query_idx = list(range(0,len(queries),1))
+    # Plot a subset of points, equally distributed
+    num_query_points = int(len(queries)/3)  # Number of points to plot
+    #indices = np.linspace(0, len(x)-1, num_query_points, dtype=int)  # Equally spaced indices
+    plot_query_idx =  np.linspace(0,len(queries)-1,num_query_points,dtype=np.int32)
     
-    n_samples = poses.shape[0]
-    
-    true_positive = []
-    wrong = []
     query_list = queries[plot_query_idx]
     
     for itr,query in tqdm.tqdm(enumerate(query_list),total = len(query_list)):
@@ -145,7 +199,6 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
     
         query_label = predictions[query]['segment']
         true_loops  = predictions[query]['true_loops']
-        
         pred_loops = predictions[query]['pred_loops']
         
         max_values = max(true_loops['dist'] )
@@ -156,17 +209,9 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         else:
             pred_idx   = true_loops['idx'][:topk]
             pred_label = true_loops['segment'][:topk]
-        #pred_dist = pred_loops['dist'][:topk]
-        
-        # True Positive 
-        query_label_gt = segment_labels[query]
-        pred_labels_gt = segment_labels[pred_idx]
-        
-        #assert (query_label == query_label_gt).all(), "The query label is not the same as the ground truth"
-        
+
+
         pred_bool =  (query_label == pred_label) # * (pred_dist < loop_range)
-        # pred_bool_dis = pred_dist < loop_range
-        
         
         if (pred_bool).any():
             color = 'g'
@@ -188,24 +233,11 @@ def plot_place_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_r
         
         plot_idx = plot_idx[0]
         
-        
-        #if (in_range_bool).any():
-        #    color = 'b'
-            #continue
-        
-        
-        
-        plt.plot([x_subset[query],x_subset[pred_idx[plot_idx]]],
-                 [y_subset[query],y_subset[pred_idx[plot_idx]]],
-                 [z_subset[query],z_subset[pred_idx[plot_idx]]],color)
-        #loop_idx = true_loops['idx'][true_loops['dist'] < loop_range][:topk]
 
-        #c[query] = 'b'
-        #s[query] = 80
-        
-        
-        
-   
+        plt.plot([x_subset[query],x_subset[pred_idx[plot_idx]]],
+                [y_subset[query],y_subset[pred_idx[plot_idx]]],
+                [z_subset[query],z_subset[pred_idx[plot_idx]]],color)
+
     
     
 
@@ -423,7 +455,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--experiment',type=str,
-        default='kitti_test_predictions',
+        default='thesis/horto_predictions',
         help='Name of the experiment to be executed'
     )
 
@@ -463,7 +495,7 @@ if __name__ == '__main__':
         '--monitor_loop_range',
         type=float,
         required=False,
-        default = 10,
+        default = 5,
         help='loop range to monitor the performance.'
     )
 
@@ -471,7 +503,7 @@ if __name__ == '__main__':
         '--dataset',
         type=str,
         required=False,
-        default='kitti', # uk
+        default='HORTO-3DLM', # uk
         help='Directory to get the trained model.'
     )
     
@@ -479,7 +511,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = '06',
+        default = 'OJ23',
         help = 'Validation set'
     )
 
@@ -495,7 +527,7 @@ if __name__ == '__main__':
         '--resume', '-r',
         type=str,
         required=False,
-        default='/home/tiago/workspace/pointnetgap-RAL/RALv3',
+        default='/home/tiago/workspace/pointnetgap-RAL',
         # #LOGG3D-LazyTripletLoss_L2-segment_lossM0.1-descriptors
         # #PointNetVLAD-LazyTripletLoss_L2-segment_loss-m0.5'
         # #overlap_transformer-LazyTripletLoss_L2-segment_loss-m0.5
@@ -555,13 +587,13 @@ if __name__ == '__main__':
         '--ground_truth',
         type=bool,
         required= False,
-        default = False,
+        default = True,
     )
     parser.add_argument(
         '--show_plot',
         type=bool,
         required=False,
-        default = False,
+        default = True,
     )
     parser.add_argument(
         '--save_plot_settings',
@@ -648,7 +680,7 @@ if __name__ == '__main__':
     import logging
     log_file    = os.path.join('logs',f'{FLAGS.experiment}.log')
     logger      = logging.getLogger(__name__)
-    log_handler = logging.FileHandler(log_file)
+    #log_handler = logging.FileHandler(log_file)
     
     # LOAD PLACE RECOGNITION
     eval_approach = PlaceRecognition(
@@ -664,8 +696,6 @@ if __name__ == '__main__':
         sim_func='L2',
         eval_protocol = FLAGS.eval_protocol
         )
-    
-
     
     
     resume = FLAGS.resume
@@ -719,7 +749,7 @@ if __name__ == '__main__':
     save_itrs = list(range(1,len(predictions.keys()),10))
     
     #plot_place_on_map(xy, predictions,topk = FLAGS.topk, record_gif = True, gif_name = file_name,save_dir = root2save, 
-    #                  save_step_itr = save_itrs,loop_range = loop_range)
+    #                 save_step_itr = save_itrs,loop_range = loop_range)
     # Load the dictionary from the JSON file
     
     import json
@@ -755,9 +785,10 @@ if __name__ == '__main__':
     
     
     plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
-                         save_step_itr = save_itrs,loop_range = loop_range,segment_labels = segment_labels,scale = SETTINGS[FLAGS.val_set]['scale'],
+                         save_step_itr = save_itrs, loop_range = loop_range, segment_labels = segment_labels, 
+                         scale = SETTINGS[FLAGS.val_set]['scale'],
                          ground_truth = FLAGS.ground_truth
-                          )
+                        )
 
     # only set the axis if the settings are not loaded
     if set_equal_axis:
