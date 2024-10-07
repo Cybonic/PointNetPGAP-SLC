@@ -4,7 +4,8 @@
 # The settings are used in the script tools/script_poses_png.py
 
                         # Vertical scale
-SETTINGS = {'ON22': {'scale':350},
+SETTINGS = {'ON23': {'scale':10},
+            'ON22': {'scale':350},
             'SJ23': {'scale':0.2},
             'OJ22': {'scale':10},
             'OJ23': {'scale':1},

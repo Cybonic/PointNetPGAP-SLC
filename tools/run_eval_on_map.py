@@ -29,8 +29,8 @@ from utils.viz import myplot
 from plotting_settings import SETTINGS
 
 import matplotlib.pyplot as plt
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+#fig = plt.figure()
+#ax = fig.add_subplot(111, projection='3d')
 
 def find_file(target_file, search_path):
     assert os.path.exists(search_path), "The search path does not exist: " + search_path
@@ -94,8 +94,9 @@ def plot_sim_on_3D_map(poses,predictions,samples = 10000,sim_thresh=0.5,loop_ran
     
     for key, value in plt.rcParams.items():
         print(f"{key}: {value}")
-    
-def comp_loop_overlap(pose:np.ndarray,segment_labels:np.ndarray,window:int,rth:float):
+
+
+def comp_loop_overlap(positions:np.ndarray,segment_labels:np.ndarray,window:int,rth:float):
     """Computes the loops 
 
     Args:
@@ -109,10 +110,17 @@ def comp_loop_overlap(pose:np.ndarray,segment_labels:np.ndarray,window:int,rth:f
     """
     
     
-    labels = np.zeros(pose.shape[0])
-    for i,p in enumerate(pose):
+    #from sklearn.metrics import pairwise_distances
+    from scipy.spatial.distance import cdist
+    
+    #pair_L2_dis = cdist(positions,positions)
+    
+    lower_bound = window+10
+    
+    labels = np.zeros(positions.shape[0])
+    for i,p in enumerate(positions):
         
-        if i < window+10:
+        if i < lower_bound:
             continue
         
         query_segment_label = segment_labels[i]
@@ -120,29 +128,25 @@ def comp_loop_overlap(pose:np.ndarray,segment_labels:np.ndarray,window:int,rth:f
         upper_bound = i-window
         map_idx = np.linspace(1,upper_bound,upper_bound,dtype=np.int32)
         
-        p = pose[i].reshape(1,-1)
-        range = np.linalg.norm(p-pose[map_idx,:],axis=1)
+        p = positions[i].reshape(1,-1)
         
+        # Compute L2 distance
+        distances = np.linalg.norm(p-positions[map_idx,:],axis=1)
+        
+        # Get target segment labels
         map_segment_labels = segment_labels[map_idx]
         
-        i_sort = np.argsort(range)
-        loop_bool = range[i_sort[0]]<rth 
+        # 
+        i_sort = np.argsort(distances)
+        loop_bool = distances[i_sort[0]]<rth 
         
         segment_match = query_segment_label == map_segment_labels[i_sort[0]]
-        labels[i]=labels[i-1]
+        labels[i]=labels[i-1] # this maintains the path flat 
         if np.sum(loop_bool)>0 and np.sum(segment_match):
-            labels[i]= labels[i-1] +1 
+            labels[i]= labels[i-1] +1  # increment label, this makes the path increase in zzz 
     
-    print(np.unique(labels))
     return labels
     
-    
-#class plot_on_3d_map():
-#    def __init__(self,):
-        # Input parameters 
-        
-#        pass
-        
     
     
 
@@ -450,7 +454,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='PointNetVLAD', help='model to be used'
+        default='SPVSoAP3D', help='model to be used'
     )
 
     parser.add_argument(
@@ -476,12 +480,6 @@ if __name__ == '__main__':
         default=10,
         help='Batch size'
     )
-    
-    parser.add_argument(
-        '--max_points',type=int,
-        default = 10000,
-        help='sampling points.'
-    )
 
     parser.add_argument(
         '--eval_file',
@@ -492,10 +490,10 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--monitor_loop_range',
+        '--loop_range',
         type=float,
         required=False,
-        default = 5,
+        default = 10,
         help='loop range to monitor the performance.'
     )
 
@@ -511,7 +509,7 @@ if __name__ == '__main__':
         '--val_set',
         type=str,
         required=False,
-        default = 'OJ23',
+        default = 'SJ23',
         help = 'Validation set'
     )
 
@@ -566,12 +564,6 @@ if __name__ == '__main__':
     )
     
     parser.add_argument(
-        '--save_predictions',
-        type=str,
-        required=False,
-        default = 'saved_model_data',
-    )
-    parser.add_argument(
         '--plot_on_map',
         type=str,
         required=False,
@@ -593,13 +585,13 @@ if __name__ == '__main__':
         '--show_plot',
         type=bool,
         required=False,
-        default = True,
-    )
-    parser.add_argument(
-        '--save_plot_settings',
-        type=bool,
-        required=False,
         default = False,
+    )
+    
+    parser.add_argument(
+        '--rerun_flag',type=bool,
+        default = False,
+        help='sampling points.'
     )
     
     FLAGS, unparsed = parser.parse_known_args()
@@ -611,7 +603,6 @@ if __name__ == '__main__':
     print("Opening session config file: %s" % session_cfg_file)
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
-    SESSION['save_predictions'] = FLAGS.save_predictions
     # Update config file with new settings
     SESSION['experiment'] = FLAGS.experiment
     
@@ -625,9 +616,9 @@ if __name__ == '__main__':
     
     # Update the model settings
     SESSION['roi'] = FLAGS.roi
-    SESSION['max_points'] = FLAGS.max_points
+    SESSION['rerun_flag'] = FLAGS.rerun_flag
     SESSION['memory']     = FLAGS.memory
-    SESSION['monitor_range']   = FLAGS.monitor_loop_range
+    SESSION['loop_range']   = FLAGS.loop_range
     SESSION['eval_roi_window'] = FLAGS.eval_roi_window
     SESSION['descriptor_size'] = 256
     SESSION['eval_warmup_window'] = FLAGS.eval_warmup_window
@@ -636,7 +627,6 @@ if __name__ == '__main__':
 
 
     print("----------")
-    print("Saving Predictions: %s"%FLAGS.save_predictions)
     print("\n======= VAL LOADER =======")
     print("Batch Size : ", str(SESSION['val_loader']['batch_size']))
     print("Max Points: " + str(SESSION['max_points']))
@@ -671,11 +661,11 @@ if __name__ == '__main__':
                                 SESSION, 
                                 roi = FLAGS.roi, 
                                 pcl_norm = False,
-                                model_evaluation='cross_domain')
+                                model_evaluation='cross_evaluation')
      
     from place_recognition import PlaceRecognition 
 
-    loop_range = FLAGS.monitor_loop_range
+    #loop_range = FLAGS.loop_range
     
     import logging
     log_file    = os.path.join('logs',f'{FLAGS.experiment}.log')
@@ -692,11 +682,10 @@ if __name__ == '__main__':
         warmup_window = FLAGS.eval_warmup_window,
         device  = FLAGS.device,
         logdir =  FLAGS.experiment,
-        monitor_range = loop_range,
-        sim_func='L2',
+        monitor_range = FLAGS.loop_range,
+        sim_func = 'L2',
         eval_protocol = FLAGS.eval_protocol
         )
-    
     
     resume = FLAGS.resume
     predictions = os.path.join(resume,FLAGS.experiment,f'#{FLAGS.network}',f'eval-{FLAGS.val_set}')
@@ -705,25 +694,25 @@ if __name__ == '__main__':
     print("\nLoading predictions from: ",predictions)
     print("*"*50)
     
-    
     prediction_file = find_file('predictions.pkl',predictions)
     descriptors_file = find_file('descriptors.torch',predictions)
     eval_approach.load_descriptors(descriptors_file)
     
+    predictions = []
     # if the prediction file does not exist, generate the predictions
-    if not os.path.exists(prediction_file):
+    if not os.path.exists(prediction_file) or FLAGS.rerun_flag:
         # Generate descriptors and predictions  
-        eval_approach.run(loop_range = loop_range)
+        eval_approach.run(loop_range = FLAGS.loop_range)
         # Save the predictions
-        prediction_file = eval_approach.save_predictions_pkl()
-        # Save the parameters
-        eval_approach.save_params()
-        # Save the results
-        eval_approach.save_results_csv()
+        predictions = eval_approach.save_predictions_pkl(save_dir='temp')
+        
+    else:
+        predictions = eval_approach.load_predictions_pkl(prediction_file)
     
     # Load the predictions and descriptors
+    
     descriptors = eval_approach.descriptors
-    predictions = eval_approach.load_predictions_pkl(prediction_file)
+    
     
     # Load the poses and segment labels
     poses = eval_approach.poses
@@ -732,10 +721,42 @@ if __name__ == '__main__':
     
     # Load aligned rotation
     xy = poses
-
+    
+    from tools.plot_manager import Plot3DManager
     
     
+    plot = Plot3DManager(FLAGS.dataset, FLAGS.val_set,
+                         loop_range   = FLAGS.loop_range, # loop range
+                         ground_truth = FLAGS.ground_truth, # flag 
+                         topk = FLAGS.topk,
+                         show_plot = FLAGS.show_plot,
+                         window=FLAGS.eval_roi_window,
+                         query_plot_factor=1)
+    
+    plot.plot(poses,predictions, segment_labels=segment_labels)
     # Save gif
+    
+     # File name for the plot file
+    plot_dir = os.path.join('plots', "figs")
+    os.makedirs(plot_dir, exist_ok=True)
+    
+    plot_file = ''
+    if FLAGS.ground_truth == False:
+        plot_file = os.path.join(plot_dir, f'3d_plot_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_{FLAGS.loop_range}_{FLAGS.topk}')
+    else:
+        plot_file = os.path.join(plot_dir, f'3d_plot_ground_truth_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_{FLAGS.loop_range}_{FLAGS.topk}')
+    
+    plot.save_fig(plot_file)
+    
+    if FLAGS.ground_truth:
+        # PLOT 2D PATH
+        plot.plot_place_2D_path(poses)
+        plot_file = os.path.join(plot_dir, f'2D_plot_ground_truth_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}')
+        plot.save_fig(plot_file)
+    
+    exit()
+    
+    
     
     model_name = FLAGS.network.lower() if FLAGS.ground_truth == False else "GroundTruth"
     file_name = '-'.join([FLAGS.dataset.lower(),FLAGS.val_set.lower(),model_name,f'topk{FLAGS.topk}'])
@@ -748,82 +769,13 @@ if __name__ == '__main__':
     
     save_itrs = list(range(1,len(predictions.keys()),10))
     
+    
+    
     #plot_place_on_map(xy, predictions,topk = FLAGS.topk, record_gif = True, gif_name = file_name,save_dir = root2save, 
     #                 save_step_itr = save_itrs,loop_range = loop_range)
     # Load the dictionary from the JSON file
     
-    import json
-    import pickle
-    
-    # Create a directory to save the plot settings 
-    plot_setting_dir = os.path.join("plots","settings")
-    os.makedirs(plot_setting_dir,exist_ok=True)
-    
-    
-    # File name for the plot settings
-    plot_setting_file = os.path.join(plot_setting_dir,f'{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_matplotlibrc.json')
-    
-    
-    set_equal_axis = True
-    if os.path.exists(plot_setting_file):
-        
-        with open(plot_setting_file, 'rb') as f:
-            view_settings = pickle.load(f)
 
-        print("Loading settings from: ",plot_setting_file)
-        # Apply the loaded settings
-        import matplotlib.pyplot as plt
-        ax.view_init(elev=view_settings['elev'], azim=view_settings['azim'])
-        # Restore the axis limits to achieve the same "zoom"
-        ax.set_xlim(view_settings['xlim'][0], view_settings['xlim'][1])
-        ax.set_ylim(view_settings['ylim'][0], view_settings['ylim'][1])
-        ax.set_zlim(view_settings['zlim'][0], view_settings['zlim'][1])
-        set_equal_axis = False
-        #ax.dist = view_settings['camera_distance'] * 0.01
-        # ax.dist = view_settings['dist']
-
-    
-    
-    plot_place_on_3D_map(xy,predictions,topk = FLAGS.topk,record_gif = True,gif_name = file_name, save_dir = root2save,
-                         save_step_itr = save_itrs, loop_range = loop_range, segment_labels = segment_labels, 
-                         scale = SETTINGS[FLAGS.val_set]['scale'],
-                         ground_truth = FLAGS.ground_truth
-                        )
-
-    # only set the axis if the settings are not loaded
-    if set_equal_axis:
-        ax.axis('equal')  # Equal aspect ratio
-        
-    ax.set_axis_off()  # Turn off the axis
-    if FLAGS.show_plot:
-        plt.show()
-   
-    # save current plot
-    plt.savefig(os.path.join(root2save,f'{file_name}.png'),transparent=True,bbox_inches='tight')
-    
-    print("*"*50)
-    print("Plot saved to: ",os.path.join(root2save,f'{file_name}.png'))
-    print("*"*50)
-    
-    # Get the current view settings
-    view_settings = {
-            'elev': ax.elev,
-            'azim': ax.azim,
-            'xlim': ax.get_xlim(),
-            'ylim': ax.get_ylim(),
-            'zlim': ax.get_zlim(),
-            'camera_distance': ax.get_proj()[0, 0]  # Approximation for camera distance
-    }
-
-    for key, value in view_settings.items():
-        print(f"{key}: {value}")
-    
-    if FLAGS.save_plot_settings:
-        with open(plot_setting_file, 'wb') as f:
-            pickle.dump(view_settings, f)
-
-    print("Settings saved to: ",plot_setting_file)
-    
     
     
     
