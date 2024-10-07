@@ -12,8 +12,10 @@ test_sequences = ['00',
                   #'GTJ23'
                 ]
 
+
+
 windows = [600,600,600,600,600,600]
-resume_root = "/home/tbarros/workspace/pointnetgap-RAL/RALv3/kitti_predictions"
+resume_root = "/home/tiago/workspace/pointnetgap-RAL/RALv3/kitti_predictions"
 
 for seq,win in zip(test_sequences,windows):
         for network in ['PointNetPGAP']:

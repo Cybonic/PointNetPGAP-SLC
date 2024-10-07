@@ -24,6 +24,9 @@ Worklog.md
 *.DS_Store
 script_train_shogun.py
 sequence_matching/*
+**.pdf
+**.png
+**.json
 
 
 
