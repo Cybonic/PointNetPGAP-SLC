@@ -18,12 +18,26 @@ class myplot():
         self.gif_record_flag = False
         self.delay  = delay
         self.offset = offset
+        
+        self.xmin = 0
+        self.xmax = 0
+        self.ymin = 0
+        self.ymax = 0
+        self.convas_size_set = False
 
     def record_gif(self, filename = 'path.gif'):
         self.gif_record_flag = True
         #self.canvas = FigureCanvasAgg(self.fig)
         self.writer = imageio.get_writer(filename, mode='I',duration=0.2)
 
+    def set_convas_size(self,x,y):
+        self.xmin = x[0]
+        self.xmax = x[1]
+        self.ymin = y[0]
+        self.ymax = y[1]
+        self.convas_size_set = True
+        
+       
     def init_plot(self,x,y,s,c):
         # https://matplotlib.org/stable/gallery/color/named_colors.html
         color = mcolors.BASE_COLORS[c]
@@ -64,18 +78,17 @@ class myplot():
 
         if scale.shape[0] > 0:
             self.p.set_sizes(scale)
+        
+        # adjust canvas size to current data
+        if  self.convas_size_set == False  and len(x)<zoom:
+            self.xmax,self.xmin= max(x),min(x)
+            self.ymax,self.ymin = max(y),min(y)
+        elif  self.convas_size_set == False: 
+            self.xmax,self.xmin= max(x[-zoom:]),min(x[-zoom:])
+            self.ymax,self.ymin = max(y[-zoom:]),min(y[-zoom:])
 
-        if len(x)<zoom:
-            xmax,xmin= max(x),min(x)
-            ymax,ymin = max(y),min(y)
-        else: 
-            xmax,xmin= max(x[-zoom:]),min(x[-zoom:])
-            ymax,ymin = max(y[-zoom:]),min(y[-zoom:])
-
-        self.ax.axis([xmin - offset, xmax + offset, ymin - offset, ymax + offset])
+        self.ax.axis([self.xmin - offset, self.xmax + offset, self.ymin - offset, self.ymax + offset])
         self.ax.set_aspect('equal')
-        #self.canvas.draw()
-        #self.fig.show()
         plt.pause(self.delay)
         
         if self.gif_record_flag == True:

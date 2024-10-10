@@ -8,7 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
 
-from dataloader.horto3dlm.dataset import load_positions
+from dataloader.datasets.utils import load_positions
 from utils.viz import myplot
 from dataloader.utils import extract_points_in_rectangle_roi
 import yaml
@@ -43,6 +43,7 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
     
 
     mplot = myplot(delay=0.2)
+    mplot.set_convas_size([min(xy[:,0]),max(xy[:,0])],[min(xy[:,1]),max(xy[:,1])])
     mplot.init_plot(xy[:,0],xy[:,1],s = 10, c = 'whitesmoke')
     mplot.xlabel('m'), mplot.ylabel('m')
         
@@ -93,17 +94,17 @@ def viz_overlap(xy, loops, record_gif= False, file_name = 'anchor_positive_pair.
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Play back images from a given directory')
-    parser.add_argument('--root', type=str, default='/home/tiago/workspace/DATASET')
+    parser.add_argument('--root', type=str, default='/home/tbarros/workspace/DATASET')
     parser.add_argument('--dynamic',default  = 1 ,type = int)
     parser.add_argument('--dataset',
-                                    default = 'HORTO-3DLM',
+                                    default = 'kitti',
                                     type= str,
                                     help='dataset root directory.'
                                     )
     
-    parser.add_argument('--seq',default  = "ON22",type = str)
+    parser.add_argument('--seq',default  = "08",type = str)
     parser.add_argument('--show',default  = True ,type = bool)
-    parser.add_argument('--pose_data_source',default  = "positions" ,type = str, choices = ['gps','poses'])
+    parser.add_argument('--pose_data_source',default  = "poses" ,type = str, choices = ['gps','poses'])
     parser.add_argument('--debug_mode',default  = False ,type = bool, 
                         help='debug mode, when turned on the files saved in a temp directory')
     parser.add_argument('--save_data',default  = True ,type = bool,
@@ -152,7 +153,11 @@ if __name__ == "__main__":
    
     
     assert args.pose_data_source in ['gps','poses','positions'], "Invalid pose data source"
-    pose_file = os.path.join(dir_path,f'extracted/{args.pose_data_source}.txt')
+    if dataset == 'kitti':
+        pose_file = os.path.join(dir_path,f'{args.pose_data_source}.txt')
+    else:
+        pose_file = os.path.join(dir_path,f'extracted/{args.pose_data_source}.txt')
+        
     poses = load_positions(pose_file)
 
     print("[INF] Reading poses from: %s"% pose_file)
@@ -167,7 +172,10 @@ if __name__ == "__main__":
         with open(row_label_file, 'rb') as f:
             labels = pickle.load(f)
     else:
+        if dataset == 'kitti': seq = dataset +'_' + seq
         labels,poses = generate_labels(seq,poses)
+        
+        if dataset == 'kitti': poses = poses[:,[0,2,1]]
         
     unique_labels = np.unique(labels)
     n_points      = poses.shape[0]
@@ -200,7 +208,7 @@ if __name__ == "__main__":
         fig = plt.figure()
         fig, ax = plt.subplots()
         ax.scatter(poses[:,0],poses[:,1],s=10,c=point_color)
-        ax.set_aspect('equal')
+        #ax.set_aspect('equal')
         plt.savefig(os.path.join(save_root_dir,'point_row_labels.png'))
         #plt.savefig('point_row_labels.png')
         print("[INF] Saved figure to: %s"% os.path.join(save_root_dir,'point_row_labels.png'))
