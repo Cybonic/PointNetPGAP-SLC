@@ -454,7 +454,7 @@ if __name__ == '__main__':
     
     parser.add_argument(
         '--network', type=str,
-        default='SPVSoAP3D', help='model to be used'
+        default='LOGG3D', help='model to be used'
     )
 
     parser.add_argument(
@@ -503,14 +503,6 @@ if __name__ == '__main__':
         required=False,
         default='HORTO-3DLM', # uk
         help='Directory to get the trained model.'
-    )
-    
-    parser.add_argument(
-        '--val_set',
-        type=str,
-        required=False,
-        default = 'SJ23',
-        help = 'Validation set'
     )
 
     parser.add_argument(
@@ -579,7 +571,7 @@ if __name__ == '__main__':
         '--ground_truth',
         type=bool,
         required= False,
-        default = True,
+        default = False,
     )
     parser.add_argument(
         '--show_plot',
@@ -592,6 +584,21 @@ if __name__ == '__main__':
         '--rerun_flag',type=bool,
         default = False,
         help='sampling points.'
+    )
+    parser.add_argument(
+        '--val_set',
+        type=str,
+        required=False,
+        default = 'OJ23',
+        help = 'Validation set'
+    )
+    
+    parser.add_argument(
+        '--query_plot_factor',
+        type=int,
+        required=False,
+        default = 5,
+        help = 'int value that reduces the number of plotted queries'
     )
     
     FLAGS, unparsed = parser.parse_known_args()
@@ -731,7 +738,7 @@ if __name__ == '__main__':
                          topk = FLAGS.topk,
                          show_plot = FLAGS.show_plot,
                          window=FLAGS.eval_roi_window,
-                         query_plot_factor=1)
+                         query_plot_factor=FLAGS.query_plot_factor)
     
     plot.plot(poses,predictions, segment_labels=segment_labels)
     # Save gif
@@ -742,7 +749,7 @@ if __name__ == '__main__':
     
     plot_file = ''
     if FLAGS.ground_truth == False:
-        plot_file = os.path.join(plot_dir, f'3d_plot_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_{FLAGS.loop_range}_{FLAGS.topk}')
+        plot_file = os.path.join(plot_dir, f'3d_plot_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_{FLAGS.network}_{FLAGS.loop_range}_{FLAGS.topk}')
     else:
         plot_file = os.path.join(plot_dir, f'3d_plot_ground_truth_{FLAGS.dataset.lower()}_{FLAGS.val_set.lower()}_{FLAGS.loop_range}_{FLAGS.topk}')
     
