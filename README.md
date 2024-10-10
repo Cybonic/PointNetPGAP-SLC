@@ -2,16 +2,17 @@
 
 ### Authors:  T. Barros, L. Garrote, P. Conde, M.J. Coombes, C. Liu, C. Premebida, U.J. Nunes
 
+RA-L Paper: https://ieeexplore.ieee.org/document/10706020
 
-# Changelog
+## Changelog
+**Setember 2024**: Published in IEEE Robotics and Automation Letters.
 
 **June 2024**: Added training and testing conditions for the six sequences. 
 
 **May 2024**: First results on 4 sequences of HORTO-3DLM.
 
 
-# Installation
-
+## Installation
 You can install PointNetGAP locally in your machine.  We provide an complete installation guide for conda.
 
 
@@ -35,7 +36,7 @@ You can install PointNetGAP locally in your machine.  We provide an complete ins
 7. Install other dependencies  ``` pip install -r requirements.txt```
 
 
-# Train
+## Train
 
 ### Default training script
 ```
@@ -62,7 +63,7 @@ python train_knn.py
         --loss_alpha 0.5
 ```
 
-# Testing on generated descriptors 
+## Testing on Generated Descriptors 
 
 ### Default training script:
 
@@ -90,4 +91,18 @@ The HORTO-3DLM dataset comprises four sequences OJ22, OJ23, ON22, and SJ23;  Thr
 ### 3D Maps 
 [Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
 
+
+
+### Reference 
+
+```
+@ARTICLE{10706020,
+  author={Barros, T. and Garrote, L. and Conde, P. and Coombes, M.J. and Liu, C. and Premebida, C. and Nunes, U.J.},
+  journal={IEEE Robotics and Automation Letters}, 
+  title={PointNetPGAP-SLC: A 3D LiDAR-Based Place Recognition Approach With Segment-Level Consistency Training for Mobile Robots in Horticulture}, 
+  year={2024},
+  pages={1-8},
+  doi={10.1109/LRA.2024.3475044}
+  }
+  ```
 
