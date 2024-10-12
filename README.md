@@ -87,22 +87,21 @@ python script_eval.py
 
 The HORTO-3DLM dataset comprises four sequences OJ22, OJ23, ON22, and SJ23;  Three sequences from orchards, namely from apples and cherries; and one sequence from strawberries;
 
-
+For t
 ### 3D Maps 
-[Download HORTO-3DLM here](https://nas-greenbotics.isr.uc.pt/drive/d/s/x4eZ5aPL96blS0i7xNKIl0iJOtkdU7QR/h3YJb7wuqCZpV9NNxgeITnGTRsDJeVNY-a7eAQXUnGQs#file_id=799704328662196403)
+
+[Download HORTO-3DLM here](https://github.com/Cybonic/HORTO-3DLM.git)
 
 
-
-### Reference 
-
+## Citation:
 ```
 @ARTICLE{10706020,
-  author={Barros, T. and Garrote, L. and Conde, P. and Coombes, M.J. and Liu, C. and Premebida, C. and Nunes, U.J.},
-  journal={IEEE Robotics and Automation Letters}, 
-  title={PointNetPGAP-SLC: A 3D LiDAR-Based Place Recognition Approach With Segment-Level Consistency Training for Mobile Robots in Horticulture}, 
-  year={2024},
-  pages={1-8},
-  doi={10.1109/LRA.2024.3475044}
+        author={Barros, T. and Garrote, L. and Conde, P. and Coombes, M.J. and Liu, C. and Premebida, C. and Nunes, U.J.},
+        journal={IEEE Robotics and Automation Letters}, 
+        title={PointNetPGAP-SLC: A 3D LiDAR-Based Place Recognition Approach With Segment-Level Consistency Training for Mobile Robots in Horticulture}, 
+        year={2024},
+        pages={1-8},
+        doi={10.1109/LRA.2024.3475044}
   }
   ```
 
