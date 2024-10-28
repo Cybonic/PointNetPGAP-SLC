@@ -9,6 +9,7 @@ from dataloader.datasets.loader import cross_validation
 from networks.pipelines.PointNetVLAD import PointNetVLAD
 from networks.pipelines.LOGG3D import LOGG3D
 from networks.pipelines.SPVSoAP3D import SPVSoAP3D
+from networks.pipelines.SPVSoAP3D import PointNetSoAP3D
 
 from networks.pipelines.overlap_transformer import featureExtracter
 import yaml
@@ -50,6 +51,8 @@ def model_handler(pipeline_name, num_points=4096,output_dim=256,feat_dim=1024,de
 
     if pipeline_name.startswith('LOGG3D'):
         pipeline = LOGG3D(output_dim=output_dim)
+    elif pipeline_name.startswith('PointNetSoAP3D'):
+        pipeline = PointNetSoAP3D(feat_dim=16,num_points=num_points)
     elif pipeline_name.startswith('SPVSoAP3D'):
         pipeline = SPVSoAP3D(output_dim=output_dim,
                            local_feat_dim=16,

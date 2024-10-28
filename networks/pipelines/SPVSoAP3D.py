@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from networks.aggregators.SoAP import *
-
+from ..backbones.pointnet import *
 from networks.backbones.spvnas.model_zoo import spvcnn
 from networks.pipelines.pipeline_utils import *
 
@@ -50,4 +50,27 @@ class SPVSoAP3D(nn.Module):
     
 
 
+class PointNetSoAP3D(nn.Module):
+    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024,**argv):
+        super(PointNetSoAP3D, self).__init__()
+
+        self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)
+        self.head = SoAP(
+                        input_dim=feat_dim,
+                        output_dim=output_dim,
+                        **argv)
+
+    def forward(self, x):
+        x = self.point_net(x)
+        x = self.head(x)
+        return x
+    
+    def get_backbone_params(self):
+        return self.point_net.parameters()
+
+    def get_classifier_params(self):
+        return self.head.parameters()
+  
+    def __str__(self):
+        return "PointNetSoAP3D"
 
