@@ -3,7 +3,7 @@ import os
 import time
 
 # Define the number of epochs
-epochs = 70
+epochs = 30
 # Define the path to the checkpoints
 # Define the path to the dataset
 
@@ -16,7 +16,7 @@ else:
         dataset_root = '/home/tbarros/workspace/DATASET'
 
 
-TRAIN_FLAG = 0
+TRAIN_FLAG = 1
 # Path to save the predictions
 save_path  = 'RALv3'
 
@@ -24,7 +24,7 @@ save_path  = 'RALv3'
 density = '10000'
 
 EXPERIMENT_NAME = 'RALv3_kitti_test'
-EXPERIMENT_NAME = 'Thesis_full_add_results'
+EXPERIMENT_NAME = 'ITS_COLD_HEATING'
 
 EVAL_PROTOCOL = "cross_validation" # cross_domain
 
@@ -33,19 +33,20 @@ input_preprocessing = ' --roi 0 --augmentation 1 --shuffle_points 1'
 #test_sequences_kitti = ['00','02','05','06','08']
 #test_sequences_kitti = ['02','05','06','08']
 test_sequences_horto = ['ON23','OJ22','OJ23','ON22','SJ23','GTJ23']
+test_sequences_horto = ['GTJ23','ON22','ON23','OJ23','OJ22']#,'ON22','SJ23','GTJ23']
 #test_sequences_horto = ['-']
-stages = [#'PointNetPGAP',
+stages = ['PointNetPGAP',
           #'PointNetPGAPLoss',
           'SPVSoAP3D',
-          'SPVVLAD',
-          'SPVGeM',
-          'SPVMAC',
-          'ResNet50VLAD',
-          'ResNet50GeM',
-          'ResNet50MAC',
+          #'SPVVLAD',
+          #'SPVGeM',
+          #'SPVMAC',
+          #'ResNet50VLAD',
+          #'ResNet50GeM',
+          #'ResNet50MAC',
           'PointNetVLAD',
-          'PointNetGeM',
-          'PointNetMAC',
+          #'PointNetGeM',
+          #'PointNetMAC',
           #'PointNetVLADLoss',
           #'SPVVLADLoss',
           #'ResNet50VLADLoss',
@@ -56,43 +57,45 @@ stages = [#'PointNetPGAP',
           #'PointNetVLADLoss',
           #'SPVSoAP3D',
           #'SPVSoAP3DLoss',
-          #'LOGG3D',
+          'LOGG3D',
           #'LOGG3DLoss',
-          #'overlap_transformer', 
+          'overlap_transformer', 
           #'overlap_transformerLoss',
           ]
 
 test_batchsize = [
+                  #16,
+                  #16,
+                  #16,
+                  #16,
+                  #16,
                   16,
                   16,
-                  16,
-                  16,
-                  16,
-                  15
                   ] # 14 is the maximum batch size for GTJ23
 eval_windows = [
-        600,
-        600,
-        600,
-        600,
-        600,
+        #600,
+        #600,
+        #600,
+        #600,
+        #600,
         100, # 100 is the maximum window size for GTJ23
+        600
 ] 
 
 checkpoint = f"checkpoints/Thesis_full/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/ON23"
 #time.sleep(1000)
 for stage_conf in stages:
         for seq,testb,window in zip(test_sequences_horto,test_batchsize,eval_windows):
-                for alpha in [10000]:
-                #for alpha in [100,500,1000,3000,5000,10000,15000,20000,30000]:
+                #for alpha in [10000]:
+                for alpha in [100,500,1000,3000,5000,10000,15000,20000,30000]:
                         func_arg = [
                                 f'--network {stage_conf}', # Network
                                 f'--train {TRAIN_FLAG}', # Train or test
                                 f'--dataset_root {dataset_root}', # path to Dataset 
-                                #'--resume best_model', # [best_model, last_model]
+                                '--resume best_model', # [best_model, last_model]
                                 #f'--resume {checkpoint}/{stage_conf}-LazyTripletLoss_L2-segment_loss-m0.5/best_model.pth', # [best_model, last_model]
                                 #f'--resume {checkpoint}/{stage_conf}-LazyTripletLoss_L2-segment_loss-m0.5/checkpoint.pth', # [best_model, last_model]
-                                f'--resume {checkpoint}/{stage_conf}-LazyTripletLoss_L2/best_model.pth', # [best_model, last_model]
+                                #f'--resume {checkpoint}/{stage_conf}-LazyTripletLoss_L2/best_model.pth', # [best_model, last_model]
                                 #f'--resume {checkpoint}/{stage_conf}-LazyTripletLoss_L2/checkpoint.pth', # [best_model, last_model]
                                 f'--val_set {seq}',
                                 f'--memory RAM' if TRAIN_FLAG == 1 else '--memory DISK', # [DISK, RAM] 
