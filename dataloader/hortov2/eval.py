@@ -12,7 +12,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory and add it to the Python path
 sys.path.append(os.path.abspath(os.path.join(current_dir, '..')))
 
-from dataloader.new_datasets.dataset import file_structure
+from dataloader.hortov2.dataset import file_structure
 
 import pickle
 
@@ -38,7 +38,7 @@ class Eval:
         #self.num_samples = self.num_samples
         self.device   = device
         kitti_struct = file_structure(root,
-                                      lidar = 'ouster'
+                                      sequence
                                       )
             
         self.files,name = kitti_struct._get_point_cloud_file_()

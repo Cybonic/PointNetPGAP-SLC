@@ -1,4 +1,3 @@
-
 import os,sys
 sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 
@@ -39,6 +38,27 @@ LABEL_NAMES = {
 }
 
 
+    
+
+def generate_label_colors(num_colors):
+    import matplotlib.pyplot as plt
+    cmap = plt.get_cmap('tab20', num_colors)
+    indices = np.arange(num_colors)
+    np.random.seed(42)  # For reproducibility, remove or change for different results
+    np.random.shuffle(indices)
+    colors = {}
+    for i, idx in enumerate(indices):
+        colors[i] = cmap(idx)
+    return colors
+
+
+def hex_color_to_rgb(color_str):
+    # KML: AABBGGRR
+    bb = int(color_str[2:4], 16)
+    gg = int(color_str[4:6], 16)
+    rr = int(color_str[6:8], 16)
+    return (rr/255, gg/255, bb/255)
+
 def load_from_csv(filepath):
     """Load DLO velocity/pose data from CSV."""
     df = pd.read_csv(filepath)
@@ -55,6 +75,10 @@ def get_label_color(label):
     except (ValueError, TypeError):
         return 'ff0000ff'  # Default red
 
+def label_color_rgb(label):
+    """Get RGB color for a given label."""
+    hex_color = get_label_color(label)
+    return hex_color_to_rgb(hex_color)
 
 def detect_input_format(df):
     """
@@ -78,12 +102,17 @@ def detect_input_format(df):
     return 'unknown'
 
 
-def load_path_easy(filepath):
+def load_path_easy(df: pd.DataFrame):
     """
     Load path_easy.csv format with columns:
     secs, nsecs, timestamp, ID, frame_id, x, y, z, qx, qy, qz, qw, label
+
+    Input:
+    df: A pandas DataFrame containing the path_easy.csv data.
+
+    Output:
+    A pandas DataFrame with the loaded path_easy data.
     """
-    df = pd.read_csv(filepath, comment='/')
     # Clean column names
     df.columns = df.columns.str.strip().str.replace('"', '')
     
@@ -95,102 +124,33 @@ def load_path_easy(filepath):
         if col not in df.columns:
             raise ValueError(f"Missing required column: {col}")
     
+    if 'label' in df.columns:
+        print(f"Label distribution: {df['label'].value_counts().sort_index().to_dict()}")
     return df
 
-def load_pose_easy(df, swap_xy=False, flip_z=False, include_label=True):
-    """
-    Convert DLO poses to GPS format.
-    
-    Args:
-        dlo_df: DataFrame with DLO pose data
-        ref_lat, ref_lon, ref_alt: Reference GPS coordinates (alt in mm)
-        base_time: Base timestamp for the output
-        start_seq: Starting sequence number
-        rotation_angle: Angle to rotate poses before converting (radians)
-        pose_frame: 'enu' or 'ned' - the coordinate frame of the poses
-        swap_xy: If True, swap X and Y axes before processing
-        flip_z: If True, flip the Z axis sign
-        include_label: If True, include the label column in output
-    
-    Returns:
-        DataFrame with GPS format data
-    """
-    # Detect input format
-    input_format = detect_input_format(df)
-    print(f"Detected input format: {input_format}")
-    
-    # If GPS times are provided, use them for nearest sync
-    gps_times = None
-    if hasattr(df, 'nearest_gps_times') and df.nearest_gps_times is not None:
-        gps_times = df.nearest_gps_times
-
-    for idx, row in df.iterrows():
-        # Extract position based on format
-        if input_format == 'path_easy':
-            x_raw = row['x']
-            y_raw = row['y']
-            z_raw = row['z']
-            timestamp = int(row['timestamp'] * 1e9)  # Default: nanoseconds
-            if gps_times is not None:
-                timestamp = gps_times[idx]
-            pose_id = row['ID']
-            label = row.get('label', 0)
-        elif input_format == 'dlo_pose':
-            x_raw = row['field.pose.pose.position.x']
-            y_raw = row['field.pose.pose.position.y']
-            z_raw = row['field.pose.pose.position.z']
-            timestamp = row.get('%time', row.get('field.header.stamp', base_time))
-            if gps_times is not None:
-                timestamp = gps_times[idx]
-            pose_id = idx
-            label = 0
-        else:  # dlo_velo or simple x,y,z
-            x_raw = row['x']
-            y_raw = row['y']
-            z_raw = row['z']
-            timestamp = row.get('%time', row.get('field.header.stamp', base_time))
-            if gps_times is not None:
-                timestamp = gps_times[idx]
-            pose_id = idx
-            label = row.get('label', 0)
-        
-        # Apply optional axis swapping/flipping
-        if swap_xy:
-            x_raw, y_raw = y_raw, x_raw
-        if flip_z:
-            z_raw = -z_raw
-        
-        # Apply rotation
-        x_rotated = cos_a * x_raw - sin_a * y_raw
-        y_rotated = sin_a * x_raw + cos_a * y_raw
-        z_rotated = z_raw
-        
-        
-        # Create GPS row with same structure as rawgps.csv
-        covariance = 0.01
-        
-        
-        if include_label:
-            df['label'] = label
-        
-    return pd.DataFrame(gps_rows)
 
 
-def parse_csv_file(df):
+def parse_csv_file(filepath: str) -> pd.DataFrame:
     """
     Parse the input CSV file into a structured format.
     """
+    df = pd.read_csv(filepath, comment='/')
     # Detect the input format
     input_format = detect_input_format(df)
     if input_format == 'path_easy':
         return load_path_easy(df)
-    elif input_format == 'dlo_pose':
-        return load_dlo_pose(df)
-    elif input_format == 'dlo_velo':
-        return load_dlo_velo(df)
     else:
         raise ValueError(f"Unknown input format: {input_format}")
 
+def compute_loop(df: pd.DataFrame):
+    """
+    Compute the loop closure for the given dataframe.
+    """
+    # Placeholder for loop closure computation
+    print(f"Computing loop closure for dataframe with {len(df)} rows.")
+    
+    
+    return df
 
 class file_structure():
     
@@ -201,66 +161,260 @@ class file_structure():
         self.target_dir = []
 
         self.target_dir = os.path.join(root, seq)
+        if verbose: print(f"Checking target directory at: {self.target_dir}")
         assert os.path.isdir(self.target_dir),'target dataset does not exist: ' + self.target_dir
 
         # Get pose file
         # READ Poses from CSV file
         file_seq = seq.replace("PCD_", "")
         pose_csv_file = os.path.join(self.target_dir,"path_{}".format(file_seq).lower() + ".csv")
-
+        if verbose: print(f"Checking pose file at: {pose_csv_file}")
         assert os.path.isfile(pose_csv_file), 'pose file does not exist: ' + pose_csv_file
-        print(f"Loading pose data from {pose_csv_file}...")
-        self.df = load_from_csv(pose_csv_file)
-
-        # Detect and print format
-        input_format = detect_input_format(self.df)
-        if input_format == 'path_easy':
-            print("Detected path_easy.csv format")
-            if 'label' in self.df.columns:
-                print(f"Label distribution: {self.df['label'].value_counts().sort_index().to_dict()}")
+        if verbose: print(f"Loading pose data from {pose_csv_file}...")
+        self.df = parse_csv_file(pose_csv_file)
 
         # Get point cloud files
         point_cloud_dir = os.path.join(self.target_dir,lidar)
         assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
-
+        def extract_number(p):
+            return int(p.stem) if p.stem.isdigit() else p.stem
         
-        pcl_files = sorted(Path(point_cloud_dir).glob('*.pcd'))
+        pcl_files = sorted(Path(point_cloud_dir).glob('*.pcd'), key=extract_number)
         
         ## Add column to df with a path to pcd for each pose
         self.df['pcd_path'] = self.df['ID'].apply(lambda x: pcl_files[x] if x < len(pcl_files) else None)
 
+        if verbose: print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
 
-        if verbose:
-            print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
-
-    def _get_gps_timestamps_(self):
+    def _get_timestamps_(self):
         """
         Get timestamps from the pose data.
         """
         return(self.df['timestamp'].values)
-    
+
+    def _get_timestamp_(self,i):
+        """
+        Get timestamps from the pose data.
+        """
+        return(self.df['timestamp'].values[i])
+
     def _get_pcl_timestamps_(self):
         raise NotImplementedError("PCL timestamps not implemented yet.")
-    
-    def _get_point_cloud_file_(self,idx=None):
+
+    def _get_point_cloud_files_(self)->np.ndarray:
         """
         Get point cloud file(s) for the given index.
         """
-        return self.df['pcd_path'][idx].values
+        return self.df['pcd_path'].values
 
-    def _get_pose_(self):
+    def _get_point_cloud_file_(self,i)->str:
+        """
+        Get point cloud file(s) for the given index.
+        """
+        return self.df['pcd_path'].values[i]
+
+    def _get_pose_(self)->np.ndarray:
         "extract pose data from CSV"
+        return self.df[['x','y','z','qx','qy','qz','qw']].values
 
-        poses = self.df[['x','y','z','qx','qy','qz','qw']].values
-        
-        return(poses)
+    def _get_pose_(self,i:int)->np.ndarray:
+        """
+        Get the pose for a specific index.
+        """
+        return self.df[['x','y','z','qx','qy','qz','qw']].values[i]
 
-    def _get_target_dir(self):
-        return(self.target_dir)
+    def _get_positions_(self,)->np.ndarray:
+        """
+        Get the position for a specific index.
+        """
+        return self.df[['x','y','z']].values
+
+    def _get_position_(self,i:int)->np.ndarray:
+        """
+        Get the position for a specific index.
+        """
+        return self.df[['x','y','z']].values[i]
+
+    def _get_orientation_(self,i:int)->np.ndarray:
+        """
+        Get the orientation for a specific index.
+        """
+        return self.df[['qx','qy','qz','qw']].values[i]
     
-    def _get_row_labels(self):
-        return(self.row_labels)
 
+    def _get_target_dir(self)->str:
+        """
+        Get the target directory.
+        """
+        return self.target_dir
 
+    def _get_labels(self)->np.ndarray:
+        """
+        Get all labels.
+        """
+        return(self.df['label'].values)
 
+    def _get_label_(self,i:int)->str:
+        """
+        Get the label for a specific index.
+        """
+        return(self.df['label'].values[i])
+
+    def _get_frame_ids(self) -> np.ndarray:
+        """
+        Get all frame IDs.
+        """
+        return self.df['ID'].values
+
+    def _get_frame_id_(self, i: int) -> str:
+        """
+        Get the frame ID for a specific index.
+        """
+        return self.df['ID'].values[i]
+
+    def _load_pcd_(self, i:int)->np.ndarray:
+        """
+        Load the point cloud data for a specific index.
+        """
+        pcd_path = self._get_point_cloud_file_(i)
+        assert os.path.isfile(pcd_path), 'point cloud file does not exist: ' + pcd_path
+        return self._load_pcd_file(pcd_path)
+
+   
+    def compute_nearest_neighbor_label(self, position_idx: int) -> dict:
+        """
+        Find the nearest neighbor of a given position with a different label.
         
+        Args:
+            position_idx: Index of the query position
+            
+        Returns:
+            Dictionary with keys:
+                - 'neighbor_idx': Index of nearest neighbor
+                - 'neighbor_label': Label of nearest neighbor
+                - 'query_label': Label of query position
+                - 'distance': Euclidean distance to nearest neighbor
+                - 'position': Position of query point
+                - 'neighbor_position': Position of nearest neighbor
+        """
+        if position_idx < 0 or position_idx >= len(self.df):
+            raise ValueError(f"Invalid position index: {position_idx}")
+        
+        # Get query position and label
+        query_pos = self._get_position_(position_idx)
+        query_label = self._get_label_(position_idx)
+        
+        # Get all positions and labels
+        all_positions = self._get_positions_()
+        all_labels = self._get_labels()
+        
+        # Find positions with different labels
+        different_label_mask = all_labels == query_label
+        different_label_indices = np.where(different_label_mask)[0]
+        
+        if len(different_label_indices) == 0:
+            return {
+                'neighbor_idx': None,
+                'neighbor_label': None,
+                'query_label': query_label,
+                'distance': np.inf,
+                'position': query_pos,
+                'neighbor_position': None
+            }
+        
+        # Compute distances to all positions with different labels
+        different_positions = all_positions[different_label_indices]
+        distances = np.linalg.norm(different_positions - query_pos, axis=1)
+        
+        # Find nearest neighbor
+        nearest_idx_in_subset = np.argmin(distances)
+        nearest_idx = different_label_indices[nearest_idx_in_subset]
+        nearest_distance = distances[nearest_idx_in_subset]
+        
+        return {
+            'neighbor_idx': nearest_idx,
+            'neighbor_label': all_labels[nearest_idx],
+            'query_label': query_label,
+            'distance': nearest_distance,
+            'position': query_pos,
+            'neighbor_position': all_positions[nearest_idx]
+        }
+
+    def compute_nearest_neighbor_different_frame(self, position_idx: int) -> dict:
+        """
+        Find the nearest neighbor of a given position with a different frame ID but same label.
+        
+        Args:
+            position_idx: Index of the query position
+            
+        Returns:
+            Dictionary with keys:
+                - 'neighbor_idx': Index of nearest neighbor
+                - 'neighbor_frame': Frame ID of nearest neighbor
+                - 'query_frame': Frame ID of query position
+                - 'query_label': Label of query position
+                - 'distance': Euclidean distance to nearest neighbor
+                - 'position': Position of query point
+                - 'neighbor_position': Position of nearest neighbor
+        """
+        if position_idx < 0 or position_idx >= len(self.df):
+            raise ValueError(f"Invalid position index: {position_idx}")
+        
+        # Get query position, frame ID, and label
+        query_pos = self._get_position_(position_idx)
+        query_frame = self._get_frame_id_(position_idx)
+        query_label = self._get_label_(position_idx)
+        
+        # Get all positions, frame IDs, and labels
+        all_positions = self._get_positions_()
+        all_frames = self._get_frame_ids()
+        all_labels = self._get_labels()
+        
+        # Find positions with SAME label but DIFFERENT frame ID
+        same_label_mask = all_labels == query_label
+        different_frame_mask = all_frames != query_frame
+        combined_mask = same_label_mask & different_frame_mask
+        different_frame_indices = np.where(combined_mask)[0]
+        
+        if len(different_frame_indices) == 0:
+            return {
+                'neighbor_idx': None,
+                'neighbor_frame': None,
+                'query_frame': query_frame,
+                'query_label': query_label,
+                'distance': np.inf,
+                'position': query_pos,
+                'neighbor_position': None
+            }
+        
+        # Compute distances to all positions with same label and different frame ID
+        different_positions = all_positions[different_frame_indices]
+        distances = np.linalg.norm(different_positions - query_pos, axis=1)
+        
+        # Find nearest neighbor
+        nearest_idx_in_subset = np.argmin(distances)
+        nearest_idx = different_frame_indices[nearest_idx_in_subset]
+        nearest_distance = distances[nearest_idx_in_subset]
+        
+        return {
+            'neighbor_idx': nearest_idx,
+            'neighbor_frame': all_frames[nearest_idx],
+            'query_frame': query_frame,
+            'query_label': query_label,
+            'distance': nearest_distance,
+            'position': query_pos,
+            'neighbor_position': all_positions[nearest_idx]
+        }
+
+    def compute_all_nearest_neighbors_different_frame(self) -> list:
+        """
+        Compute nearest neighbor with same label but different frame ID for all positions.
+        
+        Returns:
+            List of dictionaries, one for each position
+        """
+        results = []
+        for i in range(len(self.df)):
+            result = self.compute_nearest_neighbor_different_frame(i)
+            results.append(result)
+        return results
