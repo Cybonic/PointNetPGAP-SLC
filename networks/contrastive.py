@@ -10,7 +10,6 @@ class SparseModelWrapper(nn.Module):
     def __init__(self,  model,
                         loss        = None,
                         minibatch_size = 3, 
-                        device = 'cuda',
                         **args,
                         ):
                         
@@ -19,10 +18,10 @@ class SparseModelWrapper(nn.Module):
         
         self.loss = loss
         self.minibatch_size = minibatch_size
-        self.device = device
+        #self.device = device
         self.batch_counter = 0 
         self.model = model
-        self.device = 'cpu'
+        self.device = None
     
         try:
             self.device =  next(self.parameters()).device
@@ -78,7 +77,6 @@ class SparseModelWrapperLoss(nn.Module):
     def __init__(self,  model,
                         loss        = None,
                         minibatch_size = 3, 
-                        device = 'cuda',
                         aux_loss_on = 'pairloss',
                         representation = 'descriptors',
                         loss_margin = 0.5,
@@ -91,13 +89,12 @@ class SparseModelWrapperLoss(nn.Module):
         
         self.loss = loss
         self.minibatch_size = minibatch_size
-        self.device = device
+        self.device = 'cpu'
         self.batch_counter = 0 
         self.model             = model
         #self.pooling           = args['pooling']
         
         self.class_loss_margin = loss_margin
-        self.device = 'cpu'
         
         self.loss_on = aux_loss_on
         
@@ -108,7 +105,7 @@ class SparseModelWrapperLoss(nn.Module):
         try:
             self.device =  next(self.parameters()).device
         except:
-            print('ModelWrapper device: ',self.device)
+            print('Sparse model wrapper device: ',self.device)
 
 
     def forward(self,pcl,**arg):
@@ -199,9 +196,8 @@ class ModelWrapper(nn.Module):
         try:
             self.device =  next(self.parameters()).device
         except:
-            print('ModelWrapper device: ',self.device)
+            print('model wrapper device: ',self.device)
     
-        print('ModelWrapper device: ',self.device)
         
 
     def forward(self,pcl,**argv):
@@ -286,7 +282,7 @@ class ModelWrapperLoss(nn.Module):
         #self.device = device
         self.batch_counter = 0 
         self.model = model
-        self.device = 'cpu'
+        #self.device = 'cpu'
         self.loss_margin = loss_margin
         
         # Check if loss is defined

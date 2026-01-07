@@ -26,29 +26,20 @@ class Eval:
                         memory= "DISK", 
                         debug = False,
                         device='cpu',
-                        augmentation = False
+                        verbose=False
                         ):
         
         assert memory in ["RAM", "DISK"]
         self.memory   = memory 
         self.modality = modality
-        self.augmentation = bool(augmentation)
         self.sequence = sequence
         
         #self.num_samples = self.num_samples
         self.device   = device
-        kitti_struct = file_structure(root,
-                                      sequence
-                                      )
-            
-        self.files,name = kitti_struct._get_point_cloud_file_()
-        
-        
-        #row_label_file = os.path.join(root,dataset,sequence,'point_row_labels.pkl')
-        #assert os.path.isfile(row_label_file), "Row label file does not exist " + row_label_file
-        #with open(row_label_file, 'rb') as f:
-        #    self.row_labels = pickle.load(f)
-    
+        self.struct = file_structure(root,sequence)
+
+        self.files = self.struct._get_point_cloud_files_()
+
 
         # Load dataset and laser settings
         print("\n" + "*"*30)
@@ -75,7 +66,7 @@ class Eval:
         indices = list(range(self.num_samples))
         self.data_on_ram = []
         for idx in tqdm(indices,"Load to RAM"):
-            plt = self.modality(self.files[idx],self.augmentation)
+            plt = self.modality(self.files[idx],False)
             self.data_on_ram.append(plt)
 
     def set_debug(self):
@@ -88,14 +79,18 @@ class Eval:
         return f'eval-{self.sequence}'
     
     def get_gt_map(self):
-        return(self.table)
+        return NotImplementedError
     
     def __getitem__(self,index):
+
+        pcd = self.struct._load_pcd_(index)
+        position = self.struct._get_position_(index)
+        label = self.struct._get_label_(index)
         
         if self.memory=="RAM":
             pcl = self.data_on_ram[index]
         else:
-            pcl = self.modality(self.files[index],self.augmentation)#.long()
+            pcl = self.modality(pcd,False)
 
         return(pcl,index)
 

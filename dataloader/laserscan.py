@@ -313,9 +313,14 @@ class Scan(LaserScan):
     points, intensity = self.load(file)
     return points
   
-  def __call__(self,files,set_augmentation=False,set_shuffle_points=False):
-    points,intensity = self.load(files)
-    
+  def __call__(self,file,set_augmentation=False,set_shuffle_points=False):
+
+    if isinstance(file, list):
+        points, intensity = self.load(file)
+    else:
+        # file is actually points 
+        points = file 
+
     if set_augmentation:
       points = self.set_augmentation(points)
     if set_shuffle_points:

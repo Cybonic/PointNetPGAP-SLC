@@ -1,0 +1,81 @@
+
+
+experim_name: 'hortov2'
+################################################################################
+# training parameters
+################################################################################
+n_gpu: 1
+device: "cuda"
+
+retrieval:
+  top_cand: [1,5,25]
+  range_thres: 6
+  roi_window: 100
+  warmup_window: 5
+  sim_metric: 'L2'
+
+
+
+
+# Ground-truth parameters
+network: 
+  architecture: "PointNetPGAP"
+  checkpoints: "checkpoints/RALv3_kittiv2/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/00/PointNetPGAP-LazyTripletLoss_L2/best_model.pth"
+  output_dim: 256
+  wrapper:
+    mini_batch: 10
+  input:
+    num_points: 10000
+    roi: 10
+
+# Dataset parameters
+train_loader:
+  triplet_file: 'triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl'
+  fraction: 0.3 
+  batch_size: 1       # batch size
+  memory: "DISK"
+  shuffle: True
+  num_pos: 1
+  num_neg: 20
+  augmentation: False
+
+  
+val_loader:
+  batch_size: 50 #50      # batch size
+  workers:  0            # number of threads to get data
+  memory: "DISK"
+  loop_range: 10 # Loop Threshold [m]
+  dataset:
+    path: 'dataset/PlaceRecognitionTestPolyTunnel'
+    seq: ['PCD_Easy_DARK']
+    # ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY']
+
+run:
+  iter_per_epoch: 1
+  epochs: 100
+  report_val: 1      # every x epochs, report validation set
+  save_period: 1
+  log_dir: "logs"
+  save_dir: "saved"
+  monitor: "max recall" # [off, max mIoU]
+  val_per_epochs: 1
+  early_stop: 1000 #epochs
+  eval_protocol: "val_only"
+  task: 'place'
+  save_deptrs: "descripts"
+
+
+loss:
+    type: 'TripletLoss'
+    args:
+      margin: 0.5
+      metric: 'L2' # [L2,Hinge,cosine,kl_divergence]
+      reduction: 'mean'
+
+optimizer:
+  type: "AdamW" #[RMSprop,Adam,SGD]
+  args:
+    lr: 0.0001
+    weight_decay: 0.00000005
+  lr_scheduler: "ReduceLROnPlateau"
+

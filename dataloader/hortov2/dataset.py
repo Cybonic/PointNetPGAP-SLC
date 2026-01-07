@@ -152,6 +152,74 @@ def compute_loop(df: pd.DataFrame):
     
     return df
 
+
+def load_pcd_file(pcd_path: str, use_plyfile: bool = False) -> np.ndarray:
+    """
+    Load a PCD (Point Cloud Data) file.
+    
+    Supports both Open3D and plyfile methods.
+    
+    Args:
+        pcd_path: Path to the PCD file
+        use_plyfile: If True, use plyfile; otherwise use Open3D
+        
+    Returns:
+        Numpy array of shape (N, 3) or (N, 4) containing point cloud data
+        
+    Examples:
+        >>> points = load_pcd_file('data.pcd')
+        >>> print(points.shape)  # (N, 3)
+        
+        >>> points = load_pcd_file('data.pcd', use_plyfile=True)
+    """
+    if not os.path.isfile(pcd_path):
+        raise FileNotFoundError(f"PCD file not found: {pcd_path}")
+    
+    if use_plyfile:
+        return _load_pcd_plyfile(pcd_path)
+    else:
+        return _load_pcd_open3d(pcd_path)
+
+
+def _load_pcd_open3d(pcd_path: str) -> np.ndarray:
+    """Load PCD file using Open3D library."""
+    try:
+        import open3d as o3d
+    except ImportError:
+        raise ImportError("open3d is required. Install with: pip install open3d")
+    
+    try:
+        pcd = o3d.io.read_point_cloud(str(pcd_path))
+        points = np.asarray(pcd.points)
+        
+        # Include colors if available
+        if pcd.has_colors():
+            colors = np.asarray(pcd.colors)
+            points = np.hstack([points, colors])
+        
+        return points
+    except Exception as e:
+        raise ValueError(f"Failed to load PCD file with Open3D: {e}")
+
+
+def _load_pcd_plyfile(pcd_path: str) -> np.ndarray:
+    """Load PCD file using plyfile library (more memory efficient)."""
+    try:
+        from plyfile import PlyData
+    except ImportError:
+        raise ImportError("plyfile is required. Install with: pip install plyfile")
+    
+    try:
+        ply_data = PlyData.read(pcd_path)
+        vertex = ply_data['vertex']
+        
+        # Extract x, y, z coordinates
+        points = np.column_stack([vertex['x'], vertex['y'], vertex['z']])
+        
+        return points
+    except Exception as e:
+        raise ValueError(f"Failed to load PCD file with plyfile: {e}")
+
 class file_structure():
     
     def __init__(self,root,seq,lidar="pcd",verbose=False):
@@ -279,6 +347,76 @@ class file_structure():
         pcd_path = self._get_point_cloud_file_(i)
         assert os.path.isfile(pcd_path), 'point cloud file does not exist: ' + pcd_path
         return self._load_pcd_file(pcd_path)
+
+    def _load_pcd_file(self, pcd_path: str) -> np.ndarray:
+        """
+        Load a PCD (Point Cloud Data) file.
+        
+        Args:
+            pcd_path: Path to the PCD file
+            
+        Returns:
+            Numpy array of shape (N, 3) or (N, 4) containing point cloud data
+            
+        Raises:
+            FileNotFoundError: If PCD file doesn't exist
+            ValueError: If PCD file format is invalid
+        """
+        try:
+            import open3d as o3d
+        except ImportError:
+            raise ImportError("open3d is required to load PCD files. Install with: pip install open3d")
+        
+        if not os.path.isfile(pcd_path):
+            raise FileNotFoundError(f"PCD file not found: {pcd_path}")
+        
+        try:
+            # Load point cloud using Open3D
+            pcd = o3d.io.read_point_cloud(str(pcd_path))
+            
+            # Convert to numpy array
+            points = np.asarray(pcd.points)
+            
+            # Optionally include colors if available
+            if pcd.has_colors():
+                colors = np.asarray(pcd.colors)
+                points = np.hstack([points, colors])
+            
+            return points
+            
+        except Exception as e:
+            raise ValueError(f"Failed to load PCD file {pcd_path}: {e}")
+    
+    def _load_pcd_file_plyfile(self, pcd_path: str) -> np.ndarray:
+        """
+        Alternative method to load PCD files using plyfile library.
+        More memory efficient for large point clouds.
+        
+        Args:
+            pcd_path: Path to the PCD file
+            
+        Returns:
+            Numpy array of point cloud data
+        """
+        try:
+            from plyfile import PlyData
+        except ImportError:
+            raise ImportError("plyfile is required. Install with: pip install plyfile")
+        
+        if not os.path.isfile(pcd_path):
+            raise FileNotFoundError(f"PCD file not found: {pcd_path}")
+        
+        try:
+            ply_data = PlyData.read(pcd_path)
+            vertex = ply_data['vertex']
+            
+            # Extract x, y, z coordinates
+            points = np.column_stack([vertex['x'], vertex['y'], vertex['z']])
+            
+            return points
+            
+        except Exception as e:
+            raise ValueError(f"Failed to load PCD file {pcd_path}: {e}")
 
    
     def compute_nearest_neighbor_label(self, position_idx: int) -> dict:

@@ -1,3 +1,10 @@
+
+hortov2:
+  val:
+    dataset_root: 'place_uk/PlaceRecognitionTestPolyTunnel'
+    seq: ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY']
+
+
 cross_validation:
   dataset: 'HORTO-3DLM'
   seq:

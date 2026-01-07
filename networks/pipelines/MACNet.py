@@ -11,7 +11,7 @@ from networks.backbones.spvnas.model_zoo import spvcnn
 from networks.pipelines.pipeline_utils import *
 
 class PointNetMAC(nn.Module):
-    def __init__(self,in_dim=3, feat_dim = 1024, num_points=2500, use_tnet=False, output_dim=1024,**argv):
+    def __init__(self,in_dim=3, feat_dim = 1024, use_tnet=False, output_dim=1024,**argv):
         super(PointNetMAC, self).__init__()
 
         self.point_net = PointNet_features(dim_k=feat_dim,use_tnet = use_tnet, scale=1)

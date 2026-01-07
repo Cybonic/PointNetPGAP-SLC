@@ -36,15 +36,15 @@ class cross_validation():
         elif "sparse"in str(self.modality).lower():
             self.collation_fn = CollationFunctionFactory("sparse_tuple",voxel_size = 0.05, num_points=10000)
 
-        train_loader = Triplet(root       = self.root,
-                                    dataset     = dataset,
-                                    sequences   = sequence,
-                                    triplet_file = triplet_files,
-                                    modality = self.modality,
-                                    #ground_truth = self.train_cfg['ground_truth'],
-                                    memory= self.memory,
-                                    augmentation = augmentation,
-                                    shuffle_points = shuffle_points
+        train_loader = Triplet( root       = self.root,
+                                dataset     = dataset,
+                                sequences   = sequence,
+                                triplet_file = triplet_files,
+                                modality = self.modality,
+                                #ground_truth = self.train_cfg['ground_truth'],
+                                memory= self.memory,
+                                augmentation = augmentation,
+                                shuffle_points = shuffle_points
                                     
                                                 )
         
@@ -111,4 +111,3 @@ class cross_validation():
     def __str__(self):
         return "CROSS_VALIDATION"
 		#return  1-np.array(self.label_disto)
-
