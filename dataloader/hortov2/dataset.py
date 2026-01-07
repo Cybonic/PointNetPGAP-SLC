@@ -342,7 +342,8 @@ class file_structure():
 
     def compute_nearest_neighbor_different_frame(self, position_idx: int) -> dict:
         """
-        Find the nearest neighbor of a given position with a different frame ID but same label.
+        Find the nearest neighbor of a given position with a different (past) frame ID but same label.
+        Only searches in frames with lower IDs (past frames).
         
         Args:
             position_idx: Index of the query position
@@ -370,13 +371,13 @@ class file_structure():
         all_frames = self._get_frame_ids()
         all_labels = self._get_labels()
         
-        # Find positions with SAME label but DIFFERENT frame ID
+        # Find positions with SAME label, DIFFERENT frame ID, and PAST frames (lower ID)
         same_label_mask = all_labels == query_label
-        different_frame_mask = all_frames != query_frame
-        combined_mask = same_label_mask & different_frame_mask
-        different_frame_indices = np.where(combined_mask)[0]
+        past_frame_mask = all_frames < query_frame
+        combined_mask = same_label_mask & past_frame_mask
+        past_frame_indices = np.where(combined_mask)[0]
         
-        if len(different_frame_indices) == 0:
+        if len(past_frame_indices) == 0:
             return {
                 'neighbor_idx': None,
                 'neighbor_frame': None,
@@ -387,13 +388,13 @@ class file_structure():
                 'neighbor_position': None
             }
         
-        # Compute distances to all positions with same label and different frame ID
-        different_positions = all_positions[different_frame_indices]
-        distances = np.linalg.norm(different_positions - query_pos, axis=1)
+        # Compute distances to all positions with same label and past frames
+        past_positions = all_positions[past_frame_indices]
+        distances = np.linalg.norm(past_positions - query_pos, axis=1)
         
         # Find nearest neighbor
         nearest_idx_in_subset = np.argmin(distances)
-        nearest_idx = different_frame_indices[nearest_idx_in_subset]
+        nearest_idx = past_frame_indices[nearest_idx_in_subset]
         nearest_distance = distances[nearest_idx_in_subset]
         
         return {

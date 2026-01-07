@@ -74,7 +74,7 @@ def test_nearest_neighbors_different_frame():
         plot_nearest_neighbors_3d(positions, all_neighbors, seq)
 
 
-def plot_nearest_neighbors_3d(positions, neighbors, seq_name):
+def plot_nearest_neighbors_3d(positions, neighbors, seq_name, samples=100):
     """
     Plot 3D path with connections to nearest neighbors of different frame IDs.
     """
@@ -88,10 +88,10 @@ def plot_nearest_neighbors_3d(positions, neighbors, seq_name):
     
     # Plot path line
     ax.plot(elevated_positions[:, 0], elevated_positions[:, 1], elevated_positions[:, 2],
-            'k-', alpha=1, linewidth=5)
+            'k-', alpha=1, linewidth=2)
     
     # Plot connections to nearest neighbors (sample every Nth point for clarity)
-    sample_rate = max(1, len(neighbors) // 50)  # Show ~50 connections
+    sample_rate = max(1, len(neighbors) // samples)  # Show ~50 connections
     for i in range(0, len(neighbors), sample_rate):
         neighbor = neighbors[i]
         if neighbor['distance'] != np.inf and neighbor['neighbor_idx'] is not None:
@@ -105,8 +105,8 @@ def plot_nearest_neighbors_3d(positions, neighbors, seq_name):
                    'g-', alpha=0.7, linewidth=2.0)
             
             # Mark the connection endpoints with circles
-            ax.scatter(*query_pos, color='red', s=50, alpha=0.6, marker='o', edgecolors='darkred', linewidth=1)
-            ax.scatter(*nn_pos, color='orange', s=50, alpha=0.6, marker='s', edgecolors='darkorange', linewidth=1)
+            #ax.scatter(*query_pos, color='red', s=50, alpha=0.6, marker='o', edgecolors='darkred', linewidth=1)
+            #ax.scatter(*nn_pos, color='orange', s=50, alpha=0.6, marker='s', edgecolors='darkorange', linewidth=1)
     
     # Set labels and title
     ax.set_xlabel("X")
