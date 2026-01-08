@@ -1,14 +1,11 @@
-import os,sys
+import os
+import sys
 sys.path.append(os.sep.join(os.path.dirname(__file__).split(os.sep)[:-1]))
 
+import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import numpy as np
-
-# List of all timestamp names we might encounter
-TIMESTAMP_COLUMNS = ['field.header.stamp', 'timestamp', '%timestamp']
-
 
 # Default color palette for labels (AABBGGRR format for KML)
 LABEL_COLORS = {
@@ -24,27 +21,13 @@ LABEL_COLORS = {
     9: 'ff808000',  # Teal
 }
 
-LABEL_NAMES = {
-    0: 'Label 0 (Green)',
-    1: 'Label 1 (Red)',
-    2: 'Label 2 (Blue)',
-    3: 'Label 3 (Yellow)',
-    4: 'Label 4 (Magenta)',
-    5: 'Label 5 (Cyan)',
-    6: 'Label 6 (Orange)',
-    7: 'Label 7 (Purple)',
-    8: 'Label 8 (Olive)',
-    9: 'Label 9 (Teal)',
-}
-
-
-    
 
 def generate_label_colors(num_colors):
+    """Generate a colormap for labels using matplotlib."""
     import matplotlib.pyplot as plt
     cmap = plt.get_cmap('tab20', num_colors)
     indices = np.arange(num_colors)
-    np.random.seed(42)  # For reproducibility, remove or change for different results
+    np.random.seed(42)
     np.random.shuffle(indices)
     colors = {}
     for i, idx in enumerate(indices):
@@ -53,14 +36,15 @@ def generate_label_colors(num_colors):
 
 
 def hex_color_to_rgb(color_str):
-    # KML: AABBGGRR
+    """Convert KML color (AABBGGRR format) to RGB tuple."""
     bb = int(color_str[2:4], 16)
     gg = int(color_str[4:6], 16)
     rr = int(color_str[6:8], 16)
     return (rr/255, gg/255, bb/255)
 
+
 def load_from_csv(filepath):
-    """Load DLO velocity/pose data from CSV."""
+    """Load pose data from CSV file."""
     df = pd.read_csv(filepath)
     return df
 
@@ -142,16 +126,6 @@ def parse_csv_file(filepath: str) -> pd.DataFrame:
     else:
         raise ValueError(f"Unknown input format: {input_format}")
 
-def compute_loop(df: pd.DataFrame):
-    """
-    Compute the loop closure for the given dataframe.
-    """
-    # Placeholder for loop closure computation
-    print(f"Computing loop closure for dataframe with {len(df)} rows.")
-    
-    
-    return df
-
 
 def load_pcd_file(pcd_path: str, use_plyfile: bool = False) -> np.ndarray:
     """
@@ -222,37 +196,37 @@ def _load_pcd_plyfile(pcd_path: str) -> np.ndarray:
 
 class file_structure():
     
-    def __init__(self,root,seq,lidar="pcd",verbose=False):
-        # assert isinstance(sequences,list)
-        self.pose = []
-        self.point_cloud_files = []
-        self.target_dir = []
-
+    def __init__(self, root, seq, lidar="pcd", verbose=False):
+        """Initialize file_structure with dataset root and sequence name."""
         self.target_dir = os.path.join(root, seq)
-        if verbose: print(f"Checking target directory at: {self.target_dir}")
-        assert os.path.isdir(self.target_dir),'target dataset does not exist: ' + self.target_dir
+        if verbose:
+            print(f"Checking target directory at: {self.target_dir}")
+        assert os.path.isdir(self.target_dir), 'target dataset does not exist: ' + self.target_dir
 
-        # Get pose file
-        # READ Poses from CSV file
+        # Load pose data from CSV file
         file_seq = seq.replace("PCD_", "")
-        pose_csv_file = os.path.join(self.target_dir,"path_{}".format(file_seq).lower() + ".csv")
-        if verbose: print(f"Checking pose file at: {pose_csv_file}")
+        pose_csv_file = os.path.join(self.target_dir, f"path_{file_seq.lower()}.csv")
+        if verbose:
+            print(f"Checking pose file at: {pose_csv_file}")
         assert os.path.isfile(pose_csv_file), 'pose file does not exist: ' + pose_csv_file
-        if verbose: print(f"Loading pose data from {pose_csv_file}...")
+        if verbose:
+            print(f"Loading pose data from {pose_csv_file}...")
         self.df = parse_csv_file(pose_csv_file)
 
-        # Get point cloud files
-        point_cloud_dir = os.path.join(self.target_dir,lidar)
-        assert os.path.isdir(point_cloud_dir),'point cloud dir does not exist: ' + point_cloud_dir
+        # Load point cloud file paths
+        point_cloud_dir = os.path.join(self.target_dir, lidar)
+        assert os.path.isdir(point_cloud_dir), 'point cloud dir does not exist: ' + point_cloud_dir
+        
         def extract_number(p):
             return int(p.stem) if p.stem.isdigit() else p.stem
         
         pcl_files = sorted(Path(point_cloud_dir).glob('*.pcd'), key=extract_number)
         
-        ## Add column to df with a path to pcd for each pose
+        # Add column to df with path to pcd for each pose
         self.df['pcd_path'] = self.df['ID'].apply(lambda x: pcl_files[x] if x < len(pcl_files) else None)
 
-        if verbose: print("[INF] Found %d point cloud files in %s" %(len(self.point_cloud_files),point_cloud_dir))
+        if verbose:
+            print(f"[INF] Found {len(pcl_files)} point cloud files in {point_cloud_dir}")
 
     def _get_timestamps_(self):
         """
@@ -260,225 +234,57 @@ class file_structure():
         """
         return(self.df['timestamp'].values)
 
-    def _get_timestamp_(self,i):
-        """
-        Get timestamps from the pose data.
-        """
-        return(self.df['timestamp'].values[i])
+    def _get_timestamp_(self, i):
+        """Get timestamp for a specific index."""
+        return self.df['timestamp'].values[i]
 
-    def _get_pcl_timestamps_(self):
-        raise NotImplementedError("PCL timestamps not implemented yet.")
-
-    def _get_point_cloud_files_(self)->np.ndarray:
-        """
-        Get point cloud file(s) for the given index.
-        """
+    def _get_point_cloud_files_(self) -> np.ndarray:
+        """Get all point cloud file paths."""
         return self.df['pcd_path'].values
 
-    def _get_point_cloud_file_(self,i)->str:
-        """
-        Get point cloud file(s) for the given index.
-        """
+    def _get_point_cloud_file_(self, i) -> str:
+        """Get point cloud file path for a specific index."""
         return self.df['pcd_path'].values[i]
 
-    def _get_pose_(self)->np.ndarray:
-        "extract pose data from CSV"
-        return self.df[['x','y','z','qx','qy','qz','qw']].values
+    def _get_pose_(self, i: int) -> np.ndarray:
+        """Get the pose (position + orientation) for a specific index."""
+        return self.df[['x', 'y', 'z', 'qx', 'qy', 'qz', 'qw']].values[i]
 
-    def _get_pose_(self,i:int)->np.ndarray:
-        """
-        Get the pose for a specific index.
-        """
-        return self.df[['x','y','z','qx','qy','qz','qw']].values[i]
+    def _get_positions_(self) -> np.ndarray:
+        """Get all positions (x, y, z coordinates)."""
+        return self.df[['x', 'y', 'z']].values
 
-    def _get_positions_(self,)->np.ndarray:
-        """
-        Get the position for a specific index.
-        """
-        return self.df[['x','y','z']].values
+    def _get_position_(self, i: int) -> np.ndarray:
+        """Get the position (x, y, z) for a specific index."""
+        return self.df[['x', 'y', 'z']].values[i]
 
-    def _get_position_(self,i:int)->np.ndarray:
-        """
-        Get the position for a specific index.
-        """
-        return self.df[['x','y','z']].values[i]
+    def _get_labels(self) -> np.ndarray:
+        """Get all labels."""
+        return self.df['label'].values
 
-    def _get_orientation_(self,i:int)->np.ndarray:
-        """
-        Get the orientation for a specific index.
-        """
-        return self.df[['qx','qy','qz','qw']].values[i]
-    
-
-    def _get_target_dir(self)->str:
-        """
-        Get the target directory.
-        """
-        return self.target_dir
-
-    def _get_labels(self)->np.ndarray:
-        """
-        Get all labels.
-        """
-        return(self.df['label'].values)
-
-    def _get_label_(self,i:int)->str:
-        """
-        Get the label for a specific index.
-        """
-        return(self.df['label'].values[i])
+    def _get_label_(self, i: int) -> int:
+        """Get the label for a specific index."""
+        return self.df['label'].values[i]
 
     def _get_frame_ids(self) -> np.ndarray:
-        """
-        Get all frame IDs.
-        """
+        """Get all frame IDs."""
         return self.df['ID'].values
 
-    def _get_frame_id_(self, i: int) -> str:
-        """
-        Get the frame ID for a specific index.
-        """
+    def _get_frame_id_(self, i: int) -> int:
+        """Get the frame ID for a specific index."""
         return self.df['ID'].values[i]
 
-    def _load_pcd_(self, i:int)->np.ndarray:
-        """
-        Load the point cloud data for a specific index.
-        """
+    def _get_target_dir(self) -> str:
+        """Get the target directory."""
+        return self.target_dir
+
+    def _load_pcd_(self, i: int) -> np.ndarray:
+        """Load the point cloud data for a specific index."""
         pcd_path = self._get_point_cloud_file_(i)
-        assert os.path.isfile(pcd_path), 'point cloud file does not exist: ' + pcd_path
-        return self._load_pcd_file(pcd_path)
+        assert os.path.isfile(pcd_path), f'point cloud file does not exist: {pcd_path}'
+        return load_pcd_file(str(pcd_path))
 
-    def _load_pcd_file(self, pcd_path: str) -> np.ndarray:
-        """
-        Load a PCD (Point Cloud Data) file.
-        
-        Args:
-            pcd_path: Path to the PCD file
-            
-        Returns:
-            Numpy array of shape (N, 3) or (N, 4) containing point cloud data
-            
-        Raises:
-            FileNotFoundError: If PCD file doesn't exist
-            ValueError: If PCD file format is invalid
-        """
-        try:
-            import open3d as o3d
-        except ImportError:
-            raise ImportError("open3d is required to load PCD files. Install with: pip install open3d")
-        
-        if not os.path.isfile(pcd_path):
-            raise FileNotFoundError(f"PCD file not found: {pcd_path}")
-        
-        try:
-            # Load point cloud using Open3D
-            pcd = o3d.io.read_point_cloud(str(pcd_path))
-            
-            # Convert to numpy array
-            points = np.asarray(pcd.points)
-            
-            # Optionally include colors if available
-            if pcd.has_colors():
-                colors = np.asarray(pcd.colors)
-                points = np.hstack([points, colors])
-            
-            return points
-            
-        except Exception as e:
-            raise ValueError(f"Failed to load PCD file {pcd_path}: {e}")
-    
-    def _load_pcd_file_plyfile(self, pcd_path: str) -> np.ndarray:
-        """
-        Alternative method to load PCD files using plyfile library.
-        More memory efficient for large point clouds.
-        
-        Args:
-            pcd_path: Path to the PCD file
-            
-        Returns:
-            Numpy array of point cloud data
-        """
-        try:
-            from plyfile import PlyData
-        except ImportError:
-            raise ImportError("plyfile is required. Install with: pip install plyfile")
-        
-        if not os.path.isfile(pcd_path):
-            raise FileNotFoundError(f"PCD file not found: {pcd_path}")
-        
-        try:
-            ply_data = PlyData.read(pcd_path)
-            vertex = ply_data['vertex']
-            
-            # Extract x, y, z coordinates
-            points = np.column_stack([vertex['x'], vertex['y'], vertex['z']])
-            
-            return points
-            
-        except Exception as e:
-            raise ValueError(f"Failed to load PCD file {pcd_path}: {e}")
-
-   
-    def compute_nearest_neighbor_label(self, position_idx: int) -> dict:
-        """
-        Find the nearest neighbor of a given position with a different label.
-        
-        Args:
-            position_idx: Index of the query position
-            
-        Returns:
-            Dictionary with keys:
-                - 'neighbor_idx': Index of nearest neighbor
-                - 'neighbor_label': Label of nearest neighbor
-                - 'query_label': Label of query position
-                - 'distance': Euclidean distance to nearest neighbor
-                - 'position': Position of query point
-                - 'neighbor_position': Position of nearest neighbor
-        """
-        if position_idx < 0 or position_idx >= len(self.df):
-            raise ValueError(f"Invalid position index: {position_idx}")
-        
-        # Get query position and label
-        query_pos = self._get_position_(position_idx)
-        query_label = self._get_label_(position_idx)
-        
-        # Get all positions and labels
-        all_positions = self._get_positions_()
-        all_labels = self._get_labels()
-        
-        # Find positions with different labels
-        different_label_mask = all_labels == query_label
-        different_label_indices = np.where(different_label_mask)[0]
-        
-        if len(different_label_indices) == 0:
-            return {
-                'neighbor_idx': None,
-                'neighbor_label': None,
-                'query_label': query_label,
-                'distance': np.inf,
-                'position': query_pos,
-                'neighbor_position': None
-            }
-        
-        # Compute distances to all positions with different labels
-        different_positions = all_positions[different_label_indices]
-        distances = np.linalg.norm(different_positions - query_pos, axis=1)
-        
-        # Find nearest neighbor
-        nearest_idx_in_subset = np.argmin(distances)
-        nearest_idx = different_label_indices[nearest_idx_in_subset]
-        nearest_distance = distances[nearest_idx_in_subset]
-        
-        return {
-            'neighbor_idx': nearest_idx,
-            'neighbor_label': all_labels[nearest_idx],
-            'query_label': query_label,
-            'distance': nearest_distance,
-            'position': query_pos,
-            'neighbor_position': all_positions[nearest_idx]
-        }
-
-    def compute_nearest_neighbor_different_frame(self, position_idx: int, lower_bound_idx= 50) -> dict:
+    def compute_nearest_neighbor_different_frame(self, position_idx: int, lower_bound_idx=50) -> dict:
         """
         Find the nearest neighbor of a given position with a different (past) frame ID but same label.
         Only searches in frames with lower IDs (past frames).
