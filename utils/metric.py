@@ -77,10 +77,12 @@ class retrieval_metrics:
   '''
   This class is used to compute the metrics for the retrieval task
   '''
-  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10],n_segments = 6):
+  def __init__(self,k_top = 10, radius = [1,2,3,4,5,6,7,8,9,10],segments = []):
     self.k_top = k_top
     self.radius = radius
-    self.n_segments = n_segments
+    self.segments = segments
+    self.n_segments = len(segments)
+    
     self.reset()
     
   
@@ -94,7 +96,7 @@ class retrieval_metrics:
     
     if self.n_segments != None:
       self.segm_metrics = {}
-      for i in range(0,int(self.n_segments)):
+      for i in self.segments:
         self.segm_metrics[i]={'tp': {r: [0]*(self.k_top+1) for r in self.radius},
                           'precision': {r: [0]*(self.k_top+1) for r in self.radius},
                           'recall': {r: [0]*(self.k_top+1) for r in self.radius},
@@ -151,7 +153,7 @@ class retrieval_metrics:
   def get_metrics(self):
     
     for segment,scores in self.segm_metrics.items():
-      print(f"Segment: {segment}: {scores['recall'][10][0]}") # 
+      print(f"Segment: {segment}: {scores['recall'][10][1]}") # 
       
     return {'global':self.global_metrics,'segment':self.segm_metrics}
     

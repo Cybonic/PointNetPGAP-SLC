@@ -39,7 +39,7 @@ class Eval:
         self.struct = file_structure(root,sequence)
 
         self.files = self.struct._get_point_cloud_files_()
-
+        # nnearest = self.struct._get_nnearest_()
 
         # Load dataset and laser settings
         print("\n" + "*"*30)
@@ -106,8 +106,12 @@ class Eval:
 
     def todevice(self,device):
         self.device = device
-        
-        
+
+    def get_positions(self):
+        return self.struct._get_positions_()
+
+    def get_labels(self):
+        return self.struct._get_labels()
     # ==================================================================================================
     def get_anchor_idx(self):
         return []
@@ -118,4 +122,20 @@ class Eval:
     def get_row_labels(self):
         return []
     
+    def get_ground_truth_loop_closure(self,
+                                      warm_up=100,
+                                      lower_bound_idx=50,
+                                      distance_threshold=2.0,
+                                      top_k=1):
+        """   """
+                  
+        return self.struct.get_ground_truth_loop_closure(
+                            warm_up=warm_up,
+                            lower_bound_idx=lower_bound_idx,
+                            distance_threshold=distance_threshold,
+                            topk=top_k  # Use all neighbors within threshold
+                )
+    
 
+    def load_ground_truth(self):
+        return self.struct._load_ground_truth()

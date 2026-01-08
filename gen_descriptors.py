@@ -74,7 +74,7 @@ Examples:
     parser.add_argument(
         '--session',
         type=str,
-        default='hortov2',
+        default='hortov2_output',
         help='Session name for the experiment'
     )
     
@@ -120,9 +120,9 @@ if __name__ == '__main__':
     FLAGS, unparsed = create_argument_parser()
 
     # load config file at session folder
-    root=os.path.abspath(os.path.join(os.path.dirname(__file__)))
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # get parent dir 
     print("Root directory:", root)
-    session_cfg_file = os.path.join(root,'sessions', FLAGS.session + '.yaml')
+    session_cfg_file = os.path.join(root,'PointNetGAP','sessions', FLAGS.session + '.yaml')
     assert os.path.exists(session_cfg_file), "Session config file not found"
     # global path
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
@@ -139,17 +139,16 @@ if __name__ == '__main__':
 
     # Build the model and the loader
     model = model_handler(  network = SESSION['network'],
-                            device     = device,
+                            device  = device,
                             )
 
 
-    loader = dataloader_handler(network = SESSION['network'],
+    loader = dataloader_handler(root, 
+                                network = SESSION['network'],
                                 val_loader = SESSION['val_loader'],
                                 train_loader = SESSION['train_loader'],
                                 eval_protocol= SESSION['run']['eval_protocol'],
                                 )
-    
-    
 
     run_name = {'experiment': str(FLAGS.experiment), 
                 'seq':SESSION['val_loader']['dataset']['seq'][0],
@@ -173,29 +172,33 @@ if __name__ == '__main__':
     loader_val = loader.get_val_loader()
     run_config = SESSION['run']
 
-    eval_approach = PlaceRecognition(model ,
-                                    loader_val,
-                                    retrieval,
-                                    logger,
-                                    run_config,
-                                    run_name,
-                                    device
-                                    )
+    eval_approach = PlaceRecognition(model ,loader_val, retrieval,
+                                    logger, run_config, run_name,
+                                    device)
     
     # Define a set of loop ranges to be evaluated
     loop_range = list(range(0,120,1))
     
-    # Check if the resume file exists
-    #assert os.path.exists(FLAGS.resume ), "File not found %s"%FLAGS.resume 
+    warm_up = retrieval['warmup_window']
+    topk = retrieval['top_cand']
+    roi_window = retrieval['roi_window']
+    sim_metric = retrieval['sim_metric']
+    
 
-    resume = os.path.join(root,SESSION['network']['checkpoints'])
+    #assert os.path.exists(FLAGS.resume ), "File not found %s"%FLAGS.resume 
+    resume = os.path.join(root,'PointNetGAP',SESSION['network']['checkpoints'])
 
     # Check if to resume from a checkpoint or a descriptor file
     if resume.endswith('.pth'):
         eval_approach.load_pretrained_model(resume)
 
-    # Run the evaluation
-    eval_approach.generate_descriptors()
     
-    # save_to = FLAGS.save_predictions
+    loop_range = list(range(0,120,1))
+    eval_approach.load_hortov2_data()
+    
+    eval_approach.run(loop_range=loop_range)
+
     eval_approach.save_descriptors()
+    eval_approach.save_params()
+    eval_approach.save_predictions_pkl()
+    eval_approach.save_results_csv()

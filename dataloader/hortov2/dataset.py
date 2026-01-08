@@ -228,6 +228,39 @@ class file_structure():
         if verbose:
             print(f"[INF] Found {len(pcl_files)} point cloud files in {point_cloud_dir}")
 
+    
+    def _get_seq_dir(self):
+        """Get the sequence directory.
+        Returns:
+            str: The sequence directory path.
+        """
+        return self.target_dir
+    
+    def _load_ground_truth(self):
+        """Load ground truth loop closures from CSV file if it exists."""
+        file = os.path.join(self.target_dir, 'ground_truth', 'ground_truth_loop_closures.csv')
+        if not os.path.isfile(file):
+            return None
+        
+        # Load CSV file
+        df = load_from_csv(file)
+        
+        # Convert DataFrame to dictionary format matching get_ground_truth_loop_closure() output
+        if len(df) == 0:
+            return None
+        
+        return {
+            'query_indices': df['query_idx'].values,
+            'neighbor_indices': df['neighbor_idx'].values,
+            'distances': df['distance_m'].values,
+            'labels': df['label'].values,
+            'query_to_neighbor': {},  # Can be loaded from JSON if needed
+            'total_query_positions': len(np.unique(df['query_idx'].values)),
+            'valid_loop_closures': len(df)
+        }
+        
+        
+    
     def _get_timestamps_(self):
         """
         Get timestamps from the pose data.

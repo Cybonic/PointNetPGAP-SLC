@@ -190,8 +190,8 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
   
   count = np.sum(segment_labels == -1)
   print(f'Number of -1 in segment labels: {count}')
-  max_segments = np.max(segment_labels)
-  metric = retrieval_metrics(n_top_cand,radius,n_segments=max_segments+1)
+  segments = np.unique(segment_labels)
+  metric = retrieval_metrics(n_top_cand,radius,segments=segments)
 
   
   to_store= {}
@@ -199,9 +199,9 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
   poses[:,2] = 0 # ignore z axis
   for i,(q) in tqdm.tqdm(enumerate(queries),total = len(queries),desc='Evaluating Retrieval'):
     
-    query_pos = poses[q,:]
-    query_destps = descriptrs[q]
-    query_label = segment_labels[q]
+    query_pos     = poses[q,:]
+    query_destps  = descriptrs[q]
+    query_label   = segment_labels[q]
     
     # Ignore scans within a window around the query
     q_map_idx = np.arange(0,q-window,dtype=np.uint32) # generate indices until q - window 
@@ -244,10 +244,8 @@ def eval_row_place(queries,descriptrs,poses,segment_labels, n_top_cand=25,radius
       # as the query
       continue
     
-    metric.update(query_label,pred_loop_labels,pred_loop_L2,gt_loop_L2)
-
-    # save loop candidates indices 
-    # Convert variable to store to int32  
+    global_metric = metric.update(query_label,pred_loop_labels,pred_loop_L2,gt_loop_L2)
+ 
     
     query_label = np.array(query_label).astype(np.uint8)
     est_loop_cand_idx = np.round(est_loop_cand_idx,3).astype(np.uint32)

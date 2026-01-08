@@ -41,13 +41,13 @@ train_loader:
 
   
 val_loader:
-  batch_size: 50 #50      # batch size
+  batch_size: 10 #50      # batch size
   workers:  0            # number of threads to get data
   memory: "DISK"
   loop_range: 10 # Loop Threshold [m]
   dataset:
     path: 'dataset/PlaceRecognitionTestPolyTunnel'
-    seq: ['PCD_Easy_DARK']
+    seq: ['PCD_RAS_EASY']
     # ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY']
 
 run:
@@ -62,7 +62,8 @@ run:
   early_stop: 1000 #epochs
   eval_protocol: "val_only"
   task: 'place'
-  save_deptrs: "descripts"
+  save_deptrs: True
+  range_report: 10 # range at which is the performance is reported
 
 
 loss:

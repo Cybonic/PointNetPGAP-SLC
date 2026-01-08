@@ -52,7 +52,9 @@ def search_files_in_dir(directory,search_file):
             if file.startswith(search_file):
                 files_found.append(os.path.join(root, file))
     return files_found
-            
+
+
+    
 class PlaceRecognition:
     """
     Place Recognition evaluation and descriptor generation class.
@@ -86,11 +88,12 @@ class PlaceRecognition:
             save_predictions: Directory to save predictions
             **kwargs: Additional arguments (logdir)
         """
-        sim_func = retrieval['sim_metric']
+        self.sim_func = retrieval['sim_metric']
         task = run_config['task']
         self.run_name = run_name 
+        self.root = os.path.abspath(os.path.join(os.path.dirname(__file__)))
         # Validate inputs
-        assert sim_func in self.VALID_SIM_FUNCS, f'Invalid similarity function: {sim_func}'
+        assert self.sim_func in self.VALID_SIM_FUNCS, f'Invalid similarity function: {self.sim_func}'
         assert task in self.VALID_EVAL_PROTOCOLS, f'Invalid evaluation protocol: {task}'
         
         # Core attributes
@@ -100,17 +103,18 @@ class PlaceRecognition:
         self.device = self._setup_device(device)
         
         # Configuration
-        self.top_cand = retrieval['top_cand']
-        self.roi_window = retrieval['roi_window']
-        self.warmup_window = retrieval['warmup_window']
-        self.monitor_range = retrieval['range_thres']
-        self.sim_func = sim_func
-        self.task = task
-        self.save_deptrs = run_config['save_deptrs']
+        self.top_cand       = retrieval['top_cand']
+        self.roi_window     = retrieval['roi_window']
+        self.warmup_window  = retrieval['warmup_window']
+        self.monitor_range  = run_config['range_report']
+        self.sim_func       = self.sim_func
+        self.task           = task
+        self.save_deptrs    = run_config['save_deptrs']
         self.use_load_deptrs = False
         
         # Dataset and model info
-        self.save_dir = os.path.join(run_config['save_dir'], 
+        self.save_dir = os.path.join(self.root,
+                                    run_config['save_dir'],
                                     self.run_name['experiment'],
                                     self.run_name['model'],
                                     self.run_name['seq']
@@ -130,6 +134,45 @@ class PlaceRecognition:
 
         # Log configuration
         self._log_configuration()
+        
+        
+        
+        
+    def load_hortov2_data(self, dist_tresh=10):
+        """Load Hortov2 dataset ground truth and positions."""
+        # Try to load existing ground truth from file
+        
+        descripts_file = os.path.join(self.save_dir, 'descriptors.torch')
+        
+        if os.path.isfile(descripts_file):
+            self.global_descriptors = self.load_descriptors(descripts_file)
+        
+        ground_truth = self.loader.dataset.load_ground_truth()
+        
+        # If no ground truth file exists, compute it
+        if ground_truth is None:
+            ground_truth = self.loader.dataset.get_ground_truth_loop_closure(
+                warm_up=self.warmup_window,
+                lower_bound_idx=self.roi_window,
+                distance_threshold=dist_tresh,
+                top_k=1
+            )
+        
+        # Extract data from ground truth
+        # Convert data structure to Place Recognition format
+        self.anchors = ground_truth['query_indices']
+        self.positions = self.loader.dataset.get_positions()
+        self.row_labels = self.loader.dataset.get_labels()
+        
+        print("*" * 100)
+        print("[INFO] Loaded Hortov2 Data")
+        print(f"[INFO] anchors: {len(self.anchors)}")
+        print(f"[INFO] positions: {len(self.positions)}")
+        print(f"[INFO] labels: {len(self.row_labels)}")
+        print("*" * 100)
+        print(f"[INFO] positions: {len(self.positions)}")
+        print(f"[INFO] labels: {len(self.row_labels)}")
+        print("*"*100)
     
     def _setup_device(self, device):
         """Setup and validate device."""
@@ -237,14 +280,19 @@ class PlaceRecognition:
         Args:
             save_dir: Directory to save parameters (uses predictions_dir if None)
         """
-        target_dir = self._get_save_directory(save_dir, include_protocol=True)
-        os.makedirs(target_dir, exist_ok=True)
+        if save_dir != None:
+            target_dir = self._get_save_directory(save_dir, include_protocol=True)
+            os.makedirs(target_dir, exist_ok=True)
+        else:
+            target_dir = self.save_dir
         
         file_path = os.path.join(target_dir, 'params.yaml')
         with open(file_path, 'w') as f:
             yaml.dump(self.param, f)
         
         self.logger.info(f'Saved parameters to: {file_path}')
+    
+    
     
     def _get_save_directory(self, save_dir=None, include_protocol=False):
         """
@@ -310,9 +358,16 @@ class PlaceRecognition:
         Args:
             save_dir: Directory to save descriptors
         """
+        # verify if the global descriptors exist
+        if not hasattr(self, 'global_descriptors'):
+            self.logger.error('No global descriptors found to save.')
+            return None
 
+        if self.use_load_deptrs == True:
+            return None
+        
         file_path = os.path.join(self.save_dir, 'descriptors.torch')
-        torch.save(self.descriptors, file_path)
+        torch.save(self.global_descriptors, file_path)
         self.logger.info(f'Saved descriptors to: {file_path}')
         return file_path
     
@@ -373,9 +428,9 @@ class PlaceRecognition:
         assert hasattr(self, 'predictions'), 'Results were not generated!'
         
         if save_dir == None:
-            target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
+            target_dir = os.path.join(self.predictions_dir,self.task,self.score_value[self.monitor_range]) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
+            target_dir =  self.save_dir# os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.task,self.score_value[self.monitor_range])
             
         
         if not os.path.isdir(target_dir):
@@ -419,10 +474,10 @@ class PlaceRecognition:
 
         # Check if the results were generated
         assert hasattr(self, 'results'), 'Results were not generated!'
-        if save_dir == None:
+        if save_dir != None:
             target_dir = os.path.join(self.predictions_dir,self.eval_protocol,self.score_value[self.monitor_range]) # Internal File name 
         else:
-            target_dir = os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
+            target_dir = self.save_dir # os.path.join(save_dir,f'{str(self.model)}',f'{self.dataset_name}',self.eval_protocol,self.score_value[self.monitor_range])
         
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
@@ -482,15 +537,22 @@ class PlaceRecognition:
         # Check if the results were generated
         if not isinstance(self.top_cand,list):
             self.top_cand = [self.top_cand]
+
+
+        
+        self.warmup_window = 100
+        self.roi_window = 50
+        _distance_threshold = 2.0
+        _top_k = 1
+        # GROUND TRUTH
         
         # GENERATE DESCRIPTORS
         if self.use_load_deptrs == False:
-            self.descriptors = self.generate_descriptors(self.model,self.loader)
-    
-        
+            self.global_descriptors = self.generate_descriptors()
+
         # COMPUTE TOP 1%
-        # Compute number of samples to retrieve corresponding to 1% 
-        n_samples = len(self.descriptors)
+        # Compute number of samples to retrieve corresponding to 1%
+        n_samples = len(self.global_descriptors)
         one_percent = int(round(n_samples/100,0))
         self.top_cand.append(one_percent)
         k_top_cand = max(self.top_cand)
@@ -498,10 +560,10 @@ class PlaceRecognition:
         
         # COMPUTE RETRIEVAL Performance
         # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
-        if self.eval_protocol == 'relocalization':
-            metric, self.predictions = eval_row_relocalization(
-                                                    self.descriptors, # Descriptors
-                                                    self.poses,   # Poses
+        if self.task == 'relocalization':
+            performance, self.predictions = eval_row_relocalization(
+                                                    self.global_descriptors, # Descriptors
+                                                    self.positions,   # Poses
                                                     self.row_labels, # Row labels
                                                     k_top_cand, # Max top candidates
                                                     radius=self.loop_range_distance, # Radius
@@ -510,10 +572,10 @@ class PlaceRecognition:
                                                     sim = self.sim_func 
                                                     )
         
-        elif self.eval_protocol == 'place':
-            metric, self.predictions = eval_row_place(self.anchors, # Anchors indices
-                                                    self.descriptors, # Descriptors
-                                                    self.poses,   # Poses
+        elif self.task == 'place':
+            performance, self.predictions = eval_row_place(self.anchors, # Anchors indices
+                                                    self.global_descriptors, # Descriptors
+                                                    self.positions,   # Poses
                                                     self.row_labels, # Row labels
                                                     k_top_cand, # Max top candidates
                                                     radius=self.loop_range_distance, # Radius
@@ -525,29 +587,29 @@ class PlaceRecognition:
 
 
         # COMPUTE Segment class Prediction performance
-        content = self.descriptors.values()
+        content = self.global_descriptors.values()
         if 'c' in content:
             seg_preds = np.array([d['c'] for d in self.descriptors.values()])
             seg_labels = np.array([d['gt'] for d in self.descriptors.values()])
             
             class_results = compute_segment_pred(seg_preds,seg_labels)
             # update the results
-            metric['class']=class_results
+            performance['class']=class_results
                     
 
         # Save results to be stored in csv files
-        self.results = metric
+        self.results = performance
         
         
         # RE-MAP TO AN OLD FORMAT
         remapped_old_format={}
         self.score_value = {}
         for range_value in self.loop_range_distance:
-            remapped_old_format[range_value]={'recall':[metric['global']['recall'][range_value][top] for  top in [0,k_top_cand-1]] }
-            for segment, scores in metric['segment'].items():
+            remapped_old_format[range_value]={'recall':[self.results['global']['recall'][range_value][top] for  top in [0,k_top_cand-1]] }
+            for segment, scores in self.results['segment'].items():
                 remapped_old_format[range_value][f'recall_{segment}']= [scores['recall'][range_value][top] for  top in [0,k_top_cand-1]]           #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))#self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
         
-        self.score_value[self.monitor_range] = str(round(metric['global']['recall'][self.monitor_range][0],3)) + f'@{1}'
+        self.score_value[self.monitor_range] = str(round(self.results['global']['recall'][self.monitor_range][0],3)) + f'@{1}'
 
         return remapped_old_format
 
@@ -568,7 +630,7 @@ class PlaceRecognition:
         num_samples = len(self.loader)
         #row_labels = self.loader.dataset.row_labels
 
-        predictions = {}
+        self.global_descriptors = {}
         
         with torch.no_grad():
             for batch_idx in tqdm(range(num_samples), desc='Generating descriptors', ncols=100):
@@ -601,15 +663,15 @@ class PlaceRecognition:
                 for i, (descriptor, idx) in enumerate(zip(descriptors_list, indices_list)):
                     idx = int(idx)
                     if segment_preds is None:
-                        predictions[idx] = {'d': descriptor}
+                        self.global_descriptors[idx] = {'d': descriptor}
                     else:
-                        predictions[idx] = {
+                        self.global_descriptors[idx] = {
                             'd': descriptor,
                             'c': segment_preds[i].item() if hasattr(segment_preds[i], 'item') else segment_preds[i],
                             'gt': label[idx]
                         }
         
-        return predictions
+        return self.global_descriptors
 
 
 

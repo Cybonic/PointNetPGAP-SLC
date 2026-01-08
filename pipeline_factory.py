@@ -133,7 +133,8 @@ def model_handler(network,device='cuda',**argv):
                                                        loss_margin=0.5 if 'alpha' not in argv else argv['alpha'])
         else:
             # without SLC loss
-            model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['run'])
+            # model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['run'])
+            model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device)
         #model = contrastive.SparseModelWrapper(pipeline,loss = loss,device = device,**argv['trainer'])
     
     elif architecture.endswith('Loss'):
@@ -166,16 +167,18 @@ def model_handler(network,device='cuda',**argv):
 # ======================================== DATALOADER FACTORY ======================================
 # ==================================================================================================
 
-def dataloader_handler(network,
-                       val_loader,
-                       train_loader,
-                       eval_protocol,
-                       **args):
+def dataloader_handler( root,
+                        network,
+                        val_loader,
+                        train_loader,
+                        eval_protocol,
+                        **args):
 
      # Load the predefined data splits 
     #datasplits = yaml.load(open("sessions/full_data_splits.yaml", 'r'),Loader=yaml.FullLoader)
     # Get the training and validation sequences based on VAL_SET
     #experiment = args['experiment']
+    
     val_set = val_loader['dataset']['seq']
     # verify if sequence val is list our str
     if not isinstance(val_set, list):
@@ -206,6 +209,7 @@ def dataloader_handler(network,
     elif eval_protocol == 'val_only':
         # print evaluation information
         print(f"\n[INFO]Evaluation: {model_evaluation_exp}")
+        print(f"[INFO]Architecture: {root}")
         print(f"[INFO]Validation Dataset: {val_loader['dataset']['path']}")
         print(f"[INFO]Validation Sequence: {val_loader['dataset']['seq']}")
     else:
@@ -265,8 +269,7 @@ def dataloader_handler(network,
                                     max_points    = session['max_points']
                                     )
     elif eval_protocol == 'val_only':
-
-        loader = validation_only( **val_loader,modality=modality)
+        loader = validation_only(root=root,**val_loader,modality=modality)
 
     else:
         raise NotImplementedError("Model Evaluation not implemented!")
