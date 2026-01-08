@@ -11,7 +11,7 @@ retrieval:
   top_cand: [1,5,25]
   range_thres: 6
   roi_window: 100
-  warmup_window: 5
+  warmup_window: 50
   sim_metric: 'L2'
 
 
@@ -19,7 +19,7 @@ retrieval:
 
 # Ground-truth parameters
 network: 
-  architecture: "PointNetPGAP"
+  architecture: "SPVSoAP3D"
   checkpoints: "checkpoints/RALv3_kittiv2/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/00/PointNetPGAP-LazyTripletLoss_L2/best_model.pth"
   output_dim: 256
   wrapper:

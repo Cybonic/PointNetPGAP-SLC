@@ -315,7 +315,13 @@ class file_structure():
         """Load the point cloud data for a specific index."""
         pcd_path = self._get_point_cloud_file_(i)
         assert os.path.isfile(pcd_path), f'point cloud file does not exist: {pcd_path}'
-        return load_pcd_file(str(pcd_path))
+        points = load_pcd_file(str(pcd_path))
+        if points.shape[1] < 4:
+            intensity = np.ones((points.shape[0],), dtype=np.int32)
+        else:  
+            intensity = points[:, 3]  # Assuming intensity is the 4th channel
+        pcd = np.concatenate((points[:, :3], intensity.reshape(-1, 1)), axis=-1)
+        return pcd
 
     def compute_nearest_neighbor_different_frame(self, position_idx: int, lower_bound_idx=50) -> dict:
         """

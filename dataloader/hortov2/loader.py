@@ -30,7 +30,7 @@ class validation_only:
 
         if str(modality) in ["bev","spherical","pcl"]:
             self.collation_fn = CollationFunctionFactory("default",voxel_size = 0.05, num_points=10000)
-        elif "sparse" in str(self.modality).lower() :
+        elif "sparse" in str(modality).lower() :
             self.collation_fn = CollationFunctionFactory("sparse",voxel_size = 0.05, num_points=10000)
 
         val_loader = Eval( root = dir,

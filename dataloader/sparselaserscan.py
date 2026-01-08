@@ -36,6 +36,7 @@ class SparseLaserScan(LaserScan):
         self.voxel_size = voxel_size
     
     def load(self,file):
+        
         self.open_scan(file)
         filtered_points,filtered_remissions = self.get_points()
         filtered_points,filtered_remissions = filtered_points.astype(np.float32),filtered_remissions.astype(np.float32)
@@ -46,6 +47,9 @@ class SparseLaserScan(LaserScan):
     
     def __call__(self,files,set_augmentation=False,set_shuffle_points=False,**kwargs):
         buff = []
+        
+        if isinstance(files,np.ndarray):
+            return self.to_sparse_tensor(files)
         
         if not isinstance(files,list) and not isinstance(files,np.ndarray):
             files = [files]

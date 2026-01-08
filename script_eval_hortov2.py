@@ -5,7 +5,7 @@ import yaml
 # Define the path to the dataset
 
 test_sequences = ['PCD_Easy_DARK',
-                  #'PCD_MED'
+                  'PCD_MED'
                 ]
 
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # get parent dir 
@@ -26,7 +26,7 @@ for seq in test_sequences:
         
         SESSION['val_loader']['dataset']['seq'] = [seq]
         
-        for network in ['SPVSoAP3D']:#'PointNetVLAD','SPVSoAP3D', 'LOGG3D','overlap_transformer']:
+        for network in ['PointNetVLAD','SPVSoAP3D', 'LOGG3D','overlap_transformer']:
                 checkpoints = f"checkpoints/hortov2/{network}-LazyTripletLoss_L2/best_model.pth"
                 path_checkpoint = os.path.exists(os.path.join(root,'PointNetGAP',checkpoints))
                 assert os.path.exists(path_checkpoint), f"Checkpoint file not found {path_checkpoint}"

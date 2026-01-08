@@ -74,7 +74,13 @@ class BEVProjection(LaserScan):
      
   
   def __call__(self,file,set_augmentation=False,**argv):
-    points,remissions  = self.load(file)
+    if isinstance(file, np.ndarray):
+      points = file
+      remissions = argv['remissions'] if 'remissions' in argv else np.ones((points.shape[0],),dtype=np.float32) 
+      self.load_pcl(points)
+      points,remissions = self.get_points()
+    else:
+      points,remissions  = self.load(file)
     
     if set_augmentation:
         points = self.set_augmentation(points)

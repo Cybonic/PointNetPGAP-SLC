@@ -127,7 +127,7 @@ if __name__ == '__main__':
     # global path
     SESSION = yaml.safe_load(open(session_cfg_file, 'r'))
 
-    plot_session(SESSION)
+    # plot_session(SESSION)
     
     device = SESSION['device']
     # For repeatability
