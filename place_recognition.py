@@ -111,16 +111,17 @@ class PlaceRecognition:
         self.task           = task
         self.save_deptrs    = run_config['save_deptrs']
         self.use_load_deptrs = False
-        
-        # Dataset and model info
+
+        # Build save directory path
         self.save_dir = os.path.join(self.root,
                                     run_config['save_dir'],
                                     self.run_name['experiment'],
+                                    self.run_name['seq'],
                                     self.run_name['model'],
-                                    self.run_name['seq']
                                    )
         os.makedirs(self.save_dir, exist_ok=True)
         print("Save directory:", self.save_dir)
+        
         # Dataset attributes
         self._load_dataset_info(loader)
         
