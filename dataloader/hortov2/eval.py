@@ -92,7 +92,18 @@ class Eval:
         else:
             pcl = self.modality(pcd,False)
 
-        return(pcl,index)
+        # Handle both dense tensors and sparse tensors
+        #if hasattr(pcl, 'shape'):
+            # Dense tensor (numpy array or torch tensor)
+        #    if pcl.shape[-1] > 3:
+        #        pcl = pcl[:,:3]
+        #elif hasattr(pcl, 'F'):
+            # Sparse tensor (e.g., MinkowskiEngine SparseTensor)
+            # pcl.F contains the features
+        #    if pcl.F.shape[-1] > 3:
+        #        pcl.F = pcl.F[:,:3]
+        
+        return(pcl, index)
 
     def __len__(self):
         return(len(self.idx_universe))

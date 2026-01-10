@@ -285,7 +285,7 @@ class LaserScan:
     if self.set_pcl_norm_flag:
       self.points = normalize_pcl(self.points)
     
-    return self.points,self.remissions
+    return self.points[:,:3] 
   
 
 
@@ -302,7 +302,7 @@ class Scan(LaserScan):
   def load(self,file):
     self.open_scan(file)
     filtered_points,filtered_remissions = self.get_points()
-    return filtered_points,filtered_remissions
+    return filtered_points #,filtered_remissions
   
   def to_tensor(self,input):
     input = torch.tensor(input).type(torch.float32)
@@ -326,7 +326,7 @@ class Scan(LaserScan):
     if set_shuffle_points:
       points = shuffle_points(points)
             
-    return self.to_tensor(points)
+    return self.to_tensor(points[:,:3])
   
   def __str__(self):
     return "pcl"

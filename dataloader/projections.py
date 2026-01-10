@@ -78,7 +78,7 @@ class BEVProjection(LaserScan):
       points = file
       remissions = argv['remissions'] if 'remissions' in argv else np.ones((points.shape[0],),dtype=np.float32) 
       self.load_pcl(points)
-      points,remissions = self.get_points()
+      points = self.get_points()
     else:
       points,remissions  = self.load(file)
     

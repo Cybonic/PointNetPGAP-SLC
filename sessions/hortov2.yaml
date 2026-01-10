@@ -20,7 +20,7 @@ retrieval:
 # Ground-truth parameters
 network: 
   architecture: "SPVSoAP3D"
-  checkpoints: "checkpoints/RALv3_kittiv2/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/00/PointNetPGAP-LazyTripletLoss_L2/best_model.pth"
+  checkpoints: "" # "checkpoints/RALv3_kittiv2/triplet/ground_truth_ar0.5m_nr10m_pr2m.pkl/10000/00/PointNetPGAP-LazyTripletLoss_L2/best_model.pth"
   output_dim: 256
   wrapper:
     mini_batch: 10

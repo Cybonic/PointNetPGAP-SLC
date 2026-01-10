@@ -26,8 +26,9 @@ for seq in test_sequences:
         
         SESSION['val_loader']['dataset']['seq'] = [seq]
         
-        for network in ['PointNetVLAD','SPVSoAP3D', 'LOGG3D','overlap_transformer']:
-                checkpoints = f"checkpoints/hortov2/{network}-LazyTripletLoss_L2/best_model.pth"
+        for network in ['PointNetPGAP','PointNetVLAD','SPVSoAP3D', 'LOGG3D','overlap_transformer']:
+                checkpoints = f"checkpoints/hortov2/{network}-LazyTripletLoss_L2/best_model.pth"    
+                # checkpoints = ""
                 path_checkpoint = os.path.exists(os.path.join(root,'PointNetGAP',checkpoints))
                 assert os.path.exists(path_checkpoint), f"Checkpoint file not found {path_checkpoint}"
                 
@@ -37,4 +38,4 @@ for seq in test_sequences:
                 # Save SESSION config for this run
                 save_session_config(SESSION, output_cfg_file)
                 
-                os.system(f'python gen_descriptors.py')
+                os.system(f'python gen_descriptors.py --session hortov2_output')

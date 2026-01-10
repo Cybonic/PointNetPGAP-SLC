@@ -74,7 +74,7 @@ Examples:
     parser.add_argument(
         '--session',
         type=str,
-        default='hortov2_output',
+        default='hortov2',
         help='Session name for the experiment'
     )
     
