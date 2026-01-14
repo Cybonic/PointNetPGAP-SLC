@@ -24,6 +24,81 @@ from PointNetGAP.dataloader.hortov2.dataset import file_structure, generate_labe
 from PointNetGAP.dataloader.hortov2.utils import aligned_path, elevate_along_path
 
 
+def elevate_path_by_revisits(positions, spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50, transition_length=20):
+    """
+    Elevate path based on the number of times it revisits the same spatial location.
+    Each revisit gets a fixed vertical offset. Levels never decrease (monotonic increase).
+    Smooth transitions between levels.
+    
+    Args:
+        positions: Nx3 array of (x, y, z) positions
+        spatial_threshold: Distance threshold to consider as "same location" (meters)
+        level_height: Height offset for each revisit level (meters)
+        min_temporal_gap: Minimum frame gap to consider as separate visit (frames)
+        transition_length: Number of points over which to smooth level transitions
+        
+    Returns:
+        Nx3 array with elevated z-coordinates based on revisit levels, and smoothed levels array
+    """
+    elevated_positions = positions.copy()
+    n_points = len(positions)
+    
+    # Track which level each point should be at
+    levels = np.zeros(n_points, dtype=int)
+    current_level = 0  # Track the current level (never decreases)
+    
+    # For each point, determine its level based on previous visits to nearby locations
+    for i in range(n_points):
+        current_pos = positions[i, :2]  # Only x, y for spatial comparison
+        
+        # Find all previous points within spatial threshold
+        # BUT only check points that are temporally separated (not part of continuous path)
+        if i > min_temporal_gap:
+            # Only check points that are at least min_temporal_gap frames back
+            prev_positions = positions[:i-min_temporal_gap, :2]
+            distances = np.linalg.norm(prev_positions - current_pos, axis=1)
+            nearby_mask = distances < spatial_threshold
+            
+            if np.any(nearby_mask):
+                # Get the levels of nearby previous points
+                nearby_levels = levels[:i-min_temporal_gap][nearby_mask]
+                # Should be one level higher than the max nearby level
+                suggested_level = np.max(nearby_levels) + 1
+                # But never decrease from current level
+                current_level = max(current_level, suggested_level)
+        
+        levels[i] = current_level
+    
+    # Create smooth transitions between levels
+    smooth_levels = levels.astype(float).copy()
+    
+    # Find level change points
+    for i in range(1, n_points):
+        if levels[i] > levels[i-1]:
+            # Level increased - create smooth transition
+            level_change = levels[i] - levels[i-1]
+            start_idx = max(0, i - transition_length // 2)
+            end_idx = min(n_points, i + transition_length // 2)
+            transition_range = end_idx - start_idx
+            
+            if transition_range > 0:
+                # Linear interpolation for smooth transition
+                for j in range(start_idx, end_idx):
+                    # Don't go below the level at start_idx or above level at end_idx
+                    progress = (j - start_idx) / transition_range
+                    base_level = levels[start_idx]
+                    smooth_levels[j] = base_level + level_change * progress
+                    # Ensure monotonic increase
+                    if j > 0:
+                        smooth_levels[j] = max(smooth_levels[j], smooth_levels[j-1])
+    
+    # Apply smooth elevation based on smoothed levels
+    elevated_positions[:, 2] = positions[:, 2] + smooth_levels * level_height
+    
+    return elevated_positions, levels  # Return original discrete levels for reporting
+
+
+
 def load_predictions(predictions_path):
     """Load predictions from pickle file."""
     if not os.path.exists(predictions_path):
@@ -84,7 +159,9 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
 def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
                         view_elev=30, view_azim=45, figsize=(16, 12),
                         connection_alpha=0.8, connection_linewidth=2.0,
-                        show_grid=False, show_legend=True, show_axes=True):
+                        show_grid=False, show_legend=True, show_axes=True,
+                        spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50,
+                        subsample_factor=5, transition_length=20):
     """
     Create a single plot for one model-sequence combination.
     
@@ -102,27 +179,51 @@ def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
         show_grid: Whether to show grid
         show_legend: Whether to show legend
         show_axes: Whether to show axis labels
+        spatial_threshold: Distance threshold for considering same location (meters)
+        level_height: Height offset for each revisit level (meters)
+        min_temporal_gap: Minimum frame gap to consider as separate visit (frames)
+        subsample_factor: Show every Nth loop closure prediction (e.g., 5 = show every 5th prediction)
+        transition_length: Number of points over which to smooth level transitions
     """
     # Get positions
     positions = fs._get_positions_()
     
-    # Align and elevate
+    # Align positions
     aligned_positions = aligned_path(positions)
-    elevated_positions = elevate_along_path(aligned_positions, max_elevation=20.0)
+    
+    # Elevate based on revisits to same location with smooth transitions
+    elevated_positions, levels = elevate_path_by_revisits(
+        aligned_positions, 
+        spatial_threshold=spatial_threshold, 
+        level_height=level_height,
+        min_temporal_gap=min_temporal_gap,
+        transition_length=transition_length
+    )
+    
+    print(f"    Elevation levels: {np.unique(levels)} (max level: {np.max(levels)})")
+
+    
+    # Subsample the predictions (loop closures), not the path
+    if subsample_factor > 1:
+        subsampled_tp = true_positives[::subsample_factor]
+        print(f"    Subsampled predictions: {len(true_positives)} -> {len(subsampled_tp)} loop closures (factor: {subsample_factor})")
+    else:
+        subsampled_tp = true_positives
+
     
     # Create figure
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     
-    # Plot trajectory line in BLACK
+    # Plot FULL trajectory in BLACK (monocolor)
     ax.plot(elevated_positions[:, 0],
            elevated_positions[:, 1],
            elevated_positions[:, 2],
            'k-', alpha=1.0, linewidth=2.5, zorder=1)
     
-    # Plot all true positive connections in GREEN
+    # Plot SUBSAMPLED true positive connections in GREEN
     connection_plotted = False
-    for query_idx, neighbor_idx, distance in true_positives:
+    for query_idx, neighbor_idx, distance in subsampled_tp:
         query_pos = elevated_positions[query_idx]
         neighbor_pos = elevated_positions[neighbor_idx]
         
@@ -132,7 +233,7 @@ def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
                    [query_pos[1], neighbor_pos[1]],
                    [query_pos[2], neighbor_pos[2]],
                    'g-', alpha=connection_alpha, linewidth=connection_linewidth, 
-                   zorder=10, label=f'Loop Closures ({len(true_positives)} TPs)')
+                   zorder=10, label=f'Loop Closures ({len(subsampled_tp)}/{len(true_positives)} shown)')
             connection_plotted = True
         else:
             ax.plot([query_pos[0], neighbor_pos[0]],
@@ -189,7 +290,9 @@ def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
 def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
                       topk=1, distance_threshold=10.0, min_temporal_distance=50,
                       view_elev=30, view_azim=45, figsize=(16, 12),
-                      show_grid=False, show_legend=True, show_axes=True):
+                      show_grid=False, show_legend=True, show_axes=True,
+                      spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50,
+                      subsample_factor=5, transition_length=20):
     """
     Generate individual plots for all model-sequence combinations.
     
@@ -208,6 +311,11 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
         show_grid: Whether to show grid
         show_legend: Whether to show legend
         show_axes: Whether to show axis labels
+        spatial_threshold: Distance threshold for considering same location (meters)
+        level_height: Height offset for each revisit level (meters)
+        min_temporal_gap: Minimum frame gap to consider as separate visit (frames)
+        subsample_factor: Show every Nth loop closure prediction (e.g., 5 = show every 5th prediction)
+        transition_length: Number of points over which to smooth level transitions
     """
     os.makedirs(output_dir, exist_ok=True)
     
@@ -222,6 +330,7 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
     print(f"Top-K: {topk}")
     print(f"Distance threshold: {distance_threshold}m")
     print(f"Min temporal distance: {min_temporal_distance} frames")
+    print(f"Elevation: spatial_threshold={spatial_threshold}m, level_height={level_height}m, min_temporal_gap={min_temporal_gap} frames")
     print("=" * 80)
     
     total_plots = len(sequences) * len(models)
@@ -301,7 +410,12 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
                 figsize=figsize,
                 show_grid=show_grid,
                 show_legend=show_legend,
-                show_axes=show_axes
+                show_axes=show_axes,
+                spatial_threshold=spatial_threshold,
+                level_height=level_height,
+                min_temporal_gap=min_temporal_gap,
+                subsample_factor=subsample_factor,
+                transition_length=transition_length
             )
             
             print(f"  ✓ Saved: {output_path}")
@@ -367,12 +481,23 @@ def main():
     
     # Display options
     show_grid = False            # Show/hide background grid
-    show_legend = False           # Show/hide legend
-    show_axes = False             # Show/hide axis labels and ticks
+    show_legend = False          # Show/hide legend
+    show_axes = False            # Show/hide axis labels and ticks
     
     # Connection line appearance
     connection_alpha = 0.8       # Transparency of green lines (0-1)
     connection_linewidth = 2.0   # Thickness of green lines
+    
+    # Elevation parameters
+    spatial_threshold = 10.0     # Distance threshold for same location (meters)
+    level_height = 5.0           # Height offset per revisit level (meters)
+    min_temporal_gap = 50        # Minimum frame gap to consider as separate visit (frames)
+    
+    # Transition smoothing
+    transition_length = 20       # Number of points over which to smooth transitions (higher = smoother)
+    
+    # Subsampling parameter (for loop closures, not the path)
+    subsample_factor = 10         # Show every Nth loop closure (1=all, 5=every 5th, 10=every 10th)
     
     # ============================================================================
     # END CONFIGURATION
@@ -393,7 +518,12 @@ def main():
         figsize=figsize,
         show_grid=show_grid,
         show_legend=show_legend,
-        show_axes=show_axes
+        show_axes=show_axes,
+        spatial_threshold=spatial_threshold,
+        level_height=level_height,
+        min_temporal_gap=min_temporal_gap,
+        subsample_factor=subsample_factor,
+        transition_length=transition_length
     )
     
     print("\nDone! All plots generated.")
