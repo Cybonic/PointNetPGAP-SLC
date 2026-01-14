@@ -1,0 +1,403 @@
+"""
+Generate individual true positive loop closure plots for each model and sequence.
+
+This script creates separate visualizations for every model-sequence combination with:
+- Consistent viewpoints across all plots
+- No background grid
+- Black trajectory paths
+- Green loop closure connections
+- Clean, publication-ready output
+"""
+
+import sys
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from pathlib import Path
+import pickle
+import argparse
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
+from PointNetGAP.dataloader.hortov2.dataset import file_structure, generate_label_colors
+from PointNetGAP.dataloader.hortov2.utils import aligned_path, elevate_along_path
+
+
+def load_predictions(predictions_path):
+    """Load predictions from pickle file."""
+    if not os.path.exists(predictions_path):
+        return None
+    with open(predictions_path, 'rb') as f:
+        return pickle.load(f)
+
+
+def collect_true_positives(predictions, topk=1, distance_threshold=10.0, 
+                           min_temporal_distance=50):
+    """
+    Collect all true positive loop closures from predictions.
+    
+    Args:
+        predictions: Dictionary of predictions
+        topk: Top-K predictions to consider
+        distance_threshold: Maximum distance for valid loop closures
+        min_temporal_distance: Minimum frame distance to consider as loop closure
+        
+    Returns:
+        List of tuples: (query_idx, neighbor_idx, distance)
+    """
+    true_positives = []
+    
+    for query_idx in sorted(predictions.keys()):
+        pred_data = predictions[query_idx]
+        pred_loops = pred_data['pred_loops']
+        query_segment = pred_data['segment']
+        
+        # Get top-k predictions
+        pred_indices = pred_loops['idx'][:topk]
+        pred_distances = pred_loops['dist'][:topk]
+        pred_segments = pred_loops['segment'][:topk]
+        
+        # Filter by distance threshold
+        valid_mask = pred_distances <= distance_threshold
+        valid_indices = pred_indices[valid_mask]
+        valid_distances = pred_distances[valid_mask]
+        valid_segments = pred_segments[valid_mask]
+        
+        # Filter by temporal distance
+        temporal_distances = np.abs(query_idx - valid_indices)
+        temporal_mask = temporal_distances >= min_temporal_distance
+        valid_indices = valid_indices[temporal_mask]
+        valid_distances = valid_distances[temporal_mask]
+        valid_segments = valid_segments[temporal_mask]
+        
+        # Identify true positives (same segment)
+        is_tp = (valid_segments == query_segment)
+        
+        for neighbor_idx, distance, is_positive in zip(valid_indices, valid_distances, is_tp):
+            if is_positive:
+                true_positives.append((int(query_idx), int(neighbor_idx), float(distance)))
+    
+    return true_positives
+
+
+def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
+                        view_elev=30, view_azim=45, figsize=(16, 12),
+                        connection_alpha=0.8, connection_linewidth=2.0,
+                        show_grid=False, show_legend=True, show_axes=True):
+    """
+    Create a single plot for one model-sequence combination.
+    
+    Args:
+        fs: file_structure object
+        true_positives: List of (query_idx, neighbor_idx, distance) tuples
+        model_name: Name of the model
+        sequence: Sequence name
+        output_path: Path to save the figure
+        view_elev: Elevation angle for 3D view
+        view_azim: Azimuth angle for 3D view
+        figsize: Figure size (width, height)
+        connection_alpha: Alpha for connection lines
+        connection_linewidth: Width of connection lines
+        show_grid: Whether to show grid
+        show_legend: Whether to show legend
+        show_axes: Whether to show axis labels
+    """
+    # Get positions
+    positions = fs._get_positions_()
+    
+    # Align and elevate
+    aligned_positions = aligned_path(positions)
+    elevated_positions = elevate_along_path(aligned_positions, max_elevation=20.0)
+    
+    # Create figure
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot trajectory line in BLACK
+    ax.plot(elevated_positions[:, 0],
+           elevated_positions[:, 1],
+           elevated_positions[:, 2],
+           'k-', alpha=1.0, linewidth=2.5, zorder=1)
+    
+    # Plot all true positive connections in GREEN
+    connection_plotted = False
+    for query_idx, neighbor_idx, distance in true_positives:
+        query_pos = elevated_positions[query_idx]
+        neighbor_pos = elevated_positions[neighbor_idx]
+        
+        # Draw connection line in GREEN (label only first one for legend)
+        if show_legend and not connection_plotted:
+            ax.plot([query_pos[0], neighbor_pos[0]],
+                   [query_pos[1], neighbor_pos[1]],
+                   [query_pos[2], neighbor_pos[2]],
+                   'g-', alpha=connection_alpha, linewidth=connection_linewidth, 
+                   zorder=10, label=f'Loop Closures ({len(true_positives)} TPs)')
+            connection_plotted = True
+        else:
+            ax.plot([query_pos[0], neighbor_pos[0]],
+                   [query_pos[1], neighbor_pos[1]],
+                   [query_pos[2], neighbor_pos[2]],
+                   'g-', alpha=connection_alpha, linewidth=connection_linewidth, zorder=10)
+    
+    # Remove all axes elements
+    ax.set_axis_off()
+    
+    # Optionally keep title if show_legend is True
+    if show_legend:
+        title = f"{model_name} - {sequence}\n"
+        title += f"True Positives: {len(true_positives)}"
+        ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    
+    # Set view angle
+    ax.view_init(elev=view_elev, azim=view_azim)
+    
+    # Set equal aspect ratio
+    max_range = np.array([
+        elevated_positions[:, 0].max() - elevated_positions[:, 0].min(),
+        elevated_positions[:, 1].max() - elevated_positions[:, 1].min(),
+        elevated_positions[:, 2].max() - elevated_positions[:, 2].min()
+    ]).max() / 2.0
+    
+    mid_x = (elevated_positions[:, 0].max() + elevated_positions[:, 0].min()) * 0.5
+    mid_y = (elevated_positions[:, 1].max() + elevated_positions[:, 1].min()) * 0.5
+    mid_z = (elevated_positions[:, 2].max() + elevated_positions[:, 2].min()) * 0.5
+    
+    ax.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax.set_zlim(mid_z - max_range, mid_z + max_range)
+    
+    # Remove background elements and make transparent
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.xaxis.pane.set_edgecolor('none')
+    ax.yaxis.pane.set_edgecolor('none')
+    ax.zaxis.pane.set_edgecolor('none')
+    ax.grid(False)
+    
+    # Make figure background transparent
+    fig.patch.set_alpha(0.0)
+    ax.patch.set_alpha(0.0)
+    
+    # Save figure as PDF with transparent background and tight bounding box
+    plt.savefig(output_path, format='pdf', bbox_inches='tight', pad_inches=0, 
+                transparent=True, facecolor='none')
+    plt.close(fig)
+
+
+def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
+                      topk=1, distance_threshold=10.0, min_temporal_distance=50,
+                      view_elev=30, view_azim=45, figsize=(16, 12),
+                      show_grid=False, show_legend=True, show_axes=True):
+    """
+    Generate individual plots for all model-sequence combinations.
+    
+    Args:
+        dataset_root: Path to dataset root
+        saved_root: Root directory for saved predictions
+        sequences: List of sequence names
+        models: List of model names
+        output_dir: Directory to save plots
+        topk: Top-K predictions to consider
+        distance_threshold: Maximum distance threshold
+        min_temporal_distance: Minimum temporal distance
+        view_elev: Elevation angle for all plots
+        view_azim: Azimuth angle for all plots
+        figsize: Figure size for all plots
+        show_grid: Whether to show grid
+        show_legend: Whether to show legend
+        show_axes: Whether to show axis labels
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print("=" * 80)
+    print("Generating Individual True Positive Plots")
+    print("=" * 80)
+    print(f"Sequences: {sequences}")
+    print(f"Models: {models}")
+    print(f"Output directory: {output_dir}")
+    print(f"View angle: elevation={view_elev}°, azimuth={view_azim}°")
+    print(f"Grid: {'ON' if show_grid else 'OFF'}")
+    print(f"Top-K: {topk}")
+    print(f"Distance threshold: {distance_threshold}m")
+    print(f"Min temporal distance: {min_temporal_distance} frames")
+    print("=" * 80)
+    
+    total_plots = len(sequences) * len(models)
+    plot_count = 0
+    
+    results_summary = []
+    
+    for sequence in sequences:
+        print(f"\n{'=' * 80}")
+        print(f"Processing Sequence: {sequence}")
+        print(f"{'=' * 80}")
+        
+        # Load dataset once per sequence
+        try:
+            fs = file_structure(dataset_root, sequence)
+            print(f"Dataset loaded: {len(fs._get_positions_())} frames")
+        except Exception as e:
+            print(f"ERROR loading dataset for {sequence}: {e}")
+            continue
+        
+        for model in models:
+            plot_count += 1
+            print(f"\n[{plot_count}/{total_plots}] {model} - {sequence}")
+            print("-" * 80)
+            
+            # Handle special naming convention for SPVSoAP3D
+            if model == "SPVSoAP3D":
+                model_dir_name = "SPVSoAP3D-SoAP-log-pnl-fc-None"
+            else:
+                model_dir_name = f"{model}-None"
+            
+            # Find predictions file
+            model_dir = os.path.join(saved_root, sequence, model_dir_name, "predictions", "place")
+            
+            if not os.path.exists(model_dir):
+                print(f"  WARNING: Model directory not found: {model_dir}")
+                results_summary.append((sequence, model, "DIR_NOT_FOUND", 0))
+                continue
+            
+            # Find the recall@1 directory
+            subdirs = [d for d in os.listdir(model_dir) 
+                      if os.path.isdir(os.path.join(model_dir, d)) and '@1' in d]
+            
+            if not subdirs:
+                print(f"  WARNING: No @1 directory found in {model_dir}")
+                results_summary.append((sequence, model, "NO_PREDICTIONS", 0))
+                continue
+            
+            pred_path = os.path.join(model_dir, subdirs[0], "predictions.pkl")
+            
+            # Load predictions
+            predictions = load_predictions(pred_path)
+            if predictions is None:
+                print(f"  WARNING: Could not load predictions from {pred_path}")
+                results_summary.append((sequence, model, "LOAD_FAILED", 0))
+                continue
+            
+            print(f"  Loaded {len(predictions)} predictions")
+            
+            # Collect true positives
+            true_positives = collect_true_positives(
+                predictions, topk, distance_threshold, min_temporal_distance
+            )
+            print(f"  Found {len(true_positives)} true positives")
+            
+            # Generate plot - output as PDF
+            output_path = os.path.join(output_dir, f"{sequence}_{model}_tp.pdf")
+            
+            plot_model_sequence(
+                fs=fs,
+                true_positives=true_positives,
+                model_name=model,
+                sequence=sequence,
+                output_path=output_path,
+                view_elev=view_elev,
+                view_azim=view_azim,
+                figsize=figsize,
+                show_grid=show_grid,
+                show_legend=show_legend,
+                show_axes=show_axes
+            )
+            
+            print(f"  ✓ Saved: {output_path}")
+            results_summary.append((sequence, model, "SUCCESS", len(true_positives)))
+    
+    # Print summary
+    print("\n" + "=" * 80)
+    print("SUMMARY")
+    print("=" * 80)
+    print(f"{'Sequence':<20} {'Model':<25} {'Status':<20} {'TPs':<10}")
+    print("-" * 80)
+    
+    for seq, model, status, tp_count in results_summary:
+        if status == "SUCCESS":
+            print(f"{seq:<20} {model:<25} {status:<20} {tp_count:<10}")
+        else:
+            print(f"{seq:<20} {model:<25} {status:<20} {'N/A':<10}")
+    
+    success_count = sum(1 for _, _, status, _ in results_summary if status == "SUCCESS")
+    print("-" * 80)
+    print(f"Total successful plots: {success_count}/{total_plots}")
+    print("=" * 80)
+
+
+def main():
+    """Main function with configurable parameters."""
+    
+    # ============================================================================
+    # CONFIGURATION SECTION - EDIT THESE PARAMETERS
+    # ============================================================================
+    
+    # Dataset and output paths
+    dataset_root = "/home/tiago/workspace/place_uk/dataset/place_v2/PlaceRecognitionTestPolyTunnel"
+    saved_root = "/home/tiago/workspace/place_uk/PointNetGAP/saved/hortov2"
+    output_dir = "/home/tiago/workspace/place_uk/PointNetGAP/plots/true_positives_individual"
+    
+    # Sequences to process
+    sequences = [
+        # "PCD_EASY",      # Uncomment if predictions available
+        "PCD_Easy_DARK",
+        "PCD_MED",
+        # "PCD_RAS_EASY"   # Uncomment if dataset path is fixed
+    ]
+    
+    # Models to process
+    models = [
+        "PointNetPGAP",
+        "PointNetVLAD",
+        "SPVSoAP3D",
+        "LOGG3D",
+        "overlap_transformer"
+    ]
+    
+    # Loop closure parameters
+    topk = 1                      # Top-K predictions to consider
+    distance_threshold = 10.0     # Maximum distance in meters
+    min_temporal_distance = 50    # Minimum frame gap
+    
+    # Visualization parameters
+    view_elev = 30               # Elevation angle (degrees)
+    view_azim = 45               # Azimuth angle (degrees)
+    figsize = (16, 12)           # Figure size (width, height)
+    
+    # Display options
+    show_grid = False            # Show/hide background grid
+    show_legend = False           # Show/hide legend
+    show_axes = False             # Show/hide axis labels and ticks
+    
+    # Connection line appearance
+    connection_alpha = 0.8       # Transparency of green lines (0-1)
+    connection_linewidth = 2.0   # Thickness of green lines
+    
+    # ============================================================================
+    # END CONFIGURATION
+    # ============================================================================
+    
+    # Generate all plots
+    generate_all_plots(
+        dataset_root=dataset_root,
+        saved_root=saved_root,
+        sequences=sequences,
+        models=models,
+        output_dir=output_dir,
+        topk=topk,
+        distance_threshold=distance_threshold,
+        min_temporal_distance=min_temporal_distance,
+        view_elev=view_elev,
+        view_azim=view_azim,
+        figsize=figsize,
+        show_grid=show_grid,
+        show_legend=show_legend,
+        show_axes=show_axes
+    )
+    
+    print("\nDone! All plots generated.")
+
+
+if __name__ == "__main__":
+    main()
