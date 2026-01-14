@@ -438,7 +438,10 @@ class file_structure():
         Generate ground truth loop closure pairs based on spatial proximity.
         Identifies all pairs where positions have same label but are spatially close.
         
-        Retrieval always searches for candidates within PAST frames (lower frame IDs) relative to query.
+        IMPORTANT RETRIEVAL RULES:
+        1. Retrieval is ALWAYS done in PAST frames only (never future frames)
+        2. The nearest neighbor is the CLOSEST point, even if it has been retrieved before
+        3. The same past frame can be the nearest neighbor for multiple query frames
         
         Args:
             warm_up: Number of initial frames to skip (first n frames are ignored)
@@ -482,8 +485,9 @@ class file_structure():
             query_label = all_labels[i]
             query_frame = all_frame_ids[i]
             
-            # Find eligible indices: past frames only
+            # RETRIEVAL RULE: Find eligible indices from PAST frames only
             # Must be BEFORE current index AND with frame_id at least lower_bound_idx frames in the past
+            # This ensures we NEVER retrieve from future frames
             eligible_mask = (all_frame_ids < query_frame - lower_bound_idx)
             eligible_indices = np.where(eligible_mask)[0]
             
@@ -498,6 +502,8 @@ class file_structure():
                 continue
             
             # Compute distances to all same-label neighbors
+            # NOTE: We don't exclude neighbors that have been retrieved before
+            # The CLOSEST point is always selected, regardless of previous retrievals
             same_label_positions = all_positions[same_label_indices]
             dists = np.linalg.norm(same_label_positions - query_pos, axis=1)
             

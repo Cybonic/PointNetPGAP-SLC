@@ -17,11 +17,66 @@ from mpl_toolkits.mplot3d import Axes3D
 from pathlib import Path
 import pickle
 import argparse
+from PIL import Image
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from PointNetGAP.dataloader.hortov2.dataset import file_structure, generate_label_colors
 from PointNetGAP.dataloader.hortov2.utils import aligned_path, elevate_along_path
+
+
+def crop_image_tight(image_path, extra_margin=0):
+    """
+    Crop an image tightly around non-transparent content.
+    
+    Args:
+        image_path: Path to the image file
+        extra_margin: Extra pixels to keep around the content (can be negative to crop more)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Load image
+        img = Image.open(image_path)
+        
+        # Convert to RGBA if not already
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        
+        # Get the bounding box of non-transparent content
+        alpha = img.split()[-1]  # Get alpha channel
+        bbox = alpha.getbbox()
+        
+        if bbox:
+            # Apply extra margin
+            left, top, right, bottom = bbox
+            left = max(0, left - extra_margin)
+            top = max(0, top - extra_margin)
+            right = min(img.width, right + extra_margin)
+            bottom = min(img.height, bottom + extra_margin)
+            
+            # Crop to content
+            img_cropped = img.crop((left, top, right, bottom))
+            
+            # Save back to the same file
+            if image_path.endswith('.png'):
+                img_cropped.save(image_path, format='PNG', dpi=(300, 300))
+            elif image_path.endswith('.pdf'):
+                # For PDF, convert to RGB first
+                if img_cropped.mode == 'RGBA':
+                    # Create white background
+                    bg = Image.new('RGB', img_cropped.size, (255, 255, 255))
+                    bg.paste(img_cropped, mask=img_cropped.split()[-1])
+                    img_cropped = bg
+                img_cropped.save(image_path, format='PDF', resolution=300)
+            
+            return True
+    except Exception as e:
+        print(f"    Warning: Could not crop {image_path}: {e}")
+        return False
+    
+    return False
 
 
 def elevate_path_by_revisits(positions, spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50, transition_length=20):
@@ -112,6 +167,11 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
     """
     Collect all true positive loop closures from predictions.
     
+    IMPORTANT RETRIEVAL RULES:
+    1. Retrieval is ALWAYS done in PAST frames only (never future frames)
+    2. The nearest neighbor is the CLOSEST point, even if it has been retrieved before
+    3. The same past frame can be the nearest neighbor for multiple query frames
+    
     Args:
         predictions: Dictionary of predictions
         topk: Top-K predictions to consider
@@ -133,6 +193,13 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
         pred_distances = pred_loops['dist'][:topk]
         pred_segments = pred_loops['segment'][:topk]
         
+        # RETRIEVAL RULE: Filter to keep only PAST frames (neighbor_idx < query_idx)
+        # This ensures we NEVER retrieve from future frames
+        past_mask = pred_indices < query_idx
+        pred_indices = pred_indices[past_mask]
+        pred_distances = pred_distances[past_mask]
+        pred_segments = pred_segments[past_mask]
+        
         # Filter by distance threshold
         valid_mask = pred_distances <= distance_threshold
         valid_indices = pred_indices[valid_mask]
@@ -140,7 +207,7 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
         valid_segments = pred_segments[valid_mask]
         
         # Filter by temporal distance
-        temporal_distances = np.abs(query_idx - valid_indices)
+        temporal_distances = query_idx - valid_indices  # Now always positive since valid_indices < query_idx
         temporal_mask = temporal_distances >= min_temporal_distance
         valid_indices = valid_indices[temporal_mask]
         valid_distances = valid_distances[temporal_mask]
@@ -149,6 +216,9 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
         # Identify true positives (same segment)
         is_tp = (valid_segments == query_segment)
         
+        # Add true positives
+        # NOTE: We don't exclude neighbors that have been retrieved before
+        # The CLOSEST point is always selected, regardless of previous retrievals
         for neighbor_idx, distance, is_positive in zip(valid_indices, valid_distances, is_tp):
             if is_positive:
                 true_positives.append((int(query_idx), int(neighbor_idx), float(distance)))
@@ -156,21 +226,60 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
     return true_positives
 
 
+def collect_ground_truth_loops(fs, distance_threshold=10.0, min_temporal_distance=50):
+    """
+    Collect all ground truth loop closures based on segment labels.
+    
+    IMPORTANT RETRIEVAL RULES:
+    1. Retrieval is ALWAYS done in PAST frames only (never future frames)
+    2. The nearest neighbor is the CLOSEST point, even if it has been retrieved before
+    3. The same past frame can be the nearest neighbor for multiple query frames
+    
+    Args:
+        fs: file_structure object
+        distance_threshold: Maximum distance for valid loop closures
+        min_temporal_distance: Minimum frame distance to consider as loop closure
+        
+    Returns:
+        List of tuples: (query_idx, neighbor_idx, distance)
+    """
+    # Use the dataset's ground truth loop closure function
+    gt_dict = fs.get_ground_truth_loop_closure(
+        warm_up=100, 
+        lower_bound_idx=min_temporal_distance, 
+        distance_threshold=distance_threshold, 
+        topk=1
+    )
+    
+    # Convert from dictionary format to list of tuples format
+    ground_truth_loops = []
+    query_indices = gt_dict['query_indices']
+    neighbor_indices = gt_dict['neighbor_indices']
+    distances = gt_dict['distances']
+    
+    for query_idx, neighbor_idx, distance in zip(query_indices, neighbor_indices, distances):
+        ground_truth_loops.append((int(query_idx), int(neighbor_idx), float(distance)))
+    
+    return ground_truth_loops
+
+
 def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
                         view_elev=30, view_azim=45, figsize=(16, 12),
                         connection_alpha=0.8, connection_linewidth=2.0,
                         show_grid=False, show_legend=True, show_axes=True,
                         spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50,
-                        subsample_factor=5, transition_length=20):
+                        subsample_factor=5, transition_length=20, tight_crop=True,
+                        crop_margin=10):
     """
     Create a single plot for one model-sequence combination.
+    Saves in both PDF (vector) and PNG (raster) formats.
     
     Args:
         fs: file_structure object
         true_positives: List of (query_idx, neighbor_idx, distance) tuples
         model_name: Name of the model
         sequence: Sequence name
-        output_path: Path to save the figure
+        output_path: Path to save the figure (PDF format, PNG will be saved alongside)
         view_elev: Elevation angle for 3D view
         view_azim: Azimuth angle for 3D view
         figsize: Figure size (width, height)
@@ -184,6 +293,8 @@ def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
         min_temporal_gap: Minimum frame gap to consider as separate visit (frames)
         subsample_factor: Show every Nth loop closure prediction (e.g., 5 = show every 5th prediction)
         transition_length: Number of points over which to smooth level transitions
+        tight_crop: Whether to crop images tightly around content
+        crop_margin: Extra pixels to keep around content when cropping (negative to crop more)
     """
     # Get positions
     positions = fs._get_positions_()
@@ -284,7 +395,22 @@ def plot_model_sequence(fs, true_positives, model_name, sequence, output_path,
     # Save figure as PDF with transparent background and tight bounding box
     plt.savefig(output_path, format='pdf', bbox_inches='tight', pad_inches=0, 
                 transparent=True, facecolor='none')
+    
+    # Also save as PNG with high resolution
+    png_path = output_path.replace('.pdf', '.png')
+    plt.savefig(png_path, format='png', bbox_inches='tight', pad_inches=0, 
+                transparent=True, facecolor='none', dpi=300)
+    
     plt.close(fig)
+    
+    # Crop images tightly if requested
+    if tight_crop:
+        # Crop PNG
+        if crop_image_tight(png_path, extra_margin=crop_margin):
+            pass  # Success message handled by caller
+        
+        # Note: PDF cropping is more complex and may not work as well
+        # For now, we'll just crop the PNG which is what's used in the combined grid
 
 
 def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
@@ -292,7 +418,8 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
                       view_elev=30, view_azim=45, figsize=(16, 12),
                       show_grid=False, show_legend=True, show_axes=True,
                       spatial_threshold=10.0, level_height=5.0, min_temporal_gap=50,
-                      subsample_factor=5, transition_length=20):
+                      subsample_factor=5, transition_length=20, tight_crop=True,
+                      crop_margin=10):
     """
     Generate individual plots for all model-sequence combinations.
     
@@ -316,6 +443,8 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
         min_temporal_gap: Minimum frame gap to consider as separate visit (frames)
         subsample_factor: Show every Nth loop closure prediction (e.g., 5 = show every 5th prediction)
         transition_length: Number of points over which to smooth level transitions
+        tight_crop: Whether to crop images tightly around content
+        crop_margin: Extra pixels to keep around content when cropping
     """
     os.makedirs(output_dir, exist_ok=True)
     
@@ -331,9 +460,10 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
     print(f"Distance threshold: {distance_threshold}m")
     print(f"Min temporal distance: {min_temporal_distance} frames")
     print(f"Elevation: spatial_threshold={spatial_threshold}m, level_height={level_height}m, min_temporal_gap={min_temporal_gap} frames")
+    print(f"Tight crop: {'ENABLED' if tight_crop else 'DISABLED'} (margin: {crop_margin}px)")
     print("=" * 80)
     
-    total_plots = len(sequences) * len(models)
+    total_plots = len(sequences) * len(models) + len(sequences)  # +1 ground truth per sequence
     plot_count = 0
     
     results_summary = []
@@ -351,6 +481,54 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
             print(f"ERROR loading dataset for {sequence}: {e}")
             continue
         
+        # Generate ground truth plot first
+        plot_count += 1
+        print(f"\n[{plot_count}/{total_plots}] Ground Truth - {sequence}")
+        print("-" * 80)
+        
+        # Collect ground truth loop closures
+        ground_truth_loops = collect_ground_truth_loops(
+            fs, distance_threshold, min_temporal_distance
+        )
+        print(f"  Found {len(ground_truth_loops)} ground truth loop closures")
+        
+        # Subsample ground truth for visualization
+        if subsample_factor > 1:
+            subsample_factor_gt = subsample_factor 
+            subsampled_gt = ground_truth_loops[::subsample_factor_gt]
+            print(f"  Subsampled: {len(ground_truth_loops)} -> {len(subsampled_gt)} loop closures (factor: {subsample_factor_gt})")
+        else:
+            subsampled_gt = ground_truth_loops
+        
+        # Generate ground truth plot
+        gt_output_path = os.path.join(output_dir, f"{sequence}_GroundTruth_loops.pdf")
+        
+        plot_model_sequence(
+            fs=fs,
+            true_positives=subsampled_gt,
+            model_name="Ground Truth",
+            sequence=sequence,
+            output_path=gt_output_path,
+            view_elev=view_elev,
+            view_azim=view_azim,
+            figsize=figsize,
+            show_grid=show_grid,
+            show_legend=show_legend,
+            show_axes=show_axes,
+            spatial_threshold=spatial_threshold,
+            level_height=level_height,
+            min_temporal_gap=min_temporal_gap,
+            subsample_factor=1,  # Already subsampled
+            transition_length=transition_length,
+            tight_crop=tight_crop,
+            crop_margin=crop_margin
+        )
+        
+        print(f"  ✓ Saved: {gt_output_path}")
+        print(f"  ✓ Saved: {gt_output_path.replace('.pdf', '.png')}")
+        results_summary.append((sequence, "Ground Truth", "SUCCESS", len(ground_truth_loops)))
+        
+        # Continue with model predictions
         for model in models:
             plot_count += 1
             print(f"\n[{plot_count}/{total_plots}] {model} - {sequence}")
@@ -415,10 +593,13 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
                 level_height=level_height,
                 min_temporal_gap=min_temporal_gap,
                 subsample_factor=subsample_factor,
-                transition_length=transition_length
+                transition_length=transition_length,
+                tight_crop=tight_crop,
+                crop_margin=crop_margin
             )
             
             print(f"  ✓ Saved: {output_path}")
+            print(f"  ✓ Saved: {output_path.replace('.pdf', '.png')}")
             results_summary.append((sequence, model, "SUCCESS", len(true_positives)))
     
     # Print summary
@@ -476,7 +657,7 @@ def main():
     
     # Visualization parameters
     view_elev = 30               # Elevation angle (degrees)
-    view_azim = 45               # Azimuth angle (degrees)
+    view_azim = 135               # Azimuth angle (degrees)
     figsize = (16, 12)           # Figure size (width, height)
     
     # Display options
@@ -497,7 +678,11 @@ def main():
     transition_length = 20       # Number of points over which to smooth transitions (higher = smoother)
     
     # Subsampling parameter (for loop closures, not the path)
-    subsample_factor = 10         # Show every Nth loop closure (1=all, 5=every 5th, 10=every 10th)
+    subsample_factor = 5         # Show every Nth loop closure (1=all, 5=every 5th, 10=every 10th)
+    
+    # Tight cropping parameters
+    tight_crop = True            # Enable tight cropping around content
+    crop_margin = 10             # Extra pixels to keep around content (negative to crop more)
     
     # ============================================================================
     # END CONFIGURATION
@@ -523,7 +708,9 @@ def main():
         level_height=level_height,
         min_temporal_gap=min_temporal_gap,
         subsample_factor=subsample_factor,
-        transition_length=transition_length
+        transition_length=transition_length,
+        tight_crop=tight_crop,
+        crop_margin=crop_margin
     )
     
     print("\nDone! All plots generated.")
