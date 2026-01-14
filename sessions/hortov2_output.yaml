@@ -8,8 +8,8 @@ loss:
   type: TripletLoss
 n_gpu: 1
 network:
-  architecture: PointNetPGAP
-  checkpoints: checkpoints/hortov2/PointNetPGAP-LazyTripletLoss_L2/best_model.pth
+  architecture: overlap_transformer
+  checkpoints: checkpoints/hortov2/overlap_transformer-LazyTripletLoss_L2/best_model.pth
   input:
     num_points: 10000
     roi: 10
@@ -59,7 +59,7 @@ val_loader:
   dataset:
     path: dataset/PlaceRecognitionTestPolyTunnel
     seq:
-    - PCD_Easy_DARK
+    - PCD_MED
   loop_range: 10
   memory: DISK
   workers: 0

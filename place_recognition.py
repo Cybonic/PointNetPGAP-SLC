@@ -123,7 +123,7 @@ class PlaceRecognition:
         print("Save directory:", self.save_dir)
         
         # Dataset attributes
-        self._load_dataset_info(loader)
+        #self._load_dataset_info(loader)
         
         # Setup prediction directory
         logdir = kwargs.get('logdir', 'default')
@@ -213,7 +213,8 @@ class PlaceRecognition:
             'model_name': self.run_name['model'],
             'predictions_dir': self.predictions_dir,
             'eval_protocol': self.task,
-            'monitor_range': self.monitor_range
+            'monitor_range': self.monitor_range,
+            #'checkpoints': self.checkpoints
         }
     
     def _log_configuration(self):

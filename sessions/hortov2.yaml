@@ -9,9 +9,9 @@ device: "cuda"
 
 retrieval:
   top_cand: [1,5,25]
-  range_thres: 6
-  roi_window: 100
-  warmup_window: 50
+  range_thres: 10
+  roi_window: 50
+  warmup_window: 100
   sim_metric: 'L2'
 
 
