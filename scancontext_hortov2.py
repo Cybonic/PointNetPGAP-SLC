@@ -26,6 +26,25 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Add scancontext_cpp directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scancontext_cpp'))
 
+# Note: PlaceRecognition is NOT imported at top level to avoid torch dependency
+# The compute_recall logic is implemented locally in _compute_recall_from_predictions_impl
+
+# Try to import GPU acceleration (CuPy)
+USE_GPU = False
+cp = None
+try:
+    import cupy as cp
+    # Check if GPU is available
+    if cp.cuda.runtime.getDeviceCount() > 0:
+        USE_GPU = True
+        print(f"[INFO] GPU available - using CuPy acceleration")
+        print(f"[INFO] GPU: {cp.cuda.runtime.getDeviceProperties(0)['name'].decode()}")
+    else:
+        print("[INFO] CuPy installed but no GPU available")
+except ImportError:
+    print("[INFO] CuPy not installed - GPU acceleration disabled")
+    print("[INFO] To install: pip install cupy-cuda11x (or cupy-cuda12x)")
+
 # Try to import C++ accelerated version
 USE_CPP = False
 try:
@@ -45,38 +64,246 @@ if not USE_CPP:
     try:
         from Distance_SC import distance_sc
     except ImportError:
-        # If import fails, define it locally
-        def distance_sc(sc1, sc2):
-            """Compute distance between two ScanContext descriptors."""
-            num_sectors = sc1.shape[1]
-            sim_for_each_cols = np.zeros(num_sectors)
-
-            for i in range(num_sectors):
-                # Shift
-                one_step = 1
-                sc1 = np.roll(sc1, one_step, axis=1)
-
-                # Compare
-                sum_of_cos_sim = 0
-                num_col_engaged = 0
-
+        # Try to use Numba for acceleration
+        USE_NUMBA = False
+        try:
+            from numba import jit, prange
+            USE_NUMBA = True
+            print("[INFO] Numba available - using JIT acceleration")
+        except ImportError:
+            print("[INFO] Numba not available - using vectorized NumPy")
+        
+        if USE_NUMBA:
+            @jit(nopython=True)
+            def distance_sc(sc1, sc2):
+                """
+                Compute distance between two ScanContext descriptors.
+                Numba JIT compiled for maximum performance.
+                """
+                num_sectors = sc1.shape[1]
+                num_rings = sc1.shape[0]
+                
+                best_sim = -1.0
+                
+                for shift in range(num_sectors):
+                    sum_cos_sim = 0.0
+                    num_valid = 0
+                    
+                    for j in range(num_sectors):
+                        # Get shifted column index
+                        j_shifted = (j + shift) % num_sectors
+                        
+                        # Compute norms
+                        norm1 = 0.0
+                        norm2 = 0.0
+                        dot_prod = 0.0
+                        
+                        for i in range(num_rings):
+                            v1 = sc1[i, j_shifted]
+                            v2 = sc2[i, j]
+                            dot_prod += v1 * v2
+                            norm1 += v1 * v1
+                            norm2 += v2 * v2
+                        
+                        norm1 = np.sqrt(norm1)
+                        norm2 = np.sqrt(norm2)
+                        
+                        if norm1 > 1e-8 and norm2 > 1e-8:
+                            cos_sim = dot_prod / (norm1 * norm2)
+                            sum_cos_sim += cos_sim
+                            num_valid += 1
+                    
+                    if num_valid > 0:
+                        sim = sum_cos_sim / num_valid
+                        if sim > best_sim:
+                            best_sim = sim
+                
+                return 1.0 - best_sim if best_sim > 0 else 1.0
+            
+            @jit(nopython=True)
+            def distance_sc_with_norms(sc1, sc2, sc1_col_norms, sc2_col_norms):
+                """
+                Compute distance with precomputed column norms.
+                Much faster when comparing one query against many database entries.
+                """
+                num_sectors = sc1.shape[1]
+                num_rings = sc1.shape[0]
+                
+                best_sim = -1.0
+                
+                for shift in range(num_sectors):
+                    sum_cos_sim = 0.0
+                    num_valid = 0
+                    
+                    for j in range(num_sectors):
+                        j_shifted = (j + shift) % num_sectors
+                        
+                        norm1 = sc1_col_norms[j_shifted]
+                        norm2 = sc2_col_norms[j]
+                        
+                        if norm1 > 1e-8 and norm2 > 1e-8:
+                            # Compute dot product only
+                            dot_prod = 0.0
+                            for i in range(num_rings):
+                                dot_prod += sc1[i, j_shifted] * sc2[i, j]
+                            
+                            cos_sim = dot_prod / (norm1 * norm2)
+                            sum_cos_sim += cos_sim
+                            num_valid += 1
+                    
+                    if num_valid > 0:
+                        sim = sum_cos_sim / num_valid
+                        if sim > best_sim:
+                            best_sim = sim
+                
+                return 1.0 - best_sim if best_sim > 0 else 1.0
+            
+            @jit(nopython=True)
+            def compute_column_norms(sc):
+                """Precompute column norms for a ScanContext."""
+                num_sectors = sc.shape[1]
+                num_rings = sc.shape[0]
+                norms = np.zeros(num_sectors)
+                
                 for j in range(num_sectors):
-                    col_j_1 = sc1[:, j]
-                    col_j_2 = sc2[:, j]
-
-                    if (~np.any(col_j_1) or ~np.any(col_j_2)):
+                    sum_sq = 0.0
+                    for i in range(num_rings):
+                        sum_sq += sc[i, j] * sc[i, j]
+                    norms[j] = np.sqrt(sum_sq)
+                
+                return norms
+            
+            @jit(nopython=True, parallel=True)
+            def batch_distance_sc_numba(query_sc, query_norms, db_stack, db_norms_stack):
+                """
+                Compute distances from query to all database SCs.
+                Parallelized with Numba, using precomputed norms.
+                """
+                n_db = db_stack.shape[0]
+                distances = np.zeros(n_db)
+                
+                for db_idx in prange(n_db):
+                    distances[db_idx] = distance_sc_with_norms(
+                        query_sc, db_stack[db_idx], 
+                        query_norms, db_norms_stack[db_idx]
+                    )
+                
+                return distances
+            
+            def batch_distance_sc(query_sc, database_scs, query_norms=None, db_norms_list=None):
+                """Wrapper for Numba batch function with optional precomputed norms."""
+                db_stack = np.stack(database_scs, axis=0).astype(np.float64)
+                query_sc = np.ascontiguousarray(query_sc.astype(np.float64))
+                
+                if query_norms is None:
+                    query_norms = compute_column_norms(query_sc)
+                
+                if db_norms_list is None:
+                    # Compute norms for all database entries
+                    db_norms_stack = np.zeros((len(database_scs), query_sc.shape[1]))
+                    for i, sc in enumerate(database_scs):
+                        db_norms_stack[i] = compute_column_norms(sc.astype(np.float64))
+                else:
+                    db_norms_stack = np.stack(db_norms_list, axis=0)
+                
+                return batch_distance_sc_numba(query_sc, query_norms, db_stack, db_norms_stack)
+        
+        else:
+            # Vectorized NumPy fallback (no Numba)
+            def distance_sc(sc1, sc2):
+                """
+                Compute distance between two ScanContext descriptors.
+                Vectorized implementation for better performance.
+                """
+                num_sectors = sc1.shape[1]
+                
+                # Precompute norms for sc2 columns
+                sc2_norms = np.linalg.norm(sc2, axis=0)
+                
+                best_sim = -1.0
+                
+                for shift in range(num_sectors):
+                    # Shift sc1
+                    sc1_shifted = np.roll(sc1, shift, axis=1)
+                    
+                    # Compute norms for shifted sc1
+                    sc1_norms = np.linalg.norm(sc1_shifted, axis=0)
+                    
+                    # Find valid columns (both non-zero)
+                    valid = (sc1_norms > 1e-8) & (sc2_norms > 1e-8)
+                    
+                    if not np.any(valid):
                         continue
-
-                    # Calc sim
-                    cos_similarity = np.dot(col_j_1, col_j_2) / (np.linalg.norm(col_j_1) * np.linalg.norm(col_j_2))
-                    sum_of_cos_sim = sum_of_cos_sim + cos_similarity
-                    num_col_engaged = num_col_engaged + 1
-
-                sim_for_each_cols[i] = sum_of_cos_sim / num_col_engaged
-
-            sim = max(sim_for_each_cols)
-            dist = 1 - sim
-            return dist
+                    
+                    # Vectorized dot product for all columns
+                    dot_products = np.sum(sc1_shifted * sc2, axis=0)
+                    
+                    # Cosine similarities for valid columns
+                    cos_sims = dot_products[valid] / (sc1_norms[valid] * sc2_norms[valid])
+                    
+                    # Average similarity for this shift
+                    sim = np.mean(cos_sims)
+                    
+                    if sim > best_sim:
+                        best_sim = sim
+                
+                return 1.0 - best_sim if best_sim > 0 else 1.0
+            
+            def batch_distance_sc(query_sc, database_scs):
+                """
+                Compute distances from one query to multiple database descriptors.
+                Optimized batch processing.
+                
+                Args:
+                    query_sc: Query ScanContext (ring_res, sector_res)
+                    database_scs: List of database ScanContexts
+                    
+                Returns:
+                    Array of distances
+                """
+                n_db = len(database_scs)
+                distances = np.zeros(n_db)
+                
+                num_sectors = query_sc.shape[1]
+                
+                # Stack all database SCs for vectorized operations
+                db_stack = np.stack(database_scs, axis=0)  # (n_db, ring_res, sector_res)
+                
+                # Precompute norms for all database SCs
+                db_norms = np.linalg.norm(db_stack, axis=1)  # (n_db, sector_res)
+                
+                best_sims = np.full(n_db, -1.0)
+                
+                for shift in range(num_sectors):
+                    # Shift query
+                    query_shifted = np.roll(query_sc, shift, axis=1)
+                    query_norms = np.linalg.norm(query_shifted, axis=0)  # (sector_res,)
+                    
+                    # Valid columns for query
+                    query_valid = query_norms > 1e-8
+                    
+                    # Dot products: (n_db, sector_res)
+                    dot_products = np.sum(query_shifted[np.newaxis, :, :] * db_stack, axis=1)
+                    
+                    # Denominator: (n_db, sector_res)
+                    denom = query_norms[np.newaxis, :] * db_norms
+                    
+                    # Valid mask: both query and db columns non-zero
+                    valid_mask = query_valid[np.newaxis, :] & (db_norms > 1e-8)
+                    
+                    # Compute similarities
+                    for i in range(n_db):
+                        valid_i = valid_mask[i]
+                        if np.any(valid_i):
+                            cos_sims = dot_products[i, valid_i] / denom[i, valid_i]
+                            sim = np.mean(cos_sims)
+                            if sim > best_sims[i]:
+                                best_sims[i] = sim
+                
+                distances = 1.0 - best_sims
+                distances[best_sims < 0] = 1.0
+                
+                return distances
 else:
     # Use C++ implementation
     distance_sc = scancontext_cpp.distance_sc
@@ -380,10 +607,15 @@ class ScanContextPlaceRecognition:
                 # Generate descriptor
                 sc = self.sc_generator.generate(points)
                 
-                # Store descriptor
+                # Precompute column norms for faster distance computation
+                sc_float = sc.astype(np.float64)
+                col_norms = np.linalg.norm(sc_float, axis=0)
+                
+                # Store descriptor with precomputed norms
                 self.descriptors[idx] = {
                     'd': sc.flatten().tolist(),  # Flatten for compatibility
-                    'sc': sc  # Keep 2D version for distance computation
+                    'sc': sc,  # Keep 2D version for distance computation
+                    'col_norms': col_norms  # Precomputed column norms
                 }
                 
             except Exception as e:
@@ -391,7 +623,8 @@ class ScanContextPlaceRecognition:
                 # Use zero descriptor as fallback
                 self.descriptors[idx] = {
                     'd': np.zeros(self.sc_generator.ring_res * self.sc_generator.sector_res).tolist(),
-                    'sc': np.zeros((self.sc_generator.ring_res, self.sc_generator.sector_res))
+                    'sc': np.zeros((self.sc_generator.ring_res, self.sc_generator.sector_res)),
+                    'col_norms': np.zeros(self.sc_generator.sector_res)
                 }
         
         return self.descriptors
@@ -400,77 +633,220 @@ class ScanContextPlaceRecognition:
         """
         Compute top-k predictions for each query.
         
+        Output format is compatible with PlaceRecognition.loop_closure_prediction
+        for use with compute_recall_from_predictions.
+        
         Args:
             top_k: Number of top candidates to retrieve
             warmup_window: Number of initial frames to skip
             roi_window: Window size to exclude nearby frames
             
         Returns:
-            Dictionary with predictions
+            Dictionary with predictions in PlaceRecognition-compatible format:
+            {
+                'predictions': {query_idx: {
+                    'candidates': [...], 'similarities': [...], 'positions_dist': [...],
+                    'labels': [...], 'query_label': int, 'query_position': [...],
+                    'gt_candidates': [...], 'gt_positions_dist': [...], 'gt_labels': [...]
+                }},
+                'query_indices': np.array([...]),
+                'statistics': {...},
+                'parameters': {...}
+            }
         """
         n_samples = len(self.descriptors)
         
+        # Get positions and labels from dataset
+        positions = self.dataset.positions
+        labels = self.dataset.labels
+        
+        # Make positions 2D (ignore z-coordinate for distance)
+        positions_2d = positions.copy()
+        if positions_2d.ndim == 2 and positions_2d.shape[1] >= 3:
+            positions_2d[:, 2] = 0
+        
+        all_indices = np.arange(n_samples)
+        predictions = {}
+        query_indices = []
+        
+        self.logger.info(f"Computing predictions (top-{top_k}) with window={roi_window}...")
+        self.logger.info(f"Total samples: {n_samples}, Warmup: {warmup_window}")
+        
         # Use C++ accelerated version if available
         if USE_CPP:
-            self.logger.info(f"Computing predictions (top-{top_k}) using C++ acceleration...")
+            self.logger.info(f"Using C++ acceleration...")
             
             # Prepare data for C++ function
             all_scs = [self.descriptors[i]['sc'] for i in range(n_samples)]
-            query_indices = list(range(warmup_window, n_samples))
+            query_idx_list = list(range(warmup_window, n_samples))
             
             # Call C++ function
-            predictions = scancontext_cpp.compute_top_k_predictions(
-                all_scs, query_indices, roi_window, top_k
+            cpp_predictions = scancontext_cpp.compute_top_k_predictions(
+                all_scs, query_idx_list, roi_window, top_k
             )
             
-            # Convert to expected format
-            result = {}
-            for query_idx, top_k_indices in predictions.items():
-                # Compute distances for the top-k (for compatibility)
+            # Convert to PlaceRecognition-compatible format
+            for query_idx, top_k_idx_list in cpp_predictions.items():
+                query_position = positions_2d[query_idx]
+                query_label = labels[query_idx]
+                
+                # Eligible indices (past frames outside ROI window)
+                eligible_indices = all_indices[:query_idx - roi_window]
+                eligible_positions = positions_2d[eligible_indices]
+                eligible_labels = labels[eligible_indices]
+                
+                # Compute distances for the top-k predictions
                 distances = [
                     distance_sc(self.descriptors[query_idx]['sc'], 
                                self.descriptors[idx]['sc'])
-                    for idx in top_k_indices
+                    for idx in top_k_idx_list
                 ]
-                result[query_idx] = {
-                    'top_k_indices': top_k_indices,
-                    'top_k_distances': distances
-                }
-            
-            return result
-        
-        # Python fallback implementation
-        predictions = {}
-        
-        self.logger.info(f"Computing predictions (top-{top_k}) using Python...")
-        
-        for query_idx in tqdm(range(warmup_window, n_samples), desc="Computing predictions"):
-            # Compute distances to all database samples
-            distances = []
-            
-            query_sc = self.descriptors[query_idx]['sc']
-            
-            # Only consider samples outside ROI window
-            for db_idx in range(query_idx - roi_window):
-                db_sc = self.descriptors[db_idx]['sc']
                 
-                # Compute ScanContext distance
-                dist = distance_sc(query_sc, db_sc)
-                distances.append((dist, db_idx))
+                # Position distances for predictions
+                pred_positions = positions_2d[top_k_idx_list]
+                delta_pos = query_position - pred_positions
+                position_distances = np.linalg.norm(delta_pos, axis=-1)
+                
+                pred_labels = labels[top_k_idx_list]
+                
+                # Ground truth: sort by position distance
+                delta_pos_all = query_position - eligible_positions
+                all_position_distances = np.linalg.norm(delta_pos_all, axis=-1)
+                gt_sort_order = np.argsort(all_position_distances)
+                
+                gt_topk = min(top_k, len(eligible_indices))
+                gt_topk_indices = gt_sort_order[:gt_topk]
+                gt_candidates = eligible_indices[gt_topk_indices]
+                gt_position_distances = all_position_distances[gt_topk_indices]
+                gt_labels = eligible_labels[gt_topk_indices]
+                
+                predictions[query_idx] = {
+                    'candidates': list(top_k_idx_list),
+                    'similarities': distances,
+                    'positions_dist': position_distances.tolist(),
+                    'labels': pred_labels.tolist() if hasattr(pred_labels, 'tolist') else list(pred_labels),
+                    'query_label': int(query_label),
+                    'query_position': query_position.tolist(),
+                    'gt_candidates': gt_candidates.tolist(),
+                    'gt_positions_dist': gt_position_distances.tolist(),
+                    'gt_labels': gt_labels.tolist()
+                }
+                query_indices.append(query_idx)
+        else:
+            # Python fallback implementation (with batch optimization)
+            self.logger.info(f"Using Python implementation...")
             
-            # Sort by distance (ascending)
-            distances.sort(key=lambda x: x[0])
+            # Check if batch_distance_sc is available and if we have precomputed norms
+            use_batch = 'batch_distance_sc' in dir()
+            has_norms = 'col_norms' in self.descriptors.get(0, {})
             
-            # Get top-k predictions
-            top_k_indices = [idx for _, idx in distances[:top_k]]
-            top_k_distances = [dist for dist, _ in distances[:top_k]]
+            if has_norms:
+                self.logger.info("Using precomputed column norms for faster distance computation")
             
-            predictions[query_idx] = {
-                'top_k_indices': top_k_indices,
-                'top_k_distances': top_k_distances
-            }
+            for query_idx in tqdm(range(warmup_window, n_samples), desc="Computing predictions"):
+                query_sc = self.descriptors[query_idx]['sc']
+                query_position = positions_2d[query_idx]
+                query_label = labels[query_idx]
+                
+                # Eligible indices: past frames outside ROI window
+                eligible_indices = all_indices[:query_idx - roi_window]
+                
+                if len(eligible_indices) == 0:
+                    continue
+                
+                eligible_positions = positions_2d[eligible_indices]
+                eligible_labels = labels[eligible_indices]
+                
+                # Compute ScanContext distances to all eligible samples
+                if use_batch and has_norms:
+                    # Use batch processing with precomputed norms (fastest)
+                    eligible_scs = [self.descriptors[idx]['sc'] for idx in eligible_indices]
+                    query_norms = self.descriptors[query_idx]['col_norms']
+                    db_norms = [self.descriptors[idx]['col_norms'] for idx in eligible_indices]
+                    sc_distances = batch_distance_sc(query_sc, eligible_scs, query_norms, db_norms)
+                elif use_batch:
+                    # Use batch processing without precomputed norms
+                    eligible_scs = [self.descriptors[idx]['sc'] for idx in eligible_indices]
+                    sc_distances = batch_distance_sc(query_sc, eligible_scs)
+                else:
+                    # Fall back to individual distance computation
+                    sc_distances = np.array([
+                        distance_sc(query_sc, self.descriptors[idx]['sc']) 
+                        for idx in eligible_indices
+                    ])
+                
+                # Sort by descriptor distance (ascending)
+                sort_order = np.argsort(sc_distances)
+                
+                # Get top-k predictions by descriptor similarity
+                topk_actual = min(top_k, len(eligible_indices))
+                topk_indices = sort_order[:topk_actual]
+                
+                predicted_candidates = eligible_indices[topk_indices]
+                predicted_similarities = sc_distances[topk_indices]
+                
+                # Position distances for predictions
+                pred_positions = eligible_positions[topk_indices]
+                delta_pos = query_position - pred_positions
+                position_distances = np.linalg.norm(delta_pos, axis=-1)
+                
+                predicted_labels = eligible_labels[topk_indices]
+                
+                # Ground truth: sort by position distance
+                delta_pos_all = query_position - eligible_positions
+                all_position_distances = np.linalg.norm(delta_pos_all, axis=-1)
+                gt_sort_order = np.argsort(all_position_distances)
+                
+                gt_topk_indices = gt_sort_order[:topk_actual]
+                gt_candidates = eligible_indices[gt_topk_indices]
+                gt_position_distances = all_position_distances[gt_topk_indices]
+                gt_labels = eligible_labels[gt_topk_indices]
+                
+                predictions[query_idx] = {
+                    'candidates': predicted_candidates.tolist(),
+                    'similarities': predicted_similarities.tolist(),
+                    'positions_dist': position_distances.tolist(),
+                    'labels': predicted_labels.tolist() if hasattr(predicted_labels, 'tolist') else list(predicted_labels),
+                    'query_label': int(query_label),
+                    'query_position': query_position.tolist(),
+                    'gt_candidates': gt_candidates.tolist(),
+                    'gt_positions_dist': gt_position_distances.tolist(),
+                    'gt_labels': gt_labels.tolist()
+                }
+                query_indices.append(query_idx)
         
-        return predictions
+        # Compute statistics
+        all_similarities = []
+        all_position_dists = []
+        for pred in predictions.values():
+            all_similarities.extend(pred['similarities'])
+            all_position_dists.extend(pred['positions_dist'])
+        
+        statistics = {
+            'total_queries': len(query_indices),
+            'topk': top_k,
+            'window': roi_window,
+            'similarity_metric': 'ScanContext',
+            'avg_descriptor_similarity': float(np.mean(all_similarities)) if all_similarities else 0.0,
+            'avg_position_distance': float(np.mean(all_position_dists)) if all_position_dists else 0.0,
+            'median_position_distance': float(np.median(all_position_dists)) if all_position_dists else 0.0
+        }
+        
+        self.logger.info(f'Completed predictions for {len(query_indices)} queries')
+        self.logger.info(f'Average descriptor distance: {statistics["avg_descriptor_similarity"]:.4f}')
+        self.logger.info(f'Average position distance: {statistics["avg_position_distance"]:.2f}m')
+        
+        return {
+            'predictions': predictions,
+            'query_indices': np.array(query_indices),
+            'statistics': statistics,
+            'parameters': {
+                'topk': top_k,
+                'window': roi_window,
+                'warmup': warmup_window,
+                'sim_func': 'ScanContext'
+            }
+        }
     
     def load_descriptors(self, load_path):
         """
@@ -496,9 +872,13 @@ class ScanContextPlaceRecognition:
                 # Reshape to 2D for distance computation
                 sc_2d = np.array(flat_desc).reshape(self.sc_generator.ring_res, 
                                                      self.sc_generator.sector_res)
+                # Compute column norms for faster distance computation
+                col_norms = np.linalg.norm(sc_2d.astype(np.float64), axis=0)
+                
                 self.descriptors[idx] = {
                     'd': flat_desc,
-                    'sc': sc_2d
+                    'sc': sc_2d,
+                    'col_norms': col_norms
                 }
             
             self.logger.info(f"Loaded {len(self.descriptors)} descriptors from: {load_path}")
@@ -530,120 +910,208 @@ class ScanContextPlaceRecognition:
     
     def compute_recall(self, predictions, distance_thresholds=[5, 10, 15, 20], top_k_list=[1, 5, 10, 25]):
         """
-        Compute recall metrics at different distance thresholds and top-k values.
-        Computes both global recall and per-segment (row) recall.
+        Compute recall metrics using the shared PlaceRecognition interface.
+        
+        This method uses the same recall computation logic as PlaceRecognition,
+        ensuring consistent evaluation across different methods.
         
         Args:
-            predictions: Dictionary with predictions
+            predictions: Dictionary with predictions from compute_predictions
+                         (must be in PlaceRecognition-compatible format)
             distance_thresholds: List of distance thresholds in meters
             top_k_list: List of top-k values to evaluate
             
         Returns:
-            Dictionary with recall metrics including global and per-segment
+            Dictionary with recall metrics
         """
-        self.logger.info(f"Computing recall metrics...")
+        self.logger.info(f"Computing recall metrics using shared interface...")
         
-        positions = self.dataset.positions
-        labels = self.dataset.labels
-        n_samples = len(positions)
+        # Use local implementation that matches PlaceRecognition.compute_recall_from_predictions
+        # This avoids torch dependency while using the same logic
         
-        # Get unique segments/rows
-        unique_labels = sorted(set(labels))
-        self.logger.info(f"Found {len(unique_labels)} unique row segments: {unique_labels}")
-        
-        # Initialize metrics - add segments
-        recall_results = {
-            'global': {f'{dist}m': {f'top{k}': [] for k in top_k_list} for dist in distance_thresholds},
-            'segments': {label: {f'{dist}m': {f'top{k}': [] for k in top_k_list} for dist in distance_thresholds} 
-                        for label in unique_labels},
-            'per_query': {}
-        }
-        
-        # For each query
-        for query_idx in tqdm(predictions.keys(), desc="Computing recall"):
-            query_pos = positions[query_idx]
-            top_k_indices = predictions[query_idx]['top_k_indices']
-            
-            # Compute ground truth: all frames within distance threshold (excluding ROI window)
-            gt_distances = np.linalg.norm(positions[:query_idx - 50] - query_pos, axis=1)
-            
-            recall_results['per_query'][query_idx] = {}
-            
-            # For each distance threshold
-            for dist_thresh in distance_thresholds:
-                gt_positives = np.where(gt_distances <= dist_thresh)[0]
-                
-                recall_results['per_query'][query_idx][f'{dist_thresh}m'] = {}
-                
-                # For each top-k
-                for k in top_k_list:
-                    # Get top-k predictions
-                    pred_indices = top_k_indices[:k]
-                    
-                    # Check if any prediction is a true positive
-                    is_correct = len(np.intersect1d(pred_indices, gt_positives)) > 0
-                    
-                    recall_results['per_query'][query_idx][f'{dist_thresh}m'][f'top{k}'] = 1 if is_correct else 0
-        
-        # Aggregate global recall
-        for dist_thresh in distance_thresholds:
-            for k in top_k_list:
-                recalls = [recall_results['per_query'][q][f'{dist_thresh}m'][f'top{k}'] 
-                          for q in predictions.keys()]
-                recall_results['global'][f'{dist_thresh}m'][f'top{k}'] = np.mean(recalls)
-        
-        # Aggregate per-segment recall
-        for label in unique_labels:
-            # Get queries from this segment
-            segment_queries = [q for q in predictions.keys() if labels[q] == label]
-            
-            if len(segment_queries) == 0:
-                self.logger.warning(f"No queries found for segment {label}")
-                continue
-            
-            for dist_thresh in distance_thresholds:
-                for k in top_k_list:
-                    recalls = [recall_results['per_query'][q][f'{dist_thresh}m'][f'top{k}'] 
-                              for q in segment_queries]
-                    recall_results['segments'][label][f'{dist_thresh}m'][f'top{k}'] = np.mean(recalls)
+        # Call the local computation method
+        # The predictions dict is already in the correct format
+        recall_results = self._compute_recall_from_predictions_impl(
+            predictions, 
+            distance_thresholds, 
+            top_k_list
+        )
         
         return recall_results
     
-    def save_recall_csv(self, recall_results, save_dir):
+    def _compute_recall_from_predictions_impl(self, loop_closure_results: dict, 
+                                               radius_thresholds: list,
+                                               top_k_values: list = None) -> dict:
+        """
+        Compute recall from predictions - same logic as PlaceRecognition.compute_recall_from_predictions.
+        
+        This is a local implementation to avoid needing a full PlaceRecognition instance.
+        """
+        predictions = loop_closure_results['predictions']
+        
+        if top_k_values is None:
+            top_k_values = [1, 5, 10, 25]
+
+        top_k_range = list(range(1, max(top_k_values) + 1))
+
+        # Ensure radius_thresholds is a list
+        if not isinstance(radius_thresholds, list):
+            radius_thresholds = [radius_thresholds]
+            
+        # Initialize result containers
+        # Global metrics
+        global_tp = {r: {k: 0 for k in top_k_range} for r in radius_thresholds}
+        global_total = {r: {k: 0 for k in top_k_range} for r in radius_thresholds}
+        
+        # Segment-wise metrics
+        segments = set()
+        for pred in predictions.values():
+            segments.add(pred['query_label'])
+        
+        segment_tp = {seg: {r: {k: 0 for k in top_k_range} for r in radius_thresholds} for seg in segments}
+        segment_total = {seg: {r: {k: 0 for k in top_k_range} for r in radius_thresholds} for seg in segments}
+        
+        # Process each query prediction
+        for query_idx, pred in predictions.items():
+            query_label = pred['query_label']
+            position_distances = np.array(pred['positions_dist'])
+            candidate_labels = np.array(pred['labels'])
+            
+            # Ground truth info (sorted by position distance)
+            gt_positions_dist = np.array(pred['gt_positions_dist'])
+            gt_labels = np.array(pred['gt_labels'])
+            
+            # For each radius threshold
+            for radius in radius_thresholds:
+                # For each top-k value
+                for k in top_k_range:
+                    # ============================================================
+                    # GROUND TRUTH CHECK (matches eval_row_place behavior)
+                    # Check if a valid GT loop exists in top-k by POSITION
+                    # A valid GT loop must be: within radius AND same segment label
+                    # ============================================================
+                    gt_topk_dists = gt_positions_dist[:k] if len(gt_positions_dist) >= k else gt_positions_dist
+                    gt_topk_labels = gt_labels[:k] if len(gt_labels) >= k else gt_labels
+                    
+                    # Check if GT loop exists within radius for this segment
+                    gt_in_range = gt_topk_dists <= radius
+                    gt_same_segment = gt_topk_labels == query_label
+                    gt_valid = gt_in_range & gt_same_segment
+                    
+                    if not np.any(gt_valid):
+                        # No ground truth loop exists within this radius for this segment
+                        # Skip this query - don't count it in recall calculation
+                        continue
+                    
+                    # ============================================================
+                    # PREDICTION CHECK
+                    # Check if ANY of top-k PREDICTIONS is a true positive
+                    # ============================================================
+                    topk_dists = position_distances[:k] if len(position_distances) >= k else position_distances
+                    topk_labels = candidate_labels[:k] if len(candidate_labels) >= k else candidate_labels
+                    
+                    # True positive: position distance <= radius AND same segment label
+                    tp_mask = (topk_dists <= radius) & (topk_labels == query_label)
+                    is_tp = np.any(tp_mask)
+                    
+                    # Update global counters
+                    global_tp[radius][k] += int(is_tp)
+                    global_total[radius][k] += 1
+                    
+                    # Update segment counters
+                    segment_tp[query_label][radius][k] += int(is_tp)
+                    segment_total[query_label][radius][k] += 1
+        
+        # Compute recall values
+        global_recall = {}
+        for radius in radius_thresholds:
+            global_recall[radius] = {}
+            for k in top_k_range:
+                if global_total[radius][k] > 0:
+                    global_recall[radius][k] = global_tp[radius][k] / global_total[radius][k]
+                else:
+                    global_recall[radius][k] = 0.0
+        
+        # Compute segment-wise recall
+        segment_results = {}
+        for seg in segments:
+            segment_results[seg] = {
+                'recall': {},
+                'num_queries': sum(segment_total[seg][radius_thresholds[0]][k] for k in [top_k_range[0]])
+            }
+            for radius in radius_thresholds:
+                segment_results[seg]['recall'][radius] = {}
+                for k in top_k_range:
+                    if segment_total[seg][radius][k] > 0:
+                        segment_results[seg]['recall'][radius][k] = segment_tp[seg][radius][k] / segment_total[seg][radius][k]
+                    else:
+                        segment_results[seg]['recall'][radius][k] = 0.0
+        
+        # Log results
+        self.logger.info(f"\n{'='*60}")
+        self.logger.info(f"RECALL RESULTS (with GT filtering)")
+        self.logger.info(f"{'='*60}")
+        
+        for radius in radius_thresholds:
+            self.logger.info(f"\nRadius {radius}m:")
+            self.logger.info(f"  Valid queries: {global_total[radius][1]}")
+            for k in top_k_values:
+                recall = global_recall[radius][k]
+                self.logger.info(f"  Recall@{k}: {recall:.4f}")
+        
+        return {
+            'global': {
+                'recall': global_recall,
+                'num_queries': global_total[radius_thresholds[0]][1]
+            },
+            'segment': segment_results,
+            'global_tp': global_tp,
+            'global_total': global_total
+        }
+    
+    
+    
+    
+    def save_recall_csv(self, recall_results, save_dir, top_k_values=[1, 5, 10, 25]):
         """
         Save recall results to CSV files in PointNetGAP-compatible format.
         Saves both global recall and per-segment (row) recall.
         
         The main format is a matrix where:
         - Rows = top-k values (1, 2, ..., 25)
-        - Columns = distance thresholds (0, 1, 2, ..., 119 meters)
+        - Columns = distance thresholds (meters)
         - Values = recall at that (top_k, distance) combination
         
         Args:
-            recall_results: Dictionary with recall metrics (global + segments)
+            recall_results: Dictionary with recall metrics from compute_recall.
+                           Expected format: {'global': {'recall': {radius: {k: value}}}, 'segment': {...}}
             save_dir: Directory to save CSV files
+            top_k_values: List of top-k values to save (default: [1, 5, 10, 25])
         """
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
         
-        # Extract top-k list and distance thresholds
-        distance_keys = sorted(recall_results['global'].keys(), key=lambda x: int(x.replace('m', '')))
-        distance_thresholds = [int(k.replace('m', '')) for k in distance_keys]
+        global_recall = recall_results['global']['recall']
         
-        # Get top-k list from the first distance threshold
-        top_k_dict = recall_results['global'][distance_keys[0]]
-        top_k_list = sorted([int(k.replace('top', '')) for k in top_k_dict.keys()])
+        # Extract distance thresholds and top-k list from the recall dict
+        distance_thresholds = sorted(global_recall.keys())
+        
+        # Get all top-k values from the recall dict
+        if distance_thresholds:
+            all_topk = sorted(global_recall[distance_thresholds[0]].keys())
+        else:
+            self.logger.warning("No distance thresholds found in recall results")
+            return
         
         # ============================================================
         # Save GLOBAL recall matrix
         # ============================================================
         recall_matrix = []
-        for k in top_k_list:
+        for k in all_topk:
             row = []
-            for dist_key in distance_keys:
-                k_key = f'top{k}'
-                if k_key in recall_results['global'][dist_key]:
-                    recall = recall_results['global'][dist_key][k_key]
+            for dist in distance_thresholds:
+                if k in global_recall[dist]:
+                    recall = global_recall[dist][k]
                     row.append(recall)
                 else:
                     row.append(0.0)
@@ -651,30 +1119,52 @@ class ScanContextPlaceRecognition:
         
         # Create DataFrame with distance thresholds as column names
         df_recall = pd.DataFrame(recall_matrix, columns=distance_thresholds)
-        df_recall.index = top_k_list
+        df_recall.index = all_topk
         
         # Save main recall.csv file (PointNetGAP format)
         csv_path = save_dir / 'recall.csv'
         df_recall.to_csv(csv_path)
         self.logger.info(f"Saved global recall matrix to: {csv_path}")
+        
+        # ============================================================
+        # Save summary at specific top-k values
+        # ============================================================
+        summary_path = save_dir / 'recall_summary.txt'
+        with open(summary_path, 'w') as f:
+            f.write("="*60 + "\n")
+            f.write("RECALL SUMMARY\n")
+            f.write("="*60 + "\n\n")
+            
+            for dist in distance_thresholds:
+                f.write(f"Distance Threshold: {dist}m\n")
+                f.write("-"*40 + "\n")
+                for k in top_k_values:
+                    if k in global_recall[dist]:
+                        recall = global_recall[dist][k]
+                        f.write(f"  Recall@{k}: {recall:.4f}\n")
+                f.write("\n")
+        
+        self.logger.info(f"Saved recall summary to: {summary_path}")
 
         
         # ============================================================
         # Save PER-SEGMENT recall matrices
         # ============================================================
-        if 'segments' in recall_results:
-            unique_labels = sorted(recall_results['segments'].keys())
+        if 'segment' in recall_results:
+            segment_results = recall_results['segment']
+            unique_labels = sorted(segment_results.keys())
             self.logger.info(f"Saving per-segment recall for {len(unique_labels)} segments: {unique_labels}")
             
             for label in unique_labels:
+                seg_recall = segment_results[label]['recall']
+                
                 # Create recall matrix for this segment
                 segment_matrix = []
-                for k in top_k_list:
+                for k in all_topk:
                     row = []
-                    for dist_key in distance_keys:
-                        k_key = f'top{k}'
-                        if k_key in recall_results['segments'][label][dist_key]:
-                            recall = recall_results['segments'][label][dist_key][k_key]
+                    for dist in distance_thresholds:
+                        if dist in seg_recall and k in seg_recall[dist]:
+                            recall = seg_recall[dist][k]
                             row.append(recall)
                         else:
                             row.append(0.0)
@@ -682,10 +1172,10 @@ class ScanContextPlaceRecognition:
                 
                 # Create DataFrame
                 df_segment = pd.DataFrame(segment_matrix, columns=distance_thresholds)
-                df_segment.index = top_k_list
+                df_segment.index = all_topk
                 
                 # Save segment recall matrix
-                csv_path = save_dir / f'recall_{label}.csv'
+                csv_path = save_dir / f'recall_segment_{label}.csv'
                 df_segment.to_csv(csv_path)
                 self.logger.info(f"Saved segment {label} recall matrix to: {csv_path}")
 
@@ -898,16 +1388,21 @@ def main():
         )
         
         # Save recall results
-        pr_system.save_recall_csv(recall_results, output_dir)
+        pr_system.save_recall_csv(recall_results, output_dir, top_k_values=top_k_eval)
         
-        # Log recall results
+        # Log recall results - new format uses numeric keys
         logger.info("="*80)
         logger.info("Recall Results:")
         logger.info("="*80)
-        for dist_key in recall_results['global'].keys():
-            logger.info(f"\nDistance threshold: {dist_key}")
-            for k_key, recall_val in recall_results['global'][dist_key].items():
-                logger.info(f"  Recall@{k_key}: {recall_val:.4f}")
+        global_recall = recall_results['global']['recall']
+        for dist in sorted(global_recall.keys()):
+            # Only log select distances to avoid spam
+            if dist in [5, 10, 15, 20]:
+                logger.info(f"\nDistance threshold: {dist}m")
+                for k in [1, 5, 10, 25]:
+                    if k in global_recall[dist]:
+                        recall_val = global_recall[dist][k]
+                        logger.info(f"  Recall@{k}: {recall_val:.4f}")
         
         # Save parameters
         params = {
