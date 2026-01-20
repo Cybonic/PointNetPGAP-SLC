@@ -99,7 +99,7 @@ class PlaceRecognition:
         # Core attributes
         self.model = model
         self.loader = loader
-        self.logger = logger or self._create_default_logger(model, task, sim_func)
+        self.logger = logger or self._create_default_logger(model, task, self.sim_func)
         self.device = self._setup_device(device)
         
         # Configuration
@@ -449,19 +449,28 @@ class PlaceRecognition:
        
         
     def __save_to_csv__(self,results,file_results,res = 3):
-        # SAVE global results
+        """
+        Save results to CSV file.
+        Handles both list-based format {radius: [values]} and dict-based format {radius: {k: value}}.
+        """
         colum = []
         rows  = []
         
-        for value in results.items():
-            keys = value[0]
-            #new = keys[np.isin(keys,colum,invert=True)]
-            colum.append(keys)
-            rows.append(np.round(value[1],res))
+        for key, value in results.items():
+            colum.append(key)
+            # Handle both dict and list/array formats
+            if isinstance(value, dict):
+                # New format: {k: recall_value}
+                # Convert to list sorted by k values
+                sorted_k = sorted(value.keys())
+                row_values = [value[k] for k in sorted_k]
+                rows.append(np.round(row_values, res))
+            else:
+                # Old format: list/array of values
+                rows.append(np.round(value, res))
 
         rows = np.array(rows)
-        #rows = np.concatenate((top_cand,rows),axis=1)
-        df = pd.DataFrame(rows.T,columns = colum)
+        df = pd.DataFrame(rows.T, columns=colum)
         df.to_csv(file_results)
         
         
@@ -524,6 +533,293 @@ class PlaceRecognition:
             self.logger.warning("Saved results at: " + file_results)
 
 
+    def loop_closure_prediction(self, descriptors, labels, positions, topk, window=20) -> dict:
+        """
+        Evaluate descriptors for loop closure detection using similarity metrics.
+        Performs retrieval on past frames only and computes predictions based on descriptor similarity.
+        
+        IMPORTANT RETRIEVAL RULES:
+        1. Retrieval is ALWAYS done in PAST frames only (never future frames)
+        2. Uses descriptor similarity (L2 or cosine) to find nearest neighbors
+        3. The same past frame can be retrieved multiple times by different queries
+        
+        Args:
+            descriptors: Dictionary of descriptors with format {idx: {'d': descriptor_vector}}
+            labels: Array of segment labels for each frame
+            positions: Array of 3D positions for each frame
+            topk: Number of top candidates to retrieve per query
+            window: Minimum frame gap to ignore immediate past frames (ROI exclusion)
+            
+        Returns:
+            Dictionary with predictions and retrieval information:
+            {
+                'predictions': {query_idx: {'candidates': [...], 'similarities': [...], 'positions_dist': [...]}},
+                'query_indices': [indices of query frames],
+                'statistics': retrieval statistics
+            }
+        """
+        # Extract descriptor vectors
+        if isinstance(descriptors, dict) and 'd' in list(descriptors.values())[0]:
+            # Extract descriptors in order of their keys
+            sorted_keys = sorted(descriptors.keys())
+            descriptor_array = np.array([descriptors[k]['d'] for k in sorted_keys], dtype=np.float32)
+        else:
+            descriptor_array = np.array(list(descriptors.values()), dtype=np.float32)
+        
+        n_samples = len(descriptor_array)
+        all_indices = np.arange(n_samples)
+        
+        # Validate inputs
+        assert len(labels) == n_samples, f"Labels length {len(labels)} != descriptors length {n_samples}"
+        assert len(positions) == n_samples, f"Positions length {len(positions)} != descriptors length {n_samples}"
+        
+        predictions = {}
+        query_indices = []
+        
+        # Ignore z-axis for position distance computation
+        positions_2d = positions.copy()
+        if positions_2d.ndim == 2 and positions_2d.shape[1] >= 3:
+            positions_2d[:, 2] = 0
+        
+        self.logger.info(f'Starting loop closure prediction with topk={topk}, window={window}')
+        self.logger.info(f'Total samples: {n_samples}, Similarity metric: {self.sim_func}')
+        self.logger.info(f'Warmup window: {self.warmup_window}')
+        
+        # Process each query starting from warmup_window
+        for query_idx in tqdm(range(self.warmup_window, n_samples), 
+                             desc='Loop Closure Prediction', ncols=100):
+            
+            query_descriptor = descriptor_array[query_idx]
+            query_position = positions_2d[query_idx]
+            query_label = labels[query_idx]
+            
+            # RETRIEVAL RULE: Only consider PAST frames outside the window
+            # This creates the Region of Interest (ROI) exclusion
+            eligible_indices = all_indices[:query_idx - window]
+            
+            if len(eligible_indices) == 0:
+                continue
+            
+            # Get eligible descriptors and positions
+            eligible_descriptors = descriptor_array[eligible_indices]
+            eligible_positions = positions_2d[eligible_indices]
+            eligible_labels = labels[eligible_indices]
+            
+            # Compute descriptor similarity/distance
+            if self.sim_func == 'L2':
+                # Euclidean distance in descriptor space
+                delta = query_descriptor - eligible_descriptors
+                descriptor_distances = np.linalg.norm(delta, axis=-1)
+                # Lower distance = more similar
+                sort_order = np.argsort(descriptor_distances)
+            elif self.sim_func == 'cosine':
+                # Cosine similarity
+                import torch
+                from utils.loss import cosine_torch_loss
+                query_tensor = torch.tensor(query_descriptor, dtype=torch.float32).unsqueeze(0)
+                eligible_tensor = torch.tensor(eligible_descriptors, dtype=torch.float32)
+                cosine_dist = cosine_torch_loss(query_tensor, eligible_tensor, dim=1)
+                descriptor_distances = cosine_dist.cpu().numpy()
+                # Flatten if needed
+                if descriptor_distances.ndim > 1:
+                    descriptor_distances = descriptor_distances.flatten()
+                sort_order = np.argsort(descriptor_distances)
+            else:
+                raise ValueError(f'Invalid similarity function: {self.sim_func}')
+            
+            # Get top-k most similar descriptors
+            topk_actual = min(topk, len(eligible_indices))
+            topk_indices = sort_order[:topk_actual]
+            
+            # Map back to original indices
+            predicted_candidates = eligible_indices[topk_indices]
+            predicted_similarities = descriptor_distances[topk_indices]
+            
+            # Compute ground truth position distances for evaluation
+            predicted_positions = eligible_positions[topk_indices]
+            delta_pos = query_position - predicted_positions
+            position_distances = np.linalg.norm(delta_pos, axis=-1)
+            
+            predicted_labels = eligible_labels[topk_indices]
+            
+            # Store predictions
+            predictions[query_idx] = {
+                'candidates': predicted_candidates.tolist(),
+                'similarities': predicted_similarities.tolist(),
+                'positions_dist': position_distances.tolist(),
+                'labels': predicted_labels.tolist(),
+                'query_label': int(query_label),
+                'query_position': query_position.tolist()
+            }
+            
+            query_indices.append(query_idx)
+        
+        # Compute statistics
+        all_similarities = []
+        all_position_dists = []
+        for pred in predictions.values():
+            all_similarities.extend(pred['similarities'])
+            all_position_dists.extend(pred['positions_dist'])
+        
+        statistics = {
+            'total_queries': len(query_indices),
+            'topk': topk,
+            'window': window,
+            'similarity_metric': self.sim_func,
+            'avg_descriptor_similarity': float(np.mean(all_similarities)) if all_similarities else 0.0,
+            'avg_position_distance': float(np.mean(all_position_dists)) if all_position_dists else 0.0,
+            'median_position_distance': float(np.median(all_position_dists)) if all_position_dists else 0.0
+        }
+        
+        self.logger.info(f'Completed loop closure prediction for {len(query_indices)} queries')
+        self.logger.info(f'Average descriptor similarity: {statistics["avg_descriptor_similarity"]:.4f}')
+        self.logger.info(f'Average position distance: {statistics["avg_position_distance"]:.2f}m')
+        
+        return {
+            'predictions': predictions,
+            'query_indices': np.array(query_indices),
+            'statistics': statistics,
+            'parameters': {
+                'topk': topk,
+                'window': window,
+                'warmup': self.warmup_window,
+                'sim_func': self.sim_func
+            }
+        }
+
+    def compute_recall_from_predictions(self, loop_closure_results: dict, 
+                                         radius_thresholds: list,
+                                         top_k_values: list = None) -> dict:
+        """
+        Compute recall performance metrics from loop_closure_prediction output.
+        
+        This function interfaces between the output of loop_closure_prediction
+        and computes recall@k for different distance thresholds.
+        
+        Args:
+            loop_closure_results: Output dictionary from loop_closure_prediction containing:
+                - 'predictions': {query_idx: {'candidates', 'similarities', 'positions_dist', 'labels', 'query_label'}}
+                - 'query_indices': array of query frame indices
+                - 'statistics': retrieval statistics
+                - 'parameters': retrieval parameters
+            radius_thresholds: List of distance thresholds in meters for true positive detection
+            top_k_values: List of top-k values to compute recall for. If None, uses [1, 5, 10, 25]
+            
+        Returns:
+            Dictionary with performance metrics:
+            {
+                'global': {
+                    'recall': {radius: {k: recall_value}},
+                    'precision': {radius: {k: precision_value}},
+                    'num_queries': int
+                },
+                'segment': {
+                    segment_id: {
+                        'recall': {radius: {k: recall_value}},
+                        'precision': {radius: {k: precision_value}},
+                        'num_queries': int
+                    }
+                }
+            }
+        """
+        predictions = loop_closure_results['predictions']
+        
+        if top_k_values is None:
+            top_k_values = [1, 5, 10, 25]
+
+        top_k_range = range(1, max(top_k_values) + 1)
+
+        # Ensure radius_thresholds is a list
+        if not isinstance(radius_thresholds, list):
+            radius_thresholds = [radius_thresholds]
+            
+        # Initialize result containers
+        # Global metrics
+        global_tp = {r: {k: 0 for k in top_k_range} for r in radius_thresholds}
+        global_total = {r: {k: 0 for k in top_k_range} for r in radius_thresholds}
+        
+        # Segment-wise metrics
+        segments = set()
+        for pred in predictions.values():
+            segments.add(pred['query_label'])
+        
+        segment_tp = {seg: {r: {k: 0 for k in top_k_range} for r in radius_thresholds} for seg in segments}
+        segment_total = {seg: {r: {k: 0 for k in top_k_range} for r in radius_thresholds} for seg in segments}
+        
+        # Process each query prediction
+        for query_idx, pred in predictions.items():
+            query_label = pred['query_label']
+            position_distances = np.array(pred['positions_dist'])
+            candidate_labels = np.array(pred['labels'])
+            
+            # For each radius threshold
+            for radius in radius_thresholds:
+                # For each top-k value
+                for k in top_k_range:
+                    # Get top-k predictions
+                    topk_dists = position_distances[:k] if len(position_distances) >= k else position_distances
+                    topk_labels = candidate_labels[:k] if len(candidate_labels) >= k else candidate_labels
+                    
+                    # Check if any of top-k predictions is a true positive
+                    # True positive: position distance <= radius AND same segment label
+                    tp_mask = (topk_dists <= radius) & (topk_labels == query_label)
+                    is_tp = np.any(tp_mask)
+                    
+                    # Update global counters
+                    global_tp[radius][k] += int(is_tp)
+                    global_total[radius][k] += 1
+                    
+                    # Update segment counters
+                    segment_tp[query_label][radius][k] += int(is_tp)
+                    segment_total[query_label][radius][k] += 1
+        
+        # Compute recall values
+        global_recall = {}
+        global_precision = {}
+        for radius in radius_thresholds:
+            global_recall[radius] = {}
+            global_precision[radius] = {}
+            for k in top_k_range:
+                if global_total[radius][k] > 0:
+                    global_recall[radius][k] = global_tp[radius][k] / global_total[radius][k]
+                    global_precision[radius][k] = global_tp[radius][k] / (global_total[radius][k] * k)
+                else:
+                    global_recall[radius][k] = 0.0
+                    global_precision[radius][k] = 0.0
+        
+        # Compute segment-wise recall
+        segment_results = {}
+        for seg in segments:
+            segment_results[seg] = {
+                'recall': {},
+                'precision': {},
+                'num_queries': sum(segment_total[seg][radius_thresholds[0]][k] for k in [top_k_range[0]])
+            }
+            for radius in radius_thresholds:
+                segment_results[seg]['recall'][radius] = {}
+                segment_results[seg]['precision'][radius] = {}
+                for k in top_k_range:
+                    if segment_total[seg][radius][k] > 0:
+                        segment_results[seg]['recall'][radius][k] = segment_tp[seg][radius][k] / segment_total[seg][radius][k]
+                        segment_results[seg]['precision'][radius][k] = segment_tp[seg][radius][k] / (segment_total[seg][radius][k] * k)
+                    else:
+                        segment_results[seg]['recall'][radius][k] = 0.0
+                        segment_results[seg]['precision'][radius][k] = 0.0
+        
+        # Log segment-wise recall@1 for the first radius
+        primary_radius = radius_thresholds[0] if radius_thresholds else 10
+        for seg in sorted(segments):
+            recall_at_1 = segment_results[seg]['recall'].get(primary_radius, {}).get(1, 0.0)
+            print(f'Segment: {seg}: {recall_at_1}')
+        
+        return {
+            'global': {
+                'recall': global_recall,
+                'precision': global_precision,
+                'num_queries': len(predictions)
+            },
+            'segment': segment_results
+        }
 
     def run(self,loop_range=10):
         
@@ -558,34 +854,32 @@ class PlaceRecognition:
         one_percent = int(round(n_samples/100,0))
         self.top_cand.append(one_percent)
         k_top_cand = max(self.top_cand)
+
+
+        # PERFORM LOOP CLOSURE PREDICTION using descriptors
+        loop_closure_results = self.loop_closure_prediction(
+            self.global_descriptors, 
+            self.row_labels,
+            self.positions,
+            k_top_cand,
+            window=self.roi_window
+        )
         
+        # Store loop closure predictions for later analysis
+        self.loop_closure_results = loop_closure_results
         
-        # COMPUTE RETRIEVAL Performance
-        # Depending on the dataset, the way datasets are split, different retrieval approaches are needed. 
-        if self.task == 'relocalization':
-            performance, self.predictions = eval_row_relocalization(
-                                                    self.global_descriptors, # Descriptors
-                                                    self.positions,   # Poses
-                                                    self.row_labels, # Row labels
-                                                    k_top_cand, # Max top candidates
-                                                    radius=self.loop_range_distance, # Radius
-                                                    roi_window=self.roi_window,
-                                                    warmup_window=self.warmup_window,
-                                                    sim = self.sim_func 
-                                                    )
+        # COMPUTE RETRIEVAL Performance using new interface
+        # Build top_k list from self.top_cand (convert indices to k values)
+        top_k_for_recall = sorted(list(set(self.top_cand)))  # [1, 5, 25, one_percent, ...]
         
-        elif self.task == 'place':
-            performance, self.predictions = eval_row_place(self.anchors, # Anchors indices
-                                                    self.global_descriptors, # Descriptors
-                                                    self.positions,   # Poses
-                                                    self.row_labels, # Row labels
-                                                    k_top_cand, # Max top candidates
-                                                    radius=self.loop_range_distance, # Radius
-                                                    window=self.roi_window,
-                                                    sim = self.sim_func # 
-                                                    )
-        else:
-            raise ValueError('Wrong evaluation protocol: ' + self.eval_protocol)
+        performance = self.compute_recall_from_predictions(
+            loop_closure_results,
+            radius_thresholds=self.loop_range_distance,
+            top_k_values=top_k_for_recall
+        )
+        
+        # Store predictions from loop_closure_results for compatibility
+        self.predictions = loop_closure_results['predictions']
 
 
         # COMPUTE Segment class Prediction performance
@@ -603,15 +897,25 @@ class PlaceRecognition:
         self.results = performance
         
         
-        # RE-MAP TO AN OLD FORMAT
+        # RE-MAP TO AN OLD FORMAT for backwards compatibility
         remapped_old_format={}
         self.score_value = {}
         for range_value in self.loop_range_distance:
-            remapped_old_format[range_value]={'recall':[self.results['global']['recall'][range_value][top] for  top in [0,k_top_cand-1]] }
+            # Get recall values - use keys from the top_k_for_recall list
+            recall_values = []
+            for k in [top_k_for_recall[0], top_k_for_recall[-1]]:  # first and last k values
+                recall_values.append(self.results['global']['recall'][range_value].get(k, 0.0))
+            remapped_old_format[range_value] = {'recall': recall_values}
+            
             for segment, scores in self.results['segment'].items():
-                remapped_old_format[range_value][f'recall_{segment}']= [scores['recall'][range_value][top] for  top in [0,k_top_cand-1]]           #self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))#self.logger.info(f'top {top} recall = %.3f',round(metric['recall'][25][top],3))
+                segment_recall_values = []
+                for k in [top_k_for_recall[0], top_k_for_recall[-1]]:
+                    segment_recall_values.append(scores['recall'][range_value].get(k, 0.0))
+                remapped_old_format[range_value][f'recall_{segment}'] = segment_recall_values
         
-        self.score_value[self.monitor_range] = str(round(self.results['global']['recall'][self.monitor_range][0],3)) + f'@{1}'
+        # Get recall@1 for the monitor range
+        recall_at_1 = self.results['global']['recall'].get(self.monitor_range, {}).get(top_k_for_recall[0], 0.0)
+        self.score_value[self.monitor_range] = str(round(recall_at_1, 3)) + f'@{top_k_for_recall[0]}'
 
         return remapped_old_format
 

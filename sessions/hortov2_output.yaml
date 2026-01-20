@@ -23,14 +23,14 @@ optimizer:
   lr_scheduler: ReduceLROnPlateau
   type: AdamW
 retrieval:
-  range_thres: 6
-  roi_window: 100
+  range_thres: 10
+  roi_window: 50
   sim_metric: L2
   top_cand:
   - 1
   - 5
   - 25
-  warmup_window: 50
+  warmup_window: 100
 run:
   early_stop: 1000
   epochs: 100

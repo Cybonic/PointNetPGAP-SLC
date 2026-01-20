@@ -47,7 +47,7 @@ val_loader:
   loop_range: 10 # Loop Threshold [m]
   dataset:
     path: 'dataset/PlaceRecognitionTestPolyTunnel'
-    seq: ['PCD_RAS_EASY']
+    seq: ['PCD_Easy_DARK']
     # ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY']
 
 run:

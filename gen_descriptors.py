@@ -142,7 +142,6 @@ if __name__ == '__main__':
                             device  = device,
                             )
 
-
     loader = dataloader_handler(root, 
                                 network = SESSION['network'],
                                 val_loader = SESSION['val_loader'],
