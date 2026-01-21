@@ -473,6 +473,7 @@ class file_structure():
         neighbor_indices = []
         distances_list = []
         labels_list = []
+        neighbor_labels = []
         query_to_neighbor = {}
         
         all_positions = self._get_positions_()
@@ -512,7 +513,8 @@ class file_structure():
             close_mask = dists < distance_threshold
             candidates_indices = same_label_indices[close_mask]
             candidates_distances = dists[close_mask]
-            
+            candidates_labels = all_labels[same_label_indices][close_mask]
+
             if len(candidates_indices) == 0:
                 continue
             
@@ -522,18 +524,22 @@ class file_structure():
                 topk_indices = np.argsort(candidates_distances)[:min(topk, len(candidates_distances))]
                 selected_indices = candidates_indices[topk_indices]
                 selected_distances = candidates_distances[topk_indices]
+                selected_labels = candidates_labels[topk_indices]
+
             else:
                 # Keep all candidates within distance threshold
                 selected_indices = candidates_indices
                 selected_distances = candidates_distances
-            
+                selected_labels = candidates_labels
+
             # Add to results
-            for neighbor_idx, neighbor_dist in zip(selected_indices, selected_distances):
+            for neighbor_idx, neighbor_dist, neighbor_label in zip(selected_indices, selected_distances, selected_labels):
                 query_indices.append(i)
                 neighbor_indices.append(neighbor_idx)
                 distances_list.append(neighbor_dist)
                 labels_list.append(query_label)
-                
+                neighbor_labels.append(neighbor_label)
+
                 # Store query to neighbor mapping
                 if i not in query_to_neighbor:
                     query_to_neighbor[i] = []
@@ -580,6 +586,195 @@ class file_structure():
             'topk': topk
         }
     
+    def get_num_ground_truth_loops_per_query(self, warm_up=100, lower_bound_idx=20, distance_threshold=2.0) -> dict:
+        """
+        Compute the number of ground truth loop closures for each query position.
+        
+        Args:
+            warm_up: Number of initial frames to skip
+            lower_bound_idx: Minimum frame gap to ignore immediate past frames
+            distance_threshold: Maximum distance to consider as loop closure
+            
+        Returns:
+            Dictionary with:
+            {
+                'query_indices': array of query indices,
+                'num_loops': array with number of loops per query,
+                'total_loops': total number of loop closures,
+                'queries_with_loops': number of queries that have at least one loop,
+                'queries_without_loops': number of queries with no loops,
+                'statistics': {
+                    'min_loops': minimum loops per query,
+                    'max_loops': maximum loops per query,
+                    'mean_loops': average loops per query,
+                    'median_loops': median loops per query
+                }
+            }
+        """
+        # Get ground truth with all neighbors (no topk limit)
+        gt_lc = self.get_ground_truth_loop_closure(
+            warm_up=warm_up,
+            lower_bound_idx=lower_bound_idx,
+            distance_threshold=distance_threshold,
+            topk=None
+        )
+        
+        # Count loops per query
+        query_indices = gt_lc['query_indices']
+        unique_queries, counts = np.unique(query_indices, return_counts=True)
+        
+        # Create array for all potential queries (from warm_up to end)
+        all_query_indices = np.arange(warm_up, len(self.df))
+        num_loops = np.zeros(len(all_query_indices), dtype=int)
+        
+        # Fill in counts for queries that have loops
+        for q_idx, count in zip(unique_queries, counts):
+            idx_in_array = q_idx - warm_up
+            if 0 <= idx_in_array < len(num_loops):
+                num_loops[idx_in_array] = count
+        
+        # Compute statistics
+        queries_with_loops = np.sum(num_loops > 0)
+        queries_without_loops = np.sum(num_loops == 0)
+        
+        if queries_with_loops > 0:
+            loops_with_values = num_loops[num_loops > 0]
+            statistics = {
+                'min_loops': int(np.min(loops_with_values)),
+                'max_loops': int(np.max(loops_with_values)),
+                'mean_loops': float(np.mean(num_loops)),
+                'mean_loops_with_neighbors': float(np.mean(loops_with_values)),
+                'median_loops': float(np.median(num_loops)),
+                'std_loops': float(np.std(num_loops))
+            }
+        else:
+            statistics = {
+                'min_loops': 0,
+                'max_loops': 0,
+                'mean_loops': 0.0,
+                'mean_loops_with_neighbors': 0.0,
+                'median_loops': 0.0,
+                'std_loops': 0.0
+            }
+        
+        return {
+            'query_indices': all_query_indices,
+            'num_loops': num_loops,
+            'total_loops': int(np.sum(num_loops)),
+            'total_queries': len(all_query_indices),
+            'queries_with_loops': int(queries_with_loops),
+            'queries_without_loops': int(queries_without_loops),
+            'statistics': statistics,
+            'parameters': {
+                'warm_up': warm_up,
+                'lower_bound_idx': lower_bound_idx,
+                'distance_threshold': distance_threshold
+            }
+        }
+
+    def get_num_ground_truth_loops_per_label(self, warm_up=100, lower_bound_idx=20, distance_threshold=2.0) -> dict:
+        """
+        Compute the number of ground truth loop closures for each label.
+        
+        Args:
+            warm_up: Number of initial frames to skip
+            lower_bound_idx: Minimum frame gap to ignore immediate past frames
+            distance_threshold: Maximum distance to consider as loop closure
+            
+        Returns:
+            Dictionary with:
+            {
+                'labels': array of unique labels,
+                'loops_per_label': dict mapping label -> number of loops,
+                'queries_per_label': dict mapping label -> number of query positions,
+                'queries_with_loops_per_label': dict mapping label -> queries that have loops,
+                'total_loops': total number of loop closures,
+                'statistics_per_label': dict mapping label -> statistics
+            }
+        """
+        # Get ground truth with all neighbors (no topk limit)
+        gt_lc = self.get_ground_truth_loop_closure(
+            warm_up=warm_up,
+            lower_bound_idx=lower_bound_idx,
+            distance_threshold=distance_threshold,
+            topk=None
+        )
+        
+        # Get all labels in the dataset
+        all_labels = self._get_labels()
+        unique_labels = np.unique(all_labels)
+        
+        # Initialize dictionaries
+        loops_per_label = {int(label): 0 for label in unique_labels}
+        queries_per_label = {int(label): 0 for label in unique_labels}
+        queries_with_loops_per_label = {int(label): 0 for label in unique_labels}
+        distances_per_label = {int(label): [] for label in unique_labels}
+        
+        # Count queries per label (from warm_up onwards)
+        for i in range(warm_up, len(self.df)):
+            label = int(all_labels[i])
+            queries_per_label[label] += 1
+        
+        # Count loops per label from ground truth
+        query_indices = gt_lc['query_indices']
+        labels = gt_lc['labels']
+        distances = gt_lc['distances']
+        
+        # Track which queries have loops per label
+        queries_with_loops_set = {int(label): set() for label in unique_labels}
+        
+        for q_idx, label, dist in zip(query_indices, labels, distances):
+            label_int = int(label)
+            loops_per_label[label_int] += 1
+            distances_per_label[label_int].append(dist)
+            queries_with_loops_set[label_int].add(q_idx)
+        
+        # Count queries with loops per label
+        for label in unique_labels:
+            queries_with_loops_per_label[int(label)] = len(queries_with_loops_set[int(label)])
+        
+        # Compute statistics per label
+        statistics_per_label = {}
+        for label in unique_labels:
+            label_int = int(label)
+            dists = distances_per_label[label_int]
+            if len(dists) > 0:
+                statistics_per_label[label_int] = {
+                    'total_loops': loops_per_label[label_int],
+                    'total_queries': queries_per_label[label_int],
+                    'queries_with_loops': queries_with_loops_per_label[label_int],
+                    'queries_without_loops': queries_per_label[label_int] - queries_with_loops_per_label[label_int],
+                    'mean_distance': float(np.mean(dists)),
+                    'min_distance': float(np.min(dists)),
+                    'max_distance': float(np.max(dists)),
+                    'std_distance': float(np.std(dists))
+                }
+            else:
+                statistics_per_label[label_int] = {
+                    'total_loops': 0,
+                    'total_queries': queries_per_label[label_int],
+                    'queries_with_loops': 0,
+                    'queries_without_loops': queries_per_label[label_int],
+                    'mean_distance': 0.0,
+                    'min_distance': 0.0,
+                    'max_distance': 0.0,
+                    'std_distance': 0.0
+                }
+        
+        return {
+            'labels': unique_labels,
+            'loops_per_label': loops_per_label,
+            'queries_per_label': queries_per_label,
+            'queries_with_loops_per_label': queries_with_loops_per_label,
+            'total_loops': int(np.sum(list(loops_per_label.values()))),
+            'statistics_per_label': statistics_per_label,
+            'parameters': {
+                'warm_up': warm_up,
+                'lower_bound_idx': lower_bound_idx,
+                'distance_threshold': distance_threshold
+            }
+        }
+
     def get_nearest_neighbor_ground_truth(self, lower_bound_idx=50) -> dict:
         """
         Get a cleaner representation of ground truth nearest neighbors.

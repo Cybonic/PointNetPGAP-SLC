@@ -40,6 +40,25 @@ def test_retrieval_rules(sequence="PCD_Easy_DARK"):
     print(f"Query indices range: [{np.min(query_indices)}, {np.max(query_indices)}]")
     print(f"Neighbor indices range: [{np.min(neighbor_indices)}, {np.max(neighbor_indices)}]")
     
+    
+    
+    fs = file_structure(ROOT_DIR, sequence)
+    label_loops = fs.get_num_ground_truth_loops_per_label(
+    warm_up=100, 
+    lower_bound_idx=50, 
+    distance_threshold=10.0
+    )
+
+    print("\n" + "-" * 80)
+    print("Stats per label")
+    print("-" * 80)
+    print(f"Total loops: {label_loops['total_loops']}")
+    print(f"\nLoops per label:")
+    for label in label_loops['labels']:
+        stats = label_loops['statistics_per_label'][int(label)]
+        print(f"  Label {label}: {stats['total_loops']} loops, "
+            f"{stats['queries_with_loops']}/{stats['total_queries']} queries with loops")
+
     # RULE 1: Verify retrieval is always from past frames
     print("\n" + "-" * 80)
     print("RULE 1: Retrieval is ALWAYS from PAST frames (never future frames)")

@@ -60,25 +60,75 @@ class TruePositivesVisualizer:
         # Color mapping
         self.colors = generate_label_colors(max(self.labels) + 1)
         self.label_colors = [self.colors[int(label)] for label in self.labels]
+    
+    def _detect_prediction_format(self, pred_data):
+        """
+        Detect the format of prediction data.
+        
+        Returns:
+            'new' if using new format (candidates, positions_dist, labels, query_label)
+            'old' if using old format (pred_loops with idx/dist/segment, segment)
+        """
+        if 'candidates' in pred_data and 'positions_dist' in pred_data:
+            return 'new'
+        elif 'pred_loops' in pred_data:
+            return 'old'
+        else:
+            raise ValueError(f"Unknown prediction format. Keys: {pred_data.keys()}")
+
+    def _extract_prediction_data(self, pred_data):
+        """
+        Extract prediction data in a unified format regardless of input format.
+        
+        Returns:
+            Tuple of (pred_indices, pred_distances, pred_segments, query_segment)
+            All as numpy arrays
+        """
+        format_type = self._detect_prediction_format(pred_data)
+        
+        if format_type == 'new':
+            # New format: candidates, positions_dist, labels, query_label
+            pred_indices = np.array(pred_data['candidates'][:self.topk])
+            pred_distances = np.array(pred_data['positions_dist'][:self.topk])
+            pred_segments = np.array(pred_data['labels'][:self.topk])
+            query_segment = pred_data['query_label']
+        else:
+            # Old format: pred_loops with idx/dist/segment, segment
+            pred_loops = pred_data['pred_loops']
+            pred_indices = np.array(pred_loops['idx'][:self.topk])
+            pred_distances = np.array(pred_loops['dist'][:self.topk])
+            pred_segments = np.array(pred_loops['segment'][:self.topk])
+            query_segment = pred_data['segment']
+        
+        return pred_indices, pred_distances, pred_segments, query_segment
         
     def collect_all_true_positives(self):
         """
         Collect all true positive loop closures from predictions.
+        
+        Supports both old and new prediction formats:
+        - Old format: pred_loops with idx/dist/segment keys, segment for query label
+        - New format: candidates, positions_dist, labels, query_label
         
         Returns:
             List of tuples: (query_idx, neighbor_idx, distance, query_segment, neighbor_segment)
         """
         true_positives = []
         
+        # Detect format from first prediction
+        first_key = next(iter(self.predictions.keys()))
+        format_type = self._detect_prediction_format(self.predictions[first_key])
+        print(f"Detected prediction format: {format_type}")
+        
         for query_idx in sorted(self.predictions.keys()):
             pred_data = self.predictions[query_idx]
-            pred_loops = pred_data['pred_loops']
-            query_segment = pred_data['segment']
             
-            # Get top-k predictions
-            pred_indices = pred_loops['idx'][:self.topk]
-            pred_distances = pred_loops['dist'][:self.topk]
-            pred_segments = pred_loops['segment'][:self.topk]
+            # Extract data in unified format
+            pred_indices, pred_distances, pred_segments, query_segment = self._extract_prediction_data(pred_data)
+            
+            # Skip if no predictions
+            if len(pred_indices) == 0:
+                continue
             
             # Filter by distance threshold
             valid_mask = pred_distances <= self.distance_threshold
@@ -86,12 +136,18 @@ class TruePositivesVisualizer:
             valid_distances = pred_distances[valid_mask]
             valid_segments = pred_segments[valid_mask]
             
+            if len(valid_indices) == 0:
+                continue
+            
             # Filter by temporal distance
             temporal_distances = np.abs(query_idx - valid_indices)
             temporal_mask = temporal_distances >= self.min_temporal_distance
             valid_indices = valid_indices[temporal_mask]
             valid_distances = valid_distances[temporal_mask]
             valid_segments = valid_segments[temporal_mask]
+            
+            if len(valid_indices) == 0:
+                continue
             
             # Identify true positives (same segment)
             is_tp = (valid_segments == query_segment)
@@ -257,7 +313,13 @@ def main():
     # Load predictions
     print("\nLoading predictions...")
     with open(predictions_path, 'rb') as f:
-        predictions = pickle.load(f)
+        data = pickle.load(f)
+    
+    # Handle wrapped format (e.g., ScanContext output)
+    if isinstance(data, dict) and 'predictions' in data:
+        predictions = data['predictions']
+    else:
+        predictions = data
     print(f"Loaded {len(predictions)} predictions")
     
     # Load dataset

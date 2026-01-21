@@ -155,11 +155,124 @@ def elevate_path_by_revisits(positions, spatial_threshold=10.0, level_height=5.0
 
 
 def load_predictions(predictions_path):
-    """Load predictions from pickle file."""
+    """
+    Load predictions from pickle file.
+    
+    Handles different file formats:
+    1. Direct predictions dict: {query_idx: prediction_data, ...}
+    2. Wrapped format: {'predictions': {query_idx: prediction_data, ...}, ...}
+    
+    Returns:
+        Dictionary of predictions keyed by query_idx, or None if file not found
+    """
     if not os.path.exists(predictions_path):
         return None
     with open(predictions_path, 'rb') as f:
-        return pickle.load(f)
+        data = pickle.load(f)
+    
+    # Check if predictions are wrapped in a 'predictions' key
+    if isinstance(data, dict) and 'predictions' in data:
+        # Wrapped format (e.g., ScanContext output)
+        return data['predictions']
+    else:
+        # Direct predictions dict
+        return data
+
+
+def find_predictions_path(saved_root, sequence, model):
+    """
+    Find the predictions.pkl file for a given model and sequence.
+    
+    Handles different file structures:
+    1. Standard models: {model}-None/predictions/place/{recall}@1/predictions.pkl
+    2. ScanContext: ScanContext/predictions.pkl (directly in model folder)
+    
+    Args:
+        saved_root: Root directory for saved predictions
+        sequence: Sequence name
+        model: Model name
+        
+    Returns:
+        Tuple of (predictions_path, model_dir_name) or (None, None) if not found
+    """
+    # Handle special naming conventions
+    if model == "SPVSoAP3D":
+        model_dir_name = "SPVSoAP3D-SoAP-log-pnl-fc-None"
+    elif model == "ScanContext":
+        model_dir_name = "ScanContext"  # No -None suffix
+    else:
+        model_dir_name = f"{model}-None"
+    
+    model_base_dir = os.path.join(saved_root, sequence, model_dir_name)
+    
+    if not os.path.exists(model_base_dir):
+        return None, model_dir_name
+    
+    # Try ScanContext style first (predictions.pkl directly in model folder)
+    direct_pred_path = os.path.join(model_base_dir, "predictions.pkl")
+    if os.path.exists(direct_pred_path):
+        return direct_pred_path, model_dir_name
+    
+    # Try standard style: predictions/place/{recall}@1/predictions.pkl
+    place_dir = os.path.join(model_base_dir, "predictions", "place")
+    if os.path.exists(place_dir):
+        # Find the recall@1 directory
+        subdirs = [d for d in os.listdir(place_dir) 
+                  if os.path.isdir(os.path.join(place_dir, d)) and '@1' in d]
+        
+        if subdirs:
+            pred_path = os.path.join(place_dir, subdirs[0], "predictions.pkl")
+            if os.path.exists(pred_path):
+                return pred_path, model_dir_name
+    
+    return None, model_dir_name
+
+
+def detect_prediction_format(pred_data):
+    """
+    Detect the format of prediction data.
+    
+    Returns:
+        'new' if using new format (candidates, positions_dist, labels, query_label)
+        'old' if using old format (pred_loops with idx/dist/segment, segment)
+    """
+    if 'candidates' in pred_data and 'positions_dist' in pred_data:
+        return 'new'
+    elif 'pred_loops' in pred_data:
+        return 'old'
+    else:
+        raise ValueError(f"Unknown prediction format. Keys: {pred_data.keys()}")
+
+
+def extract_prediction_data(pred_data, topk):
+    """
+    Extract prediction data in a unified format regardless of input format.
+    
+    Args:
+        pred_data: Dictionary containing prediction data
+        topk: Number of top predictions to extract
+        
+    Returns:
+        Tuple of (pred_indices, pred_distances, pred_segments, query_segment)
+        All as numpy arrays
+    """
+    format_type = detect_prediction_format(pred_data)
+    
+    if format_type == 'new':
+        # New format: candidates, positions_dist, labels, query_label
+        pred_indices = np.array(pred_data['candidates'][:topk])
+        pred_distances = np.array(pred_data['positions_dist'][:topk])
+        pred_segments = np.array(pred_data['labels'][:topk])
+        query_segment = pred_data['query_label']
+    else:
+        # Old format: pred_loops with idx/dist/segment, segment
+        pred_loops = pred_data['pred_loops']
+        pred_indices = np.array(pred_loops['idx'][:topk])
+        pred_distances = np.array(pred_loops['dist'][:topk])
+        pred_segments = np.array(pred_loops['segment'][:topk])
+        query_segment = pred_data['segment']
+    
+    return pred_indices, pred_distances, pred_segments, query_segment
 
 
 def collect_true_positives(predictions, topk=1, distance_threshold=10.0, 
@@ -167,13 +280,17 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
     """
     Collect all true positive loop closures from predictions.
     
+    Supports both old and new prediction formats:
+    - Old format: pred_loops with idx/dist/segment keys, segment for query label
+    - New format: candidates, positions_dist, labels, query_label
+    
     IMPORTANT RETRIEVAL RULES:
     1. Retrieval is ALWAYS done in PAST frames only (never future frames)
     2. The nearest neighbor is the CLOSEST point, even if it has been retrieved before
     3. The same past frame can be the nearest neighbor for multiple query frames
     
     Args:
-        predictions: Dictionary of predictions
+        predictions: Dictionary of predictions (keyed by query_idx)
         topk: Top-K predictions to consider
         distance_threshold: Maximum distance for valid loop closures
         min_temporal_distance: Minimum frame distance to consider as loop closure
@@ -183,15 +300,20 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
     """
     true_positives = []
     
+    # Detect format from first prediction
+    first_key = next(iter(predictions.keys()))
+    format_type = detect_prediction_format(predictions[first_key])
+    print(f"  Detected prediction format: {format_type}")
+    
     for query_idx in sorted(predictions.keys()):
         pred_data = predictions[query_idx]
-        pred_loops = pred_data['pred_loops']
-        query_segment = pred_data['segment']
         
-        # Get top-k predictions
-        pred_indices = pred_loops['idx'][:topk]
-        pred_distances = pred_loops['dist'][:topk]
-        pred_segments = pred_loops['segment'][:topk]
+        # Extract data in unified format
+        pred_indices, pred_distances, pred_segments, query_segment = extract_prediction_data(pred_data, topk)
+        
+        # Skip if no predictions
+        if len(pred_indices) == 0:
+            continue
         
         # RETRIEVAL RULE: Filter to keep only PAST frames (neighbor_idx < query_idx)
         # This ensures we NEVER retrieve from future frames
@@ -200,11 +322,17 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
         pred_distances = pred_distances[past_mask]
         pred_segments = pred_segments[past_mask]
         
+        if len(pred_indices) == 0:
+            continue
+        
         # Filter by distance threshold
         valid_mask = pred_distances <= distance_threshold
         valid_indices = pred_indices[valid_mask]
         valid_distances = pred_distances[valid_mask]
         valid_segments = pred_segments[valid_mask]
+        
+        if len(valid_indices) == 0:
+            continue
         
         # Filter by temporal distance
         temporal_distances = query_idx - valid_indices  # Now always positive since valid_indices < query_idx
@@ -212,6 +340,9 @@ def collect_true_positives(predictions, topk=1, distance_threshold=10.0,
         valid_indices = valid_indices[temporal_mask]
         valid_distances = valid_distances[temporal_mask]
         valid_segments = valid_segments[temporal_mask]
+        
+        if len(valid_indices) == 0:
+            continue
         
         # Identify true positives (same segment)
         is_tp = (valid_segments == query_segment)
@@ -534,30 +665,16 @@ def generate_all_plots(dataset_root, saved_root, sequences, models, output_dir,
             print(f"\n[{plot_count}/{total_plots}] {model} - {sequence}")
             print("-" * 80)
             
-            # Handle special naming convention for SPVSoAP3D
-            if model == "SPVSoAP3D":
-                model_dir_name = "SPVSoAP3D-SoAP-log-pnl-fc-None"
-            else:
-                model_dir_name = f"{model}-None"
+            # Find predictions file (handles different file structures)
+            pred_path, model_dir_name = find_predictions_path(saved_root, sequence, model)
             
-            # Find predictions file
-            model_dir = os.path.join(saved_root, sequence, model_dir_name, "predictions", "place")
-            
-            if not os.path.exists(model_dir):
-                print(f"  WARNING: Model directory not found: {model_dir}")
-                results_summary.append((sequence, model, "DIR_NOT_FOUND", 0))
+            if pred_path is None:
+                print(f"  WARNING: Predictions not found for {model} in {sequence}")
+                print(f"    Searched in: {os.path.join(saved_root, sequence, model_dir_name)}")
+                results_summary.append((sequence, model, "NOT_FOUND", 0))
                 continue
             
-            # Find the recall@1 directory
-            subdirs = [d for d in os.listdir(model_dir) 
-                      if os.path.isdir(os.path.join(model_dir, d)) and '@1' in d]
-            
-            if not subdirs:
-                print(f"  WARNING: No @1 directory found in {model_dir}")
-                results_summary.append((sequence, model, "NO_PREDICTIONS", 0))
-                continue
-            
-            pred_path = os.path.join(model_dir, subdirs[0], "predictions.pkl")
+            print(f"  Found predictions at: {pred_path}")
             
             # Load predictions
             predictions = load_predictions(pred_path)
@@ -630,7 +747,7 @@ def main():
     
     # Dataset and output paths
     dataset_root = "/home/tiago/workspace/place_uk/dataset/place_v2/PlaceRecognitionTestPolyTunnel"
-    saved_root = "/home/tiago/workspace/place_uk/PointNetGAP/saved/hortov2"
+    saved_root = "/home/tiago/workspace/place_uk/PointNetGAP/saved_v3/hortov2"
     output_dir = "/home/tiago/workspace/place_uk/PointNetGAP/plots/true_positives_individual"
     
     # Sequences to process
@@ -647,7 +764,8 @@ def main():
         "PointNetVLAD",
         "SPVSoAP3D",
         "LOGG3D",
-        "overlap_transformer"
+        "overlap_transformer",
+        "ScanContext",
     ]
     
     # Loop closure parameters
@@ -678,7 +796,7 @@ def main():
     transition_length = 20       # Number of points over which to smooth transitions (higher = smoother)
     
     # Subsampling parameter (for loop closures, not the path)
-    subsample_factor = 5         # Show every Nth loop closure (1=all, 5=every 5th, 10=every 10th)
+    subsample_factor = 2         # Show every Nth loop closure (1=all, 5=every 5th, 10=every 10th)
     
     # Tight cropping parameters
     tight_crop = True            # Enable tight cropping around content
