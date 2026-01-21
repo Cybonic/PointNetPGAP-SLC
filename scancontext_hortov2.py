@@ -29,21 +29,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sca
 # Note: PlaceRecognition is NOT imported at top level to avoid torch dependency
 # The compute_recall logic is implemented locally in _compute_recall_from_predictions_impl
 
-# Try to import GPU acceleration (CuPy)
-USE_GPU = False
-cp = None
+# Try to import GPU acceleration (PyTorch)
+USE_GPU = True
+torch = None
 try:
-    import cupy as cp
-    # Check if GPU is available
-    if cp.cuda.runtime.getDeviceCount() > 0:
+    import torch
+    if torch.cuda.is_available():
         USE_GPU = True
-        print(f"[INFO] GPU available - using CuPy acceleration")
-        print(f"[INFO] GPU: {cp.cuda.runtime.getDeviceProperties(0)['name'].decode()}")
+        print(f"[INFO] GPU available - using PyTorch CUDA acceleration")
+        print(f"[INFO] GPU: {torch.cuda.get_device_name(0)}")
     else:
-        print("[INFO] CuPy installed but no GPU available")
+        print("[INFO] PyTorch installed but no CUDA GPU available")
 except ImportError:
-    print("[INFO] CuPy not installed - GPU acceleration disabled")
-    print("[INFO] To install: pip install cupy-cuda11x (or cupy-cuda12x)")
+    print("[INFO] PyTorch not installed - GPU acceleration disabled")
 
 # Try to import C++ accelerated version
 USE_CPP = False
@@ -307,6 +305,152 @@ if not USE_CPP:
 else:
     # Use C++ implementation
     distance_sc = scancontext_cpp.distance_sc
+
+
+# ============================================================
+# GPU-Accelerated Batch Distance (PyTorch CUDA)
+# ============================================================
+if USE_GPU:
+    def batch_distance_sc_gpu(query_sc, database_scs, query_norms=None, db_norms_list=None):
+        """
+        GPU-accelerated batch ScanContext distance computation using PyTorch.
+        
+        Computes distances from one query to all database entries using GPU.
+        Significantly faster for large databases (100+ entries).
+        
+        Args:
+            query_sc: Query ScanContext (ring_res, sector_res) - numpy array
+            database_scs: List of database ScanContexts - list of numpy arrays
+            query_norms: Precomputed column norms for query (optional, unused)
+            db_norms_list: Precomputed column norms for database (optional, unused)
+            
+        Returns:
+            Array of distances (numpy)
+        """
+        device = torch.device('cuda')
+        
+        # Transfer data to GPU
+        query_gpu = torch.from_numpy(query_sc.astype(np.float32)).to(device)
+        db_stack_gpu = torch.from_numpy(np.stack(database_scs, axis=0).astype(np.float32)).to(device)
+        
+        n_db = db_stack_gpu.shape[0]
+        num_sectors = query_gpu.shape[1]
+        
+        # Precompute norms on GPU
+        db_norms_gpu = torch.linalg.norm(db_stack_gpu, dim=1)  # (n_db, sector_res)
+        
+        best_sims = torch.full((n_db,), -1.0, dtype=torch.float32, device=device)
+        
+        for shift in range(num_sectors):
+            # Shift query on GPU
+            query_shifted = torch.roll(query_gpu, shifts=shift, dims=1)
+            query_norms_t = torch.linalg.norm(query_shifted, dim=0)  # (sector_res,)
+            
+            # Valid columns for query
+            query_valid = query_norms_t > 1e-8
+            
+            # Vectorized dot products for all database entries: (n_db, sector_res)
+            dot_products = torch.sum(query_shifted.unsqueeze(0) * db_stack_gpu, dim=1)
+            
+            # Denominator: (n_db, sector_res)
+            denom = query_norms_t.unsqueeze(0) * db_norms_gpu
+            
+            # Valid mask: both query and db columns non-zero
+            valid_mask = query_valid.unsqueeze(0) & (db_norms_gpu > 1e-8)
+            
+            # Compute cosine similarity where valid
+            cos_sims = torch.where(valid_mask & (denom > 1e-8), 
+                                   dot_products / (denom + 1e-8), 
+                                   torch.zeros_like(dot_products))
+            
+            # Count valid elements per row
+            valid_counts = torch.sum(valid_mask.float(), dim=1)
+            
+            # Sum of cosine similarities per row
+            cos_sums = torch.sum(cos_sims, dim=1)
+            
+            # Average similarity (avoid division by zero)
+            sims = torch.where(valid_counts > 0, cos_sums / valid_counts, 
+                              torch.full_like(cos_sums, -1.0))
+            
+            # Update best similarities
+            best_sims = torch.maximum(best_sims, sims)
+        
+        # Compute distances
+        distances = 1.0 - best_sims
+        distances = torch.where(best_sims < 0, torch.ones_like(distances), distances)
+        
+        # Transfer back to CPU
+        return distances.cpu().numpy()
+    
+    def batch_distance_sc_gpu_optimized(query_sc, db_stack_gpu, db_norms_gpu):
+        """
+        Optimized GPU batch distance when database is already on GPU.
+        
+        Use this when processing multiple queries against the same database.
+        
+        Args:
+            query_sc: Query ScanContext (ring_res, sector_res) - numpy array
+            db_stack_gpu: Database SCs already on GPU (n_db, ring_res, sector_res) - torch tensor
+            db_norms_gpu: Database norms already on GPU (n_db, sector_res) - torch tensor
+            
+        Returns:
+            Array of distances (numpy)
+        """
+        device = db_stack_gpu.device
+        query_gpu = torch.from_numpy(query_sc.astype(np.float32)).to(device)
+        
+        n_db = db_stack_gpu.shape[0]
+        num_sectors = query_gpu.shape[1]
+        
+        best_sims = torch.full((n_db,), -1.0, dtype=torch.float32, device=device)
+        
+        for shift in range(num_sectors):
+            query_shifted = torch.roll(query_gpu, shifts=shift, dims=1)
+            query_norms_t = torch.linalg.norm(query_shifted, dim=0)
+            
+            query_valid = query_norms_t > 1e-8
+            
+            dot_products = torch.sum(query_shifted.unsqueeze(0) * db_stack_gpu, dim=1)
+            denom = query_norms_t.unsqueeze(0) * db_norms_gpu
+            valid_mask = query_valid.unsqueeze(0) & (db_norms_gpu > 1e-8)
+            
+            cos_sims = torch.where(valid_mask & (denom > 1e-8), 
+                                   dot_products / (denom + 1e-8), 
+                                   torch.zeros_like(dot_products))
+            
+            valid_counts = torch.sum(valid_mask.float(), dim=1)
+            cos_sums = torch.sum(cos_sims, dim=1)
+            
+            sims = torch.where(valid_counts > 0, cos_sums / valid_counts, 
+                              torch.full_like(cos_sums, -1.0))
+            
+            best_sims = torch.maximum(best_sims, sims)
+        
+        distances = 1.0 - best_sims
+        distances = torch.where(best_sims < 0, torch.ones_like(distances), distances)
+        
+        return distances.cpu().numpy()
+    
+    def prepare_database_gpu(database_scs):
+        """
+        Prepare database for GPU processing.
+        
+        Call this once before processing multiple queries.
+        
+        Args:
+            database_scs: List of database ScanContexts
+            
+        Returns:
+            Tuple of (db_stack_gpu, db_norms_gpu) as PyTorch tensors on GPU
+        """
+        device = torch.device('cuda')
+        db_stack = np.stack(database_scs, axis=0).astype(np.float32)
+        db_stack_gpu = torch.from_numpy(db_stack).to(device)
+        db_norms_gpu = torch.linalg.norm(db_stack_gpu, dim=1)
+        return db_stack_gpu, db_norms_gpu
+    
+    print("[INFO] GPU batch functions available: batch_distance_sc_gpu, prepare_database_gpu")
 
 
 class ScanContextGenerator:
@@ -732,6 +876,83 @@ class ScanContextPlaceRecognition:
                     'gt_labels': gt_labels.tolist()
                 }
                 query_indices.append(query_idx)
+        elif USE_GPU:
+            # GPU-accelerated implementation (PyTorch CUDA)
+            self.logger.info(f"Using GPU acceleration (PyTorch CUDA)...")
+            self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+            
+            # Prepare all ScanContexts - cache entire database on GPU
+            all_scs = [self.descriptors[i]['sc'] for i in range(n_samples)]
+            
+            # Pre-transfer full database to GPU for maximum efficiency
+            self.logger.info("Transferring database to GPU...")
+            full_db_stack_gpu, full_db_norms_gpu = prepare_database_gpu(all_scs)
+            
+            for query_idx in tqdm(range(warmup_window, n_samples), desc="Computing predictions (GPU)"):
+                query_sc = self.descriptors[query_idx]['sc']
+                query_position = positions_2d[query_idx]
+                query_label = labels[query_idx]
+                
+                # Eligible indices: past frames outside ROI window
+                eligible_end = query_idx - roi_window
+                
+                if eligible_end <= 0:
+                    continue
+                
+                eligible_indices = all_indices[:eligible_end]
+                eligible_positions = positions_2d[eligible_indices]
+                eligible_labels = labels[eligible_indices]
+                
+                # Use sliced GPU tensors for eligible entries (no CPU transfer!)
+                db_stack_slice = full_db_stack_gpu[:eligible_end]
+                db_norms_slice = full_db_norms_gpu[:eligible_end]
+                
+                # Compute distances using cached GPU data
+                sc_distances = batch_distance_sc_gpu_optimized(query_sc, db_stack_slice, db_norms_slice)
+                
+                # Sort by descriptor distance (ascending)
+                sort_order = np.argsort(sc_distances)
+                
+                # Get top-k predictions by descriptor similarity
+                topk_actual = min(top_k, len(eligible_indices))
+                topk_indices = sort_order[:topk_actual]
+                
+                predicted_candidates = eligible_indices[topk_indices]
+                predicted_similarities = sc_distances[topk_indices]
+                
+                # Position distances for predictions
+                pred_positions = eligible_positions[topk_indices]
+                delta_pos = query_position - pred_positions
+                position_distances = np.linalg.norm(delta_pos, axis=-1)
+                
+                predicted_labels = eligible_labels[topk_indices]
+                
+                # Ground truth: sort by position distance
+                delta_pos_all = query_position - eligible_positions
+                all_position_distances = np.linalg.norm(delta_pos_all, axis=-1)
+                gt_sort_order = np.argsort(all_position_distances)
+                
+                gt_topk_indices = gt_sort_order[:topk_actual]
+                gt_candidates = eligible_indices[gt_topk_indices]
+                gt_position_distances = all_position_distances[gt_topk_indices]
+                gt_labels = eligible_labels[gt_topk_indices]
+                
+                predictions[query_idx] = {
+                    'candidates': predicted_candidates.tolist(),
+                    'similarities': predicted_similarities.tolist(),
+                    'positions_dist': position_distances.tolist(),
+                    'labels': predicted_labels.tolist() if hasattr(predicted_labels, 'tolist') else list(predicted_labels),
+                    'query_label': int(query_label),
+                    'query_position': query_position.tolist(),
+                    'gt_candidates': gt_candidates.tolist(),
+                    'gt_positions_dist': gt_position_distances.tolist(),
+                    'gt_labels': gt_labels.tolist()
+                }
+                query_indices.append(query_idx)
+            
+            # Free GPU memory
+            del full_db_stack_gpu, full_db_norms_gpu
+            torch.cuda.empty_cache()
         else:
             # Python fallback implementation (with batch optimization)
             self.logger.info(f"Using Python implementation...")
@@ -1175,7 +1396,7 @@ class ScanContextPlaceRecognition:
                 df_segment.index = all_topk
                 
                 # Save segment recall matrix
-                csv_path = save_dir / f'recall_segment_{label}.csv'
+                csv_path = save_dir / f'recall_{label}.csv'
                 df_segment.to_csv(csv_path)
                 self.logger.info(f"Saved segment {label} recall matrix to: {csv_path}")
 

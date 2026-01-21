@@ -642,6 +642,21 @@ class PlaceRecognition:
             
             predicted_labels = eligible_labels[topk_indices]
             
+            # ============================================================
+            # GROUND TRUTH: Compute position-based nearest neighbors
+            # This is needed for proper recall calculation
+            # ============================================================
+            # Sort eligible frames by position distance (ground truth ordering)
+            delta_pos_all = query_position - eligible_positions
+            all_position_distances = np.linalg.norm(delta_pos_all, axis=-1)
+            gt_sort_order = np.argsort(all_position_distances)
+            
+            # Get top-k by position (ground truth)
+            gt_topk_indices = gt_sort_order[:topk_actual]
+            gt_candidates = eligible_indices[gt_topk_indices]
+            gt_position_distances = all_position_distances[gt_topk_indices]
+            gt_labels = eligible_labels[gt_topk_indices]
+            
             # Store predictions
             predictions[query_idx] = {
                 'candidates': predicted_candidates.tolist(),
@@ -649,7 +664,11 @@ class PlaceRecognition:
                 'positions_dist': position_distances.tolist(),
                 'labels': predicted_labels.tolist(),
                 'query_label': int(query_label),
-                'query_position': query_position.tolist()
+                'query_position': query_position.tolist(),
+                # Ground truth info (sorted by position distance)
+                'gt_candidates': gt_candidates.tolist(),
+                'gt_positions_dist': gt_position_distances.tolist(),
+                'gt_labels': gt_labels.tolist()
             }
             
             query_indices.append(query_idx)
@@ -727,7 +746,7 @@ class PlaceRecognition:
         if top_k_values is None:
             top_k_values = [1, 5, 10, 25]
 
-        top_k_range = range(1, max(top_k_values) + 1)
+        top_k_range = list(range(1, max(top_k_values) + 1))
 
         # Ensure radius_thresholds is a list
         if not isinstance(radius_thresholds, list):
@@ -752,15 +771,39 @@ class PlaceRecognition:
             position_distances = np.array(pred['positions_dist'])
             candidate_labels = np.array(pred['labels'])
             
+            # Ground truth info (sorted by position distance)
+            gt_positions_dist = np.array(pred['gt_positions_dist'])
+            gt_labels = np.array(pred['gt_labels'])
+            
             # For each radius threshold
             for radius in radius_thresholds:
                 # For each top-k value
                 for k in top_k_range:
-                    # Get top-k predictions
+                    # ============================================================
+                    # GROUND TRUTH CHECK (matches eval_row_place behavior)
+                    # Check if a valid GT loop exists in top-k by POSITION
+                    # A valid GT loop must be: within radius AND same segment label
+                    # ============================================================
+                    gt_topk_dists = gt_positions_dist[:k] if len(gt_positions_dist) >= k else gt_positions_dist
+                    gt_topk_labels = gt_labels[:k] if len(gt_labels) >= k else gt_labels
+                    
+                    # Check if GT loop exists within radius for this segment
+                    gt_in_range = gt_topk_dists <= radius
+                    gt_same_segment = gt_topk_labels == query_label
+                    gt_valid = gt_in_range & gt_same_segment
+                    
+                    if not np.any(gt_valid):
+                        # No ground truth loop exists within this radius for this segment
+                        # Skip this query - don't count it in recall calculation
+                        continue
+                    
+                    # ============================================================
+                    # PREDICTION CHECK
+                    # Check if ANY of top-k PREDICTIONS is a true positive
+                    # ============================================================
                     topk_dists = position_distances[:k] if len(position_distances) >= k else position_distances
                     topk_labels = candidate_labels[:k] if len(candidate_labels) >= k else candidate_labels
                     
-                    # Check if any of top-k predictions is a true positive
                     # True positive: position distance <= radius AND same segment label
                     tp_mask = (topk_dists <= radius) & (topk_labels == query_label)
                     is_tp = np.any(tp_mask)
@@ -807,7 +850,7 @@ class PlaceRecognition:
                         segment_results[seg]['precision'][radius][k] = 0.0
         
         # Log segment-wise recall@1 for the first radius
-        primary_radius = radius_thresholds[0] if radius_thresholds else 10
+        primary_radius = radius_thresholds[10] if radius_thresholds else 10
         for seg in sorted(segments):
             recall_at_1 = segment_results[seg]['recall'].get(primary_radius, {}).get(1, 0.0)
             print(f'Segment: {seg}: {recall_at_1}')
