@@ -93,6 +93,64 @@ For t
 [Download HORTO-3DLM here](https://github.com/Cybonic/HORTO-3DLM.git)
 
 
+
+## Run on HORTOV2 Dataset
+
+###  Running Place Recognition
+
+```
+cd PointNetGAP/
+
+# Activate Conda Env.
+conda activate pr_env
+
+# Edit File to select sequences
+# Generate ground truth loops
+python dataloader/unit_test/gen_gt_loops.py
+
+# run generate DEEP-based models
+python script_eval_hortov2.py
+
+
+# run scancontext
+python scancontext_hortov2.py
+
+```
+Note: predictions are saved at ``saved\`` (configured in the yaml file)
+
+
+### Generate Results
+In the ``pr_results_tool`` repo
+
+```
+cd pr_results_tool
+
+
+# generate figures with recall Top1 to Top25 
+# within the graphs.py edit to select models and sequences
+python graphs.py
+
+# generate row-based results
+# within heatmap.py edit top candidates, and sequence 
+python heatmap.py
+
+```
+
+### Generate Plots
+In the ``PointNetGAP`` run the following instructions:
+
+```
+cd PointNetGAP/
+
+# Activate Conda Env.
+conda activate pr_env
+
+# In the file edit source and destination folders, as well as the ground truth folder
+# run code 
+python dataloader/unit_test/plot_tp_individual.py
+
+```
+
 ## Citation:
 ```
 @ARTICLE{10706020,

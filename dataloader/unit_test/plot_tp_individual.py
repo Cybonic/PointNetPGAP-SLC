@@ -746,15 +746,17 @@ def main():
     # ============================================================================
     
     # Dataset and output paths
-    dataset_root = "/home/tiago/workspace/place_uk/dataset/place_v2/PlaceRecognitionTestPolyTunnel"
-    saved_root = "/home/tiago/workspace/place_uk/PointNetGAP/saved_v3/hortov2"
-    output_dir = "/home/tiago/workspace/place_uk/PointNetGAP/plots/true_positives_individual"
+    dataset_root = "/home/tiago/workspace/place_uk/dataset/PlaceRecognitionTestPolyTunnel"
+    saved_root = "/home/tiago/workspace/place_uk/hortov2/v2/predictions"
+    output_dir = "/home/tiago/workspace/place_uk/hortov2/v2/true_positives_individual"
     
     # Sequences to process
     sequences = [
         # "PCD_EASY",      # Uncomment if predictions available
         "PCD_Easy_DARK",
         "PCD_MED",
+        "PCD_RAS_MED",
+        "PCD_RAS_EASY"
         # "PCD_RAS_EASY"   # Uncomment if dataset path is fixed
     ]
     

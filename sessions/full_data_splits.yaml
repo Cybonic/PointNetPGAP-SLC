@@ -2,7 +2,7 @@
 hortov2:
   val:
     dataset_root: 'place_uk/PlaceRecognitionTestPolyTunnel'
-    seq: ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY']
+    seq: ['PCD_EASY','PCD_Easy_DARK','PCD_MED','PCD_RAS_EASY','PCD_RAS_MED']
 
 
 cross_validation:

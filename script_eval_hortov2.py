@@ -4,8 +4,11 @@ import yaml
 
 # Define the path to the dataset
 
-test_sequences = ['PCD_Easy_DARK',
-                  'PCD_MED'
+test_sequences = [#'PCD_Easy_DARK',
+                  #'PCD_MED',
+                  #'PCD_EASY',
+                  'PCD_RAS_EASY',
+                  'PCD_RAS_MED',
                 ]
 
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # get parent dir 
@@ -39,3 +42,5 @@ for seq in test_sequences:
                 save_session_config(SESSION, output_cfg_file)
                 
                 os.system(f'python gen_descriptors.py --session hortov2_output')
+
+                os.system(f'rm {output_cfg_file}')

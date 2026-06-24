@@ -14,10 +14,11 @@ import subprocess
 
 # Define test sequences
 test_sequences = [
-    'PCD_Easy_DARK',
-    'PCD_MED',
+    #'PCD_Easy_DARK',
+    #'PCD_MED',
     #'PCD_EASY',
-    #'PCD_RAS_EASY'
+    'PCD_RAS_EASY',
+    'PCD_RAS_MED'
 ]
 
 # Get root directory (PointNetGAP folder)

@@ -11,10 +11,11 @@ from PointNetGAP.dataloader.hortov2.utils import aligned_path, elevate_along_pat
 
 COLORS = generate_label_colors(200)
 ROOT_DIR = os.path.abspath("/home/tiago/workspace/place_uk/dataset/PlaceRecognitionTestPolyTunnel")
-SEQs = ["PCD_EASY",
-        "PCD_Easy_DARK",
-        "PCD_MED",
-        "PCD_RAS_EASY"]
+SEQs = [#"PCD_EASY",
+        #"PCD_Easy_DARK",
+        #"PCD_MED",
+        "PCD_RAS_EASY",
+        "PCD_RAS_MED"]
 
 
 def test_nearest_neighbors_different_frame(warm_up, lower_bound_idx,distance_threshold, top_k):
